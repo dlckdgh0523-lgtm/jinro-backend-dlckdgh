@@ -1,0 +1,10 @@
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "scorecardId" INTEGER;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "city" TEXT;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "state" TEXT;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "admissionRate" DOUBLE PRECISION;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "studentSize" INTEGER;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "tuitionInState" INTEGER;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "tuitionOutState" INTEGER;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "medianEarnings" INTEGER;
+ALTER TABLE "ForeignUniversity" ADD COLUMN IF NOT EXISTS "completionRate" DOUBLE PRECISION;
+CREATE INDEX IF NOT EXISTS "ForeignUniversity_scorecardId_idx" ON "ForeignUniversity"("scorecardId");

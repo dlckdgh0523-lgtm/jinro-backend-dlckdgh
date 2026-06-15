@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# 운영 배포 실행 스크립트 (AWS Ubuntu). 이 파일을 deploy/run-prod.sh 로 복사해 실값을 채우고 실행하세요.
+#   cp deploy/run-prod.sh.example deploy/run-prod.sh && nano deploy/run-prod.sh && bash deploy/run-prod.sh
+# deploy/run-prod.sh 는 .gitignore 처리됨(시크릿 포함, 커밋 금지). .env 파일은 만들지 않습니다(셸 env 주입).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# ── 필수 시크릿 ──
+export POSTGRES_PASSWORD="CHANGE_ME_strong_db_password"
+export JWT_SECRET="CHANGE_ME_long_random_string_min_32_chars"     # openssl rand -hex 32
+export PUBLIC_BASE_URL="https://your-domain.com"                   # 실제 접속 도메인
+export CORS_ORIGINS="https://your-domain.com"                      # 쉼표로 여러 개 가능
+
+# ── AI / 공공데이터 키 ──
+export AI_PROVIDER="anthropic"
+export ANTHROPIC_API_KEY="sk-ant-..."
+export CAREERNET_BASE_URL="https://www.career.go.kr"
+export CAREERNET_API_KEY="..."
+export DATA_GO_KR_API_KEY="..."     # 봉사(VMS)·대학알리미·해외대학 공용
+export SCORECARD_API_KEY="..."      # 미국 대학 상세
+# export GG_DATA_API_KEY="..."      # (선택) 경기데이터드림 학과
+
+# ── 소셜 로그인 ──
+export GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
+export GOOGLE_CLIENT_SECRET="GOCSPX-..."
+# export KAKAO_REST_API_KEY="..."
+# export KAKAO_CLIENT_SECRET="..."     # 카카오 Client Secret 사용함이면
+# 운영은 redirect_uri 정확도를 위해 도메인 명시 권장(구글/카카오 콘솔 등록값과 일치해야 함):
+export OAUTH_REDIRECT_BASE="$PUBLIC_BASE_URL"
+
+# ── 첫 배포 1회만 true: 공공데이터 적재(수 분). 이후엔 false로 두면 INGEST_CRON(매일 04:00)이 갱신 ──
+export INGEST_ON_BOOT="${INGEST_ON_BOOT:-false}"
+
+echo "Building images (server has a clean build context — no local bind-mounts)..."
+docker compose -f docker-compose.prod.yml build
+echo "Starting stack..."
+docker compose -f docker-compose.prod.yml up -d
+echo "Done. Frontend on :80. Check: docker compose -f docker-compose.prod.yml ps"

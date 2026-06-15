@@ -1,0 +1,166 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: jinro
+      POSTGRES_PASSWORD: jinro
+      POSTGRES_DB: jinro
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jinro"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mock-careernet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    command: ["npx", "tsx", "tools/mock-careernet.ts"]
+    environment:
+      MOCK_CAREERNET_PORT: "4010"
+    ports:
+      - "4010:4010"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mock-careernet:
+        condition: service_started
+    environment: &appenv
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://jinro:jinro@postgres:5432/jinro
+      REDIS_URL: redis://redis:6379
+      # 실키 연동: 호스트 셸에서 CAREERNET_BASE_URL=https://www.career.go.kr CAREERNET_API_KEY=... 로 기동
+      CAREERNET_BASE_URL: ${CAREERNET_BASE_URL:-http://mock-careernet:4010}
+      CAREERNET_API_KEY: ${CAREERNET_API_KEY:-}
+      # 대학알리미(공공데이터포털) — 키 없으면 보강 skip. mock 사용 시 ALIMI_BASE_URL=http://mock-careernet:4010
+      ALIMI_BASE_URL: ${ALIMI_BASE_URL:-https://apis.data.go.kr/B340014/BasicInformationService_2}
+      DATA_GO_KR_API_KEY: ${DATA_GO_KR_API_KEY:-}
+      # 경기데이터드림 학과정보 API — 키 없으면 CSV importer 데이터 사용. (한국 IP 전용 — 서울 리전 배포)
+      GG_DATA_API_KEY: ${GG_DATA_API_KEY:-}
+      # 워크넷(고용노동부 work24) — 직업/학과/직무/공통코드 서비스별로 키가 다름
+      WORK24_JOB_KEY: ${WORK24_JOB_KEY:-}
+      WORK24_MAJOR_KEY: ${WORK24_MAJOR_KEY:-}
+      WORK24_DUTY_KEY: ${WORK24_DUTY_KEY:-}
+      WORK24_CMCD_KEY: ${WORK24_CMCD_KEY:-}
+      # 미국 College Scorecard
+      SCORECARD_API_KEY: ${SCORECARD_API_KEY:-}
+      # 실 Claude 연동: 호스트 셸에서 AI_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-ant-... 로 기동 (.env 금지 — 셸 env로만)
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # 소셜 로그인 (run-local.ps1에서 주입). OAUTH_REDIRECT_BASE 비우면 요청 Host(localhost:8080)로 자동.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      OAUTH_REDIRECT_BASE: ${OAUTH_REDIRECT_BASE:-}
+      JWT_SECRET: compose-dev-secret-0123456789abcdef
+      PUBLIC_BASE_URL: http://localhost:3000
+      INGEST_ON_BOOT: "true"
+      # 부하 프로파일에서 호스트 env로 오버라이드: DISABLE_RATE_LIMIT=true AI_MAX_CONCURRENT_STREAMS=600
+      DISABLE_RATE_LIMIT: ${DISABLE_RATE_LIMIT:-false}
+      AI_MAX_CONCURRENT_STREAMS: ${AI_MAX_CONCURRENT_STREAMS:-50}
+    command: ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/main.js"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - storage:/app/storage
+      # 로컬 전용: 호스트가 컴파일한 dist를 그대로 사용 (Windows Docker Desktop 빌드 컨텍스트 캐싱 회피).
+      # CI/실배포에서는 이 마운트를 제거하고 이미지 내장 dist 사용. run-local.ps1 -Build 가 호스트에서 tsc 빌드.
+      - ./dist:/app/dist
+      # 스키마/마이그레이션 최신본 — 컨테이너 안에서 prisma generate가 새 모델을 반영하게.
+      - ./prisma:/app/prisma
+
+  # 프론트 — nginx가 빌드된 SPA 서빙 + /v1 → api 프록시. EC2에선 80 포트로 단일 진입.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "8080:80"
+    volumes:
+      # 로컬 전용: 최신 legacy 앱·nginx 설정을 호스트에서 직접 서빙 (Docker 빌드 캐싱 회피).
+      - ./frontend/public/legacy:/usr/share/nginx/html/legacy:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment: *appenv
+    command: ["sh", "-c", "npx prisma generate && node dist/worker.js"]
+    # PDF 워커 OOM 가드 — 메모리 1.5GB 이상 (미션 PDF 규칙)
+    mem_limit: 2g
+    volumes:
+      - storage:/app/storage
+      - ./dist:/app/dist
+      - ./prisma:/app/prisma
+
+  # ── 부하 테스트 프로파일 (docker compose --profile load ...) ──
+  k6:
+    image: grafana/k6:0.57.0
+    profiles: ["load"]
+    volumes:
+      - ./load:/load
+      - ./load/results:/results
+    environment:
+      BASE_URL: http://api:3000
+    entrypoint: ["k6"]
+    command: ["run", "/load/k6/rest.js", "--summary-export", "/results/rest-summary.json"]
+    depends_on:
+      api:
+        condition: service_started
+
+  sse-load:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    profiles: ["load"]
+    command: ["npx", "tsx", "tools/sse-load.ts"]
+    environment:
+      BASE_URL: http://api:3000
+      RAMP: "50,150,300,500"
+      STEP_SEC: "30"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  pgdata:
+  storage:

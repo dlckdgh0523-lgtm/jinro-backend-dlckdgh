@@ -1,0 +1,21 @@
+# (옵션) k8s 분산 부하 — k6-operator TestRun
+# 사전 준비:
+#   1) k6-operator 설치: kubectl apply -f https://github.com/grafana/k6-operator/releases/latest/download/bundle.yaml
+#   2) 스크립트 ConfigMap: kubectl create configmap k6-rest --from-file=load/k6/rest.js --from-file=load/k6/helpers.js
+#   3) BASE_URL을 클러스터 내 API 서비스로 수정
+# 실행: kubectl apply -f load/k8s/k6-rest-testrun.yaml
+# 결과: kubectl logs -l k6_cr=jinro-rest --tail=100
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: jinro-rest
+spec:
+  parallelism: 4 # 4개 파드로 분산 (VU는 파드당 분할)
+  script:
+    configMap:
+      name: k6-rest
+      file: rest.js
+  runner:
+    env:
+      - name: BASE_URL
+        value: http://jinro-api.default.svc.cluster.local:3000

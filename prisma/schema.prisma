@@ -1,0 +1,487 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  // Docker slim 이미지(openssl 미설치)에서 감지 실패 대비 — 빌드/배포 타깃 명시
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+enum Role {
+  student
+  teacher
+  admin
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         Role
+  school       String?
+  classroom    String?
+  grade        String? // E4|E5|E6|M1|M2|M3|H1|H2|H3 — 학년별 프롬프트 분기 키
+  consents     Json
+  status       UserStatus @default(active)
+  tourCompleted Boolean   @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  refreshTokens RefreshToken[]
+  calendarEvents CalendarEvent[]
+  sessions      CounselingSession[]
+  reports       Report[]
+  notifications Notification[]
+  careerTargets CareerTarget[]
+  grades        Grade[]
+  studyTasks    StudyTask[]
+  sentMessages     Message[] @relation("sentMessages")
+  receivedMessages Message[] @relation("receivedMessages")
+  studentRequests  CounselingRequest[] @relation("studentRequests")
+  teacherRequests  CounselingRequest[] @relation("teacherRequests")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ─── 커리어넷 적재 (런타임이 커리어넷에 직접 의존하지 않도록) ───
+
+model CareerJob {
+  seq           Int      @id
+  name          String
+  summary       String?
+  aptitude      String?
+  salary        String?
+  prospect      String?
+  relatedMajors String[]
+  theme         String?
+  raw           Json
+  // pgvector — Prisma 미지원 타입은 Unsupported로 선언, 검색은 raw SQL
+  embedding     Unsupported("vector(256)")?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+}
+
+model JuniorJob {
+  seq       Int      @id
+  name      String
+  field     String?
+  summary   String?
+  raw       Json
+  updatedAt DateTime @updatedAt
+}
+
+model Major {
+  majorSeq    Int      @id
+  name        String
+  field       String?
+  summary     String?
+  departments String[]
+  raw         Json
+  embedding   Unsupported("vector(256)")?
+  updatedAt   DateTime @updatedAt
+}
+
+model School {
+  seq       String   @id
+  name      String
+  region    String?
+  gubun     String?
+  estType   String?
+  link      String?
+  raw       Json
+  updatedAt DateTime @updatedAt
+
+  departments UniversityDepartment[]
+}
+
+// 대학별 학과 — 대학알리미 공시 데이터(조사년도로 버전 관리).
+// 출처가 공시 기관이므로 AI는 이 테이블을 읽기만 한다(RAG). 적재는 cron/CSV importer.
+// status로 신설/폐지를 추적 — "학과가 계속 바뀐다"를 공시 기관이 표시한 결과를 그대로 보존.
+model UniversityDepartment {
+  id          String   @id @default(cuid())
+  schoolName  String // 공시 학교명 (School.name과 매칭)
+  school      School?  @relation(fields: [schoolSeq], references: [seq])
+  schoolSeq   String?
+  campus      String? // 본분교명
+  college     String? // 단과대학
+  name        String // 학부·과(전공)명
+  dayNight    String? // 주야구분
+  feature     String? // 학과특성 (일반과정 등)
+  status      String // 학과상태: 기존|신설|폐지|변경[신설]|...
+  active      Boolean  @default(true) // status에 '폐지' 미포함 = 현존 학과
+  seriesLarge String? // 표준분류 대계열 (인문/사회/공학/자연/예체능...)
+  seriesMid   String? // 중계열
+  seriesSmall String? // 소계열
+  degree      String? // 학위과정 (학사/전문학사/석사...)
+  years       String? // 수업연한
+  svyYr       Int // 조사년도 — 버전 키
+  source      String   @default("대학알리미 (대학정보공시)")
+  updatedAt   DateTime @updatedAt
+
+  @@unique([schoolName, campus, name, svyYr])
+  @@index([schoolSeq, active])
+  @@index([svyYr])
+  @@index([name])
+}
+
+// 학생 캘린더 이벤트 — 봉사/체험/시험/상담 일정 등 모든 일정. 학생 본인이 CRUD.
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  category    String   // volunteer | experience | exam | counseling | study | other
+  startsAt    DateTime
+  endsAt      DateTime?
+  location    String?
+  contact     String?  // 기관 전화 등
+  link        String?
+  notes       String?
+  refType     String?  // 'volunteer' | 'exchange' | 'material' 등 (원본 소스 추적)
+  refId       String?  // 원본 id (멱등 — 같은 봉사 두 번 추가 방지)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, refType, refId])
+  @@index([userId, startsAt])
+}
+
+// 학과별 취업률 (대학알리미 졸업생 취업현황) — 학과 상세에 노출
+model UniversityEmploymentStat {
+  id          String   @id @default(cuid())
+  svyYr       Int
+  schoolName  String
+  college     String?
+  majorName   String?
+  div         String? // 구분명 (학사/석사 등)
+  graduates   Int? // 졸업자 합 (남+여)
+  employed    Int? // 건강보험+해외+개인창업+프리랜서 합산
+  employmentRate Float? // EMPLYMT_RT
+  primaryMaintain Float? // 1차 유지율
+  rawData     Json
+  updatedAt   DateTime @updatedAt
+
+  @@unique([schoolName, majorName, svyYr])
+  @@index([schoolName])
+}
+
+// 외국대학과 교류 (대학별 파견·유치 인원) — 대학 상세 "국제화" 지표
+model UniversityExchangeStat {
+  id          String   @id @default(cuid())
+  svyYr       Int
+  schoolName  String
+  schoolKind  String?
+  foundDiv    String?
+  dispatched  Int? // 자대학 → 타대학 파견
+  invited     Int? // 타대학 → 자대학 유치
+  rawData     Json
+  updatedAt   DateTime @updatedAt
+
+  @@unique([schoolName, svyYr])
+  @@index([schoolName])
+}
+
+// 한국장학재단 학자금 지원 (CSV importer) — 대학생 장학금 검색
+model Scholarship {
+  id          String   @id @default(cuid())
+  source      String   @default("한국장학재단")
+  organization String? // 운영기관
+  productName  String  // 상품명
+  productType  String? // 상품 유형 (대출/장학)
+  supportType  String? // 지원 유형
+  target       String? // 신청 대상
+  applyPeriod  String? // 신청 기간
+  amount       String? // 지원금액
+  selectCount  String? // 선발인원
+  rawData      Json
+  updatedAt    DateTime @updatedAt
+
+  @@index([productName])
+  @@index([organization])
+}
+
+// 봉사활동 모집 (한국사회복지협의회 VMS) — 지역·기간 필터, AI상담 "다음 실천"에서 활용
+model VolunteerOpportunity {
+  id            String   @id @default(cuid())
+  externalId    String   @unique // VMS progrmRegistNo 또는 source-id
+  source        String   @default("VMS")
+  title         String
+  centerName    String?
+  centerType    String? // 분야 (아동복지/노인 등)
+  region        String?
+  areaCode      String?
+  startDate     DateTime?
+  endDate       DateTime?
+  recruitFrom   DateTime?
+  recruitTo     DateTime?
+  recruitCount  Int?
+  youthEligible Boolean  @default(true) // 청소년 가능 여부
+  address       String?
+  contact       String?
+  raw           Json
+  updatedAt     DateTime @updatedAt
+
+  @@index([region, youthEligible])
+  @@index([recruitTo])
+}
+
+// 진로교육자료 (커리어넷 COSE) — 학년/활동유형 필터, AI상담 prepare 단계에서 워크북·체험자료 제안
+model CareerEducationMaterial {
+  seq          String   @id // 커리어넷 seq
+  title        String
+  author       String?
+  year         Int?
+  activityType String? // 진로심리검사/진로상담/직업정보/진로·직업체험/학교·학과정보 등
+  achieveType  String? // 진로교육성취기준
+  target       String? // C/E/M/I/J/V/U (공통/초/중/일반고/직업고/대학/기타)
+  attFile      String?
+  content      String?
+  selCount     Int?
+  regDate      DateTime?
+  raw          Json
+  updatedAt    DateTime @updatedAt
+
+  @@index([target, activityType])
+  @@index([activityType])
+}
+
+// 해외대학 표준국문명칭 (한국국제교류재단) — 국가별 영문↔국문↔현지어. 차기 College Scorecard와 결합
+model ForeignUniversity {
+  id           String   @id // KF univ_cd
+  nameKo       String
+  nameEn       String?
+  nameLocal    String?
+  countryKo    String?
+  countryEn    String?
+  countryIso2  String?
+  // ─ College Scorecard 보강(미국 대학만, 없으면 null) ─
+  scorecardId      Int?     // College Scorecard 학교 ID
+  city             String?
+  state            String?
+  admissionRate    Float?   // 0~1, 입학률
+  studentSize      Int?     // 학생 수
+  tuitionInState   Int?     // 주내 학비 (USD)
+  tuitionOutState  Int?     // 주외 학비 (USD)
+  medianEarnings   Int?     // 졸업 6년 후 중위소득 (USD)
+  completionRate   Float?   // 졸업률 (0~1)
+  raw          Json
+  updatedAt    DateTime @updatedAt
+
+  @@index([countryIso2])
+  @@index([nameKo])
+  @@index([scorecardId])
+}
+
+// 학생 성적 — 본인이 직접 CRUD. 학기(term)별 과목 점수/등급. 대시보드 평균·추이의 원천.
+model Grade {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  term      String   // 학기 키 (정렬·추이용) 예: "2026-1"
+  subject   String   // 과목명
+  category  String?  // 국어|수학|영어|사회|과학|기타 (선택)
+  score     Float?   // 원점수 0~100
+  rank      Int?     // 석차등급 1~9 (선택)
+  credits   Int?     // 단위수 (가중평균용, 선택)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, term])
+}
+
+// 학습 계획 항목 — 본인이 CRUD. weekKey로 주간 묶음.
+model StudyTask {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  subject   String?
+  weekKey   String    // 예: "2026-W24" (월요일 ISO 주)
+  dueDate   DateTime?
+  done      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, weekKey])
+}
+
+// 교사↔학생 1:1 메시지 (DM). 스레드는 상대방(otherId) 기준으로 묶는다.
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("sentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("receivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+// 학생→교사 상담 요청. 교사가 수락하면 양측 캘린더에 이벤트 생성.
+model CounselingRequest {
+  id           String    @id @default(cuid())
+  studentId    String
+  student      User      @relation("studentRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId    String
+  teacher      User      @relation("teacherRequests", fields: [teacherId], references: [id], onDelete: Cascade)
+  topic        String
+  note         String?   // 학생이 적은 사유/희망
+  preferredAt  DateTime? // 학생 희망 시각
+  status       String    @default("pending") // pending | accepted | declined | cancelled
+  scheduledAt  DateTime? // 교사가 확정한 시각
+  decisionNote String?   // 교사 메모(거절/확정 사유)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([teacherId, status])
+  @@index([studentId])
+}
+
+model CounselCase {
+  seq       Int      @id
+  title     String
+  question  String?
+  answer    String?
+  raw       Json
+  embedding Unsupported("vector(256)")?
+  updatedAt DateTime @updatedAt
+}
+
+model IngestionRun {
+  id         String    @id @default(cuid())
+  source     String
+  status     String
+  count      Int       @default(0)
+  error      String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+}
+
+// ─── AI 상담 ───
+
+enum SessionStatus {
+  active
+  ended
+}
+
+model CounselingSession {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    SessionStatus @default(active)
+  startedAt DateTime      @default(now())
+  endedAt   DateTime?
+
+  messages CounselingMessage[]
+  signals  CounselingSignal[]
+  reports  Report[]
+
+  @@index([userId, status])
+}
+
+model CounselingMessage {
+  id        String            @id @default(cuid())
+  sessionId String
+  session   CounselingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // 'user' | 'ai'
+  text      String
+  createdAt DateTime          @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+model CounselingSignal {
+  id              String            @id @default(cuid())
+  sessionId       String
+  session         CounselingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tag             String // 흥미|강점|가치|맥락
+  text            String
+  sourceMessageId String?
+  confidence      String @default("mid") // high|mid|low
+  createdAt       DateTime          @default(now())
+
+  @@index([sessionId])
+}
+
+enum ReportStatus {
+  queued
+  rendering
+  done
+  failed
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  sessionId      String
+  session        CounselingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content        Json
+  status         ReportStatus @default(queued)
+  pdfKey         String?
+  jobId          String?
+  idempotencyKey String       @unique
+  error          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([userId])
+}
+
+// ─── 알림 ───
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  dedupeKey String
+  title     String
+  body      String
+  targetUrl String?
+  payload   Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@unique([userId, dedupeKey])
+}
+
+// ─── 진로 목표 ───
+
+model CareerTarget {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  career    String
+  univ      String?
+  dept      String?
+  track     String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

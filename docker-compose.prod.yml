@@ -1,0 +1,124 @@
+# 실배포용 (AWS Ubuntu + Docker). 로컬 전용 바인드 마운트 없음 — 이미지에 내장된 dist/prisma client 사용.
+# 기동:  deploy/run-prod.sh  (셸 env로 시크릿 주입 → .env 하드스톱 준수)
+# 리눅스 서버는 docker 빌드 컨텍스트 캐싱 이슈가 없어 `docker compose -f docker-compose.prod.yml build`가 정상 동작.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jinro
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: jinro
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jinro"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: &appenv
+      NODE_ENV: production
+      TZ: Asia/Seoul
+      PORT: "3000"
+      DATABASE_URL: postgresql://jinro:${POSTGRES_PASSWORD:?}@postgres:5432/jinro
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?set a strong JWT_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL e.g. https://yourdomain}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS e.g. https://yourdomain}
+      # 실 공공데이터/AI 키 — run-prod.sh 에서 주입
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
+      CAREERNET_BASE_URL: ${CAREERNET_BASE_URL:-https://www.career.go.kr}
+      CAREERNET_API_KEY: ${CAREERNET_API_KEY:-}
+      ALIMI_BASE_URL: ${ALIMI_BASE_URL:-https://apis.data.go.kr/B340014/BasicInformationService_2}
+      DATA_GO_KR_API_KEY: ${DATA_GO_KR_API_KEY:-}
+      GG_DATA_API_KEY: ${GG_DATA_API_KEY:-}
+      SCORECARD_API_KEY: ${SCORECARD_API_KEY:-}
+      # 소셜 로그인. 운영은 OAUTH_REDIRECT_BASE=https://도메인 권장(ALB TLS 종단 시 proto 자동감지 불확실).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      OAUTH_REDIRECT_BASE: ${OAUTH_REDIRECT_BASE:-}
+      # 첫 배포 1회만 true 권장(공공데이터 적재, 수 분 소요). 이후 INGEST_CRON(기본 04:00)이 갱신.
+      INGEST_ON_BOOT: ${INGEST_ON_BOOT:-false}
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+    # api는 외부에 직접 노출하지 않음 — frontend nginx가 /v1을 내부(api:3000)로 프록시.
+    expose:
+      - "3000"
+    volumes:
+      - storage:/app/storage
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment: *appenv
+    command: ["node", "dist/worker.js"]
+    mem_limit: 2g
+    volumes:
+      - storage:/app/storage
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    # 외부 노출 없음 — 앞단 caddy가 TLS 종단 후 내부(frontend:80)로 프록시.
+    expose:
+      - "80"
+
+  # TLS 종단 + 자동 인증서(Let's Encrypt). 외부엔 80/443만 공개.
+  # 인증서 발급·갱신을 Caddy가 자동 처리 — 별도 certbot 명령/크론 불필요.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # 발급 인증서 영속(재시작 시 재발급 방지 — LE 레이트리밋 보호)
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  storage:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,25 @@
+# deps / build
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# runtime data / uploads
+storage/
+load/results/
+*.log
+
+# secrets — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+run-local.ps1
+deploy/run-prod.sh
+*.pem
+*.key
+*.p12
+secrets/
+
+# misc
+smoke-report.pdf
+.DS_Store

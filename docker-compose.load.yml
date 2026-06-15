@@ -1,0 +1,7 @@
+# 부하 테스트 오버레이 — 운영 기본값(rate limit)을 건드리지 않고 부하 프로파일에서만 해제.
+# 사용: docker compose -f docker-compose.yml -f docker-compose.load.yml --profile load run --rm k6 run /load/k6/rest.js
+services:
+  api:
+    environment:
+      DISABLE_RATE_LIMIT: "true"
+      AI_MAX_CONCURRENT_STREAMS: "600"
