@@ -760,10 +760,16 @@ function AdminPlaceholder({ title, subtitle }) {
 // ────────────────────────────────────────────────────────
 function AdminApp({ initialScreen = 'dashboard' }) {
   const [screen, setScreen] = usePersistentScreen('admin', initialScreen);
+  const isMobile = useViewportMobile();
+  const [navOpen, setNavOpen] = React.useState(false);
+  const wrapNav = (s) => { setScreen(s); setNavOpen(false); };
   return (
-    <div style={{ display: 'flex', height: '100%' }}>
-      <AdminSidebar activeId={screen} onChange={setScreen}/>
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100%', position: 'relative', overflow: 'hidden' }}>
+      {isMobile && <MobileTopBar title="진로나침반 · 관리자" onMenu={() => setNavOpen(true)}/>}
+      {isMobile
+        ? <SidebarDrawer open={navOpen} onClose={() => setNavOpen(false)}><AdminSidebar activeId={screen} onChange={wrapNav}/></SidebarDrawer>
+        : <AdminSidebar activeId={screen} onChange={setScreen}/>}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, position: 'relative' }}>
         {screen === 'dashboard' && <AdminDashboard go={setScreen}/>}
         {screen === 'users' && <AdminUsers/>}
         {screen === 'payments' && <AdminPayments/>}

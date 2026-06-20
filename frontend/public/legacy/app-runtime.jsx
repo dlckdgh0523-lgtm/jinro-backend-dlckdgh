@@ -447,7 +447,7 @@ function tokenRole() {
   } catch (e) { return null; }
 }
 
-// 뷰포트가 좁은지(폰) 추적 — 리사이즈 시 갱신. 반응형 셸 전환에 사용.
+// 뷰포트가 좁은지(폰) 추적 — 리사이즈 시 갱신. 웹 셸 반응형(사이드바 드로어)에 사용.
 function useViewportMobile(bp = 768) {
   const [m, setM] = React.useState(() => { try { return window.innerWidth < bp; } catch (e) { return false; } });
   React.useEffect(() => {
@@ -456,6 +456,36 @@ function useViewportMobile(bp = 768) {
     return () => window.removeEventListener('resize', on);
   }, [bp]);
   return m;
+}
+
+// 폰에서 웹 셸 상단에 뜨는 햄버거 바 (사이드바 드로어 토글).
+function MobileTopBar({ title, onMenu, right }) {
+  return (
+    <div style={{ flexShrink: 0, height: 52, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--line-subtle)', position: 'relative', zIndex: 30 }}>
+      <button onClick={onMenu} aria-label="메뉴 열기" style={{ width: 40, height: 40, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ position: 'relative', display: 'inline-block', width: 18, height: 14 }}>
+          <span style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: 2, background: 'var(--fg-strong)', borderRadius: 2 }}/>
+          <span style={{ position: 'absolute', left: 0, top: 6, width: '100%', height: 2, background: 'var(--fg-strong)', borderRadius: 2 }}/>
+          <span style={{ position: 'absolute', left: 0, top: 12, width: '100%', height: 2, background: 'var(--fg-strong)', borderRadius: 2 }}/>
+        </span>
+      </button>
+      <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--fg-strong)' }}>{title}</span>
+      <div style={{ flex: 1 }}/>
+      {right}
+    </div>
+  );
+}
+
+// 사이드바를 폰에서 슬라이드 드로어로 감싸는 래퍼. open=false면 화면 밖.
+function SidebarDrawer({ open, onClose, children }) {
+  return (
+    <>
+      {open && <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 199 }}/>}
+      <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', zIndex: 200, transform: open ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform .26s var(--ease-toss, ease)', boxShadow: open ? '0 0 40px rgba(0,0,0,0.3)' : 'none' }}>
+        {children}
+      </div>
+    </>
+  );
 }
 
 function LiveRunner() {
@@ -486,9 +516,6 @@ function LiveRunner() {
   const [width, setWidth] = React.useState(roleCfg.mobile ? 390 : 0);
   const [apiMode, setApiModeState] = React.useState(window.__API_MODE);
   const [remount, setRemount] = React.useState(0);
-  const isMobile = useViewportMobile();
-  // 좁은 화면(폰)에서는 데스크톱 웹 셸 대신 폰 최적화 셸을 렌더 (반응형).
-  const mobileSwap = isMobile && (role === 'student-web' || role === 'teacher-web');
 
   React.useEffect(() => { window.__ACTIVE_ROLE = role; }, [role]);
 
@@ -617,17 +644,13 @@ function LiveRunner() {
 
       {/* APP MOUNT */}
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'stretch', padding: width === 0 ? 0 : '16px 0' }}>
-        <div key={role + ':' + remount} style={{ ...frameStyle, ...(mobileSwap ? { maxWidth: 480, width: '100%' } : {}), background: 'var(--bg-canvas)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div key={role + ':' + remount} style={{ ...frameStyle, background: 'var(--bg-canvas)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <AuthProvider role={role.startsWith('teacher') ? 'teacher' : role === 'admin' ? 'admin' : 'student'}>
             {role === 'auth-mobile'
               ? <MobileAuthApp onEnter={handleAuthComplete}/>
               : role === 'onboarding'
                 ? <OnboardingFlow role={onbRole} onFinish={finishOnboarding}/>
-                : (mobileSwap && role === 'student-web' && typeof StudentApp === 'function')
-                  ? <StudentApp/>
-                  : (mobileSwap && role === 'teacher-web' && typeof TeacherMobileFullApp === 'function')
-                    ? <TeacherMobileFullApp/>
-                    : roleCfg.render()}
+                : roleCfg.render()}
           </AuthProvider>
         </div>
       </div>

@@ -1285,6 +1285,8 @@ function TeacherBilling({ openNotif }) {
 // ────────────────────────────────────────────────────────
 function TeacherApp({ initialScreen = 'dashboard' }) {
   const [screen, setScreen] = usePersistentScreen('teacher-web', initialScreen);
+  const isMobile = useViewportMobile();
+  const [navOpen, setNavOpen] = React.useState(false);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [notifItems, setNotifItems] = React.useState(null); // null = loading
   const openNotif = () => setNotifOpen(true);
@@ -1304,12 +1306,14 @@ function TeacherApp({ initialScreen = 'dashboard' }) {
   const tour = useTour(TEACHER_TOUR_STEPS, 'teacher');
   React.useEffect(() => { try { if (window.__LIVE_MODE && localStorage.getItem('jinro:webtour:teacher')) tour.setPhase('done'); } catch (e) {} }, []);
   React.useEffect(() => { if (tour.phase === 'done') { try { localStorage.setItem('jinro:webtour:teacher', '1'); } catch (e) {} } }, [tour.phase]);
+  const teacherNavId = screen === 'student-detail' ? 'students' : (screen.startsWith('admissions') ? 'admissions-hub' : screen);
+  const wrapNav = (s) => { setScreen(s); setNavOpen(false); };
   return (
-    <div style={{ display: 'flex', height: '100%', background: 'var(--bg-canvas)', position: 'relative' }}>
-      <TeacherSidebar
-        activeId={screen === 'student-detail' ? 'students' : (screen.startsWith('admissions') ? 'admissions-hub' : screen)}
-        onChange={setScreen}
-      />
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100%', background: 'var(--bg-canvas)', position: 'relative', overflow: 'hidden' }}>
+      {isMobile && <MobileTopBar title="진로나침반 · 교사" onMenu={() => setNavOpen(true)}/>}
+      {isMobile
+        ? <SidebarDrawer open={navOpen} onClose={() => setNavOpen(false)}><TeacherSidebar activeId={teacherNavId} onChange={wrapNav}/></SidebarDrawer>
+        : <TeacherSidebar activeId={teacherNavId} onChange={setScreen}/>}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {screen === 'dashboard' && <TeacherDashboard go={setScreen} openNotif={openNotif}/>}
         {screen === 'classroom' && <TeacherClassroom go={setScreen} openNotif={openNotif}/>}

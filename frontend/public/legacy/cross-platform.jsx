@@ -392,6 +392,8 @@ function OAuthOnboarding() {
 
 function StudentWebApp({ initialScreen = 'dashboard', withToasts = false }) {
   const [screen, setScreen] = usePersistentScreen('student-web', initialScreen);
+  const isMobile = useViewportMobile();
+  const [navOpen, setNavOpen] = React.useState(false);
   const cycle = useToastCycle(SAMPLE_TOASTS.student, 4200);
   const tour = useTour(STUDENT_TOUR_STEPS, 'student');
   React.useEffect(() => {
@@ -469,10 +471,14 @@ function StudentWebApp({ initialScreen = 'dashboard', withToasts = false }) {
     );
   };
 
+  const wrapNav = (s) => { setScreen(s); setNavOpen(false); };
   return (
-    <div style={{ display: 'flex', height: '100%', background: 'var(--bg-canvas)', position: 'relative' }}>
-      <StudentWebSidebar activeId={navId} onChange={setScreen}/>
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100%', background: 'var(--bg-canvas)', position: 'relative', overflow: 'hidden' }}>
+      {isMobile && <MobileTopBar title="진로나침반" onMenu={() => setNavOpen(true)}/>}
+      {isMobile
+        ? <SidebarDrawer open={navOpen} onClose={() => setNavOpen(false)}><StudentWebSidebar activeId={navId} onChange={wrapNav}/></SidebarDrawer>
+        : <StudentWebSidebar activeId={navId} onChange={setScreen}/>}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
         {renderContent()}
       </main>
       {withToasts && <WebToastHost toasts={cycle.active} onClose={cycle.close}/>}
