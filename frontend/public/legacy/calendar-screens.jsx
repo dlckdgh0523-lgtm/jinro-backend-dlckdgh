@@ -244,15 +244,15 @@ function StudentCalendar({ go }) {
             <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: i === 0 ? 'var(--danger)' : i === 6 ? 'var(--brand-600)' : 'var(--fg-muted)', padding: '6px 0' }}>{d}</div>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: 38, gap: 2 }}>
           {grid.map((cell, i) => {
-            if (!cell) return <div key={i} style={{ aspectRatio: '1' }}/>;
+            if (!cell) return <div key={i}/>;
             const evs = eventsFor(cell.key);
             const isSelected = selected === cell.key;
             const isToday = cell.key === todayKey;
             return (
               <button key={i} onClick={() => setSelected(cell.key)} style={{
-                aspectRatio: '1', border: 'none', cursor: 'pointer', position: 'relative',
+                height: '100%', border: 'none', cursor: 'pointer', position: 'relative',
                 background: isSelected ? 'var(--brand-500)' : (isToday ? 'var(--brand-50)' : 'transparent'),
                 color: isSelected ? '#fff' : (isToday ? 'var(--brand-600)' : (i % 7 === 0 ? 'var(--danger)' : 'var(--fg-strong)')),
                 borderRadius: 10, fontSize: 13, fontWeight: isSelected || isToday ? 700 : 500,

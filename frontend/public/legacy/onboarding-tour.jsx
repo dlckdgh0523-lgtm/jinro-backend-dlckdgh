@@ -53,6 +53,19 @@ function TourTooltip({ target, title, body, step, total, onNext, onPrev, onSkip,
     arrowStyle = { position: 'absolute', top: -8, left: W/2 - 8, width: 16, height: 16, background: 'var(--bg-elevated)', transform: 'rotate(45deg)', boxShadow: '-2px -2px 4px rgba(0,0,0,0.04)' };
   }
 
+  // 뷰포트(컨테이너) 경계 안으로 말풍선 위치 클램프 — 화면 밖으로 나가지 않게.
+  // 좌표는 컨테이너-로컬이므로 containerRect의 width/height를 기준으로 한다.
+  const M = 8; // 가장자리 여백
+  const bubbleH = 200; // 말풍선 대략 높이(타이틀+본문+버튼)
+  const cw = (containerRect && containerRect.width) || (typeof window !== 'undefined' ? window.innerWidth : W + 2 * M);
+  const ch = (containerRect && containerRect.height) || (typeof window !== 'undefined' ? window.innerHeight : bubbleH + 2 * M);
+  if (typeof style.left === 'number') {
+    style.left = Math.max(M, Math.min(style.left, cw - W - M));
+  }
+  if (typeof style.top === 'number') {
+    style.top = Math.max(M, Math.min(style.top, ch - bubbleH - M));
+  }
+
   return (
     <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 199 }}>
       {/* Dim overlay using container-bounded fixed pseudo via two layers */}

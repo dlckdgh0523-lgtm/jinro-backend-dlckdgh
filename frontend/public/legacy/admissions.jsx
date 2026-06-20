@@ -26,7 +26,11 @@ function admFetch(path) {
 
 function AdmissionsHub({ go }) {
   const [tab, setTab] = React.useState('domestic'); // domestic | overseas
-  const [q, setQ] = React.useState('');
+  // 진로 리포트 등에서 추천 학과/키워드를 넘겨주면 검색어로 시작 (window.__admissionsQuery). 1회성 — 읽고 비운다.
+  const [q, setQ] = React.useState(() => {
+    try { const seed = window.__admissionsQuery; if (seed) { delete window.__admissionsQuery; return String(seed); } } catch (e) {}
+    return '';
+  });
   const [region, setRegion] = React.useState('전체');
   const [type, setType] = React.useState('전체');
   const [page, setPage] = React.useState(1);
@@ -494,20 +498,33 @@ function VolunteersScreen({ go }) {
   const [q, setQ] = React.useState('');
   const [region, setRegion] = React.useState('전체');
   const [list, setList] = React.useState(null);
+  const [page, setPage] = React.useState(1);
+  const V_PAGE_SIZE = 10;
   const REGIONS_V = ['전체', '서울', '부산', '대구', '인천', '광주', '대전', '울산', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 
+  // 백엔드 /volunteers는 offset/page 미지원(take: limit, 최대 50) → 최대치로 받아 클라이언트 페이지네이션.
   const load = React.useCallback(async () => {
     setList(null);
     try {
       const params = new URLSearchParams();
       if (q.trim()) params.set('q', q.trim());
       if (region !== '전체') params.set('region', region);
-      params.set('limit', '30');
+      params.set('limit', '50');
       const res = await window.__apiFetch('/volunteers?' + params.toString(), { method: 'GET' });
       setList(res.data || []);
     } catch (e) { setList([]); }
   }, [q, region]);
   React.useEffect(() => { const id = setTimeout(load, 300); return () => clearTimeout(id); }, [load]);
+  React.useEffect(() => { setPage(1); }, [q, region]);
+
+  const vTotal = list ? list.length : 0;
+  const vTotalPages = Math.max(1, Math.ceil(vTotal / V_PAGE_SIZE));
+  const vPageItems = list ? list.slice((page - 1) * V_PAGE_SIZE, page * V_PAGE_SIZE) : null;
+  const vPageWindow = (() => {
+    const w = []; let s = Math.max(1, page - 2), e = Math.min(vTotalPages, s + 4); s = Math.max(1, e - 4);
+    for (let i = s; i <= e; i++) w.push(i);
+    return w;
+  })();
 
   return (
     <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
@@ -519,9 +536,12 @@ function VolunteersScreen({ go }) {
         <FilterRow label="지역" items={REGIONS_V} active={region} onChange={setRegion}/>
       </div>
       <div style={{ padding: '16px 16px 24px' }}>
+        {list !== null && vTotal > 0 && (
+          <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 10 }}>총 {vTotal}개 · {page}/{vTotalPages}페이지</div>
+        )}
         {list === null ? [0,1,2].map(i => <Card key={i} padding={14} style={{ marginBottom: 8 }}><Skeleton height={40}/></Card>)
           : list.length === 0 ? <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>조건에 맞는 봉사가 없어요. 다른 지역·키워드로 검색해보세요.</div>
-          : list.map(v => (
+          : vPageItems.map(v => (
             <Card key={v.id} padding={14} style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-mint-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IcHeart size={18} color="var(--accent-mint)"/></div>
@@ -550,6 +570,18 @@ function VolunteersScreen({ go }) {
               </div>
             </Card>
           ))}
+
+        {/* 페이지네이션 (클라이언트) */}
+        {list !== null && vTotalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, flexWrap: 'wrap' }}>
+            <PageBtn disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>이전</PageBtn>
+            {vPageWindow[0] > 1 && <><PageBtn onClick={() => setPage(1)}>1</PageBtn>{vPageWindow[0] > 2 && <span style={{ color: 'var(--fg-subtle)', fontSize: 12 }}>…</span>}</>}
+            {vPageWindow.map(n => <PageBtn key={n} active={n === page} onClick={() => setPage(n)}>{n}</PageBtn>)}
+            {vPageWindow[vPageWindow.length-1] < vTotalPages && <>{vPageWindow[vPageWindow.length-1] < vTotalPages-1 && <span style={{ color: 'var(--fg-subtle)', fontSize: 12 }}>…</span>}<PageBtn onClick={() => setPage(vTotalPages)}>{vTotalPages}</PageBtn></>}
+            <PageBtn disabled={page >= vTotalPages} onClick={() => setPage(p => Math.min(vTotalPages, p + 1))}>다음</PageBtn>
+          </div>
+        )}
+
         <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginTop: 8, padding: '0 4px', lineHeight: 1.5 }}>※ 활동 장소·유형·모집인원은 VMS 모집공고 기준이에요. 구체적 활동 일자·시간·봉사시간은 VMS(1365)에서 신청할 때 확인돼요.</div>
       </div>
     </div>
@@ -559,14 +591,27 @@ function VolunteersScreen({ go }) {
 function ScholarshipsScreen({ go }) {
   const [q, setQ] = React.useState('');
   const [list, setList] = React.useState(null);
+  const [page, setPage] = React.useState(1);
+  const S_PAGE_SIZE = 10;
+  // 백엔드 /scholarships는 offset/page 미지원(take: limit, 최대 50) → 최대치로 받아 클라이언트 페이지네이션.
   const load = React.useCallback(async () => {
     setList(null);
     try {
-      const res = await window.__apiFetch('/scholarships?' + (q.trim() ? 'q=' + encodeURIComponent(q.trim()) + '&' : '') + 'limit=30', { method: 'GET' });
+      const res = await window.__apiFetch('/scholarships?' + (q.trim() ? 'q=' + encodeURIComponent(q.trim()) + '&' : '') + 'limit=50', { method: 'GET' });
       setList(res.data || []);
     } catch (e) { setList([]); }
   }, [q]);
   React.useEffect(() => { const id = setTimeout(load, 300); return () => clearTimeout(id); }, [load]);
+  React.useEffect(() => { setPage(1); }, [q]);
+
+  const sTotal = list ? list.length : 0;
+  const sTotalPages = Math.max(1, Math.ceil(sTotal / S_PAGE_SIZE));
+  const sPageItems = list ? list.slice((page - 1) * S_PAGE_SIZE, page * S_PAGE_SIZE) : null;
+  const sPageWindow = (() => {
+    const w = []; let s = Math.max(1, page - 2), e = Math.min(sTotalPages, s + 4); s = Math.max(1, e - 4);
+    for (let i = s; i <= e; i++) w.push(i);
+    return w;
+  })();
 
   return (
     <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
@@ -575,19 +620,34 @@ function ScholarshipsScreen({ go }) {
         <TextInput value={q} onChange={setQ} placeholder="장학금 키워드 (예: 저소득, 이공계, 지역)" leading={<IcSearch size={16}/>}/>
       </div>
       <div style={{ padding: '16px 16px 24px' }}>
+        {list !== null && sTotal > 0 && (
+          <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 10 }}>총 {sTotal}개 · {page}/{sTotalPages}페이지</div>
+        )}
         {list === null ? [0,1,2].map(i => <Card key={i} padding={14} style={{ marginBottom: 8 }}><Skeleton height={40}/></Card>)
           : list.length === 0 ? <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>검색 결과가 없어요.</div>
-          : list.map(s => (
+          : sPageItems.map(s => (
             <Card key={s.id} padding={14} style={{ marginBottom: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)' }}>{s.productName}</div>
               <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 3 }}>{[s.organization, s.productType, s.supportType].filter(Boolean).join(' · ')}</div>
-              {s.amount && <div style={{ fontSize: 12, color: 'var(--brand-600)', marginTop: 6, fontWeight: 600 }}>{s.amount}</div>}
+              {s.amount && <div style={{ fontSize: 12, color: 'var(--brand-600)', marginTop: 6, fontWeight: 600, lineHeight: 1.5 }}>{String(s.amount).slice(0, 120)}</div>}
               {s.target && <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginTop: 4, lineHeight: 1.5 }}>대상: {s.target.slice(0, 80)}</div>}
               {s.applyPeriod && <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
                 <Chip tone="neutral" size="sm">신청 {s.applyPeriod}</Chip>
               </div>}
             </Card>
           ))}
+
+        {/* 페이지네이션 (클라이언트) */}
+        {list !== null && sTotalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, flexWrap: 'wrap' }}>
+            <PageBtn disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>이전</PageBtn>
+            {sPageWindow[0] > 1 && <><PageBtn onClick={() => setPage(1)}>1</PageBtn>{sPageWindow[0] > 2 && <span style={{ color: 'var(--fg-subtle)', fontSize: 12 }}>…</span>}</>}
+            {sPageWindow.map(n => <PageBtn key={n} active={n === page} onClick={() => setPage(n)}>{n}</PageBtn>)}
+            {sPageWindow[sPageWindow.length-1] < sTotalPages && <>{sPageWindow[sPageWindow.length-1] < sTotalPages-1 && <span style={{ color: 'var(--fg-subtle)', fontSize: 12 }}>…</span>}<PageBtn onClick={() => setPage(sTotalPages)}>{sTotalPages}</PageBtn></>}
+            <PageBtn disabled={page >= sTotalPages} onClick={() => setPage(p => Math.min(sTotalPages, p + 1))}>다음</PageBtn>
+          </div>
+        )}
+
         <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginTop: 8, padding: '0 4px' }}>※ 구체 신청 조건·서류는 운영기관 공지로 꼭 확인하세요.</div>
       </div>
     </div>
@@ -600,18 +660,43 @@ function ForeignUnivScreen({ go, embedded = false }) {
   const [q, setQ] = React.useState('');
   const [list, setList] = React.useState(null);
   const [openId, setOpenId] = React.useState(null); // 상세 펼친 대학
+  const [detailCache, setDetailCache] = React.useState({}); // id -> 상세(서버 GET :id 결과)
+  const [page, setPage] = React.useState(1);
+  const FU_PAGE_SIZE = 15;
+
+  // "자세히 보기" 토글 — 펼칠 때 GET /foreign-universities/:id로 최신 상세를 받아 캐시(없으면 목록 detail 사용).
+  const toggleDetail = React.useCallback(async (u) => {
+    if (openId === u.id) { setOpenId(null); return; }
+    setOpenId(u.id);
+    if (detailCache[u.id] !== undefined) return;
+    try {
+      const res = await window.__apiFetch('/foreign-universities/' + encodeURIComponent(u.id), { method: 'GET' });
+      setDetailCache(prev => ({ ...prev, [u.id]: (res && res.data && res.data.detail) || null }));
+    } catch (e) { setDetailCache(prev => ({ ...prev, [u.id]: null })); }
+  }, [openId, detailCache]);
   const COUNTRIES = [{c:'US',n:'미국'},{c:'GB',n:'영국'},{c:'JP',n:'일본'},{c:'DE',n:'독일'},{c:'FR',n:'프랑스'},{c:'CN',n:'중국'},{c:'AU',n:'호주'},{c:'CA',n:'캐나다'}];
+  // 백엔드 list는 offset/page 미지원(take: limit만). 최대치(100)로 가져와 클라이언트 페이지네이션.
   const load = React.useCallback(async () => {
     setList(null); setOpenId(null);
     try {
-      const res = await window.__apiFetch('/foreign-universities?country=' + country + (q.trim() ? '&q=' + encodeURIComponent(q.trim()) : '') + '&limit=40', { method: 'GET' });
+      const res = await window.__apiFetch('/foreign-universities?country=' + country + (q.trim() ? '&q=' + encodeURIComponent(q.trim()) : '') + '&limit=100', { method: 'GET' });
       setList(res.data || []);
     } catch (e) { setList([]); }
   }, [country, q]);
   React.useEffect(() => { const id = setTimeout(load, 300); return () => clearTimeout(id); }, [load]);
+  // 국가/검색이 바뀌면 1페이지로
+  React.useEffect(() => { setPage(1); }, [country, q]);
 
   const fmtUSD = (n) => n != null ? '$' + Number(n).toLocaleString() : null;
   const pct = (n) => n != null ? Math.round(n * 100) + '%' : null;
+  const total = list ? list.length : 0;
+  const totalPages = Math.max(1, Math.ceil(total / FU_PAGE_SIZE));
+  const pageItems = list ? list.slice((page - 1) * FU_PAGE_SIZE, page * FU_PAGE_SIZE) : null;
+  const fuPageWindow = (() => {
+    const w = []; let s = Math.max(1, page - 2), e = Math.min(totalPages, s + 4); s = Math.max(1, e - 4);
+    for (let i = s; i <= e; i++) w.push(i);
+    return w;
+  })();
   return (
     <div style={{ background: 'var(--bg-canvas)', minHeight: embedded ? 0 : '100%' }}>
       {!embedded && <ScreenHeader title="해외대학" subtitle="해외 진학을 생각한다면 — 학비·졸업률·중위소득까지"/>}
@@ -629,11 +714,17 @@ function ForeignUnivScreen({ go, embedded = false }) {
         </div>
       )}
       <div style={{ padding: '16px 16px 24px' }}>
+        {list !== null && total > 0 && (
+          <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 10 }}>총 {total}개 · {page}/{totalPages}페이지</div>
+        )}
         {list === null ? [0,1,2].map(i => <Card key={i} padding={14} style={{ marginBottom: 8 }}><Skeleton height={40}/></Card>)
           : list.length === 0 ? <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-muted)', fontSize: 13 }}>해당 국가 대학 정보가 없어요.</div>
-          : list.map(u => {
-            const d = u.detail || {};
+          : pageItems.map(u => {
             const open = openId === u.id;
+            // 펼친 상태면 서버 GET :id 결과 우선, 로딩(undefined)·실패(null) 시 목록 detail로 폴백.
+            const fetched = detailCache[u.id];
+            const d = (open && fetched) ? fetched : (u.detail || {});
+            const detailLoading = open && fetched === undefined;
             return (
             <Card key={u.id} padding={14} style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -650,11 +741,12 @@ function ForeignUnivScreen({ go, embedded = false }) {
                     {d.tuitionOutState != null && <Chip tone="warning" size="sm">학비 {fmtUSD(d.tuitionOutState)}/년</Chip>}
                     {d.medianEarnings != null && <Chip tone="success" size="sm">졸업후 중위소득 {fmtUSD(d.medianEarnings)}</Chip>}
                   </div>
-                  <button onClick={() => setOpenId(open ? null : u.id)} style={{ border:'none', background:'none', color:'var(--brand-600)', fontSize:12, fontWeight:600, cursor:'pointer', marginTop:10, padding:0 }}>
+                  <button onClick={() => toggleDetail(u)} style={{ border:'none', background:'none', color:'var(--brand-600)', fontSize:12, fontWeight:600, cursor:'pointer', marginTop:10, padding:0 }}>
                     {open ? '접기 ▲' : '자세히 보기 ▼'}
                   </button>
                   {open && (
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line-subtle)' }}>
+                      {detailLoading && <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginBottom: 8 }}>상세 정보를 불러오는 중…</div>}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
                         <DetailRow label="입학률" value={pct(d.admissionRate)}/>
                         <DetailRow label="졸업률" value={pct(d.completionRate)}/>
@@ -675,6 +767,18 @@ function ForeignUnivScreen({ go, embedded = false }) {
             </Card>
             );
           })}
+
+        {/* 페이지네이션 (클라이언트) */}
+        {list !== null && totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, flexWrap: 'wrap' }}>
+            <PageBtn disabled={page <= 1} onClick={() => { setPage(p => Math.max(1, p - 1)); setOpenId(null); }}>이전</PageBtn>
+            {fuPageWindow[0] > 1 && <><PageBtn onClick={() => { setPage(1); setOpenId(null); }}>1</PageBtn>{fuPageWindow[0] > 2 && <span style={{ color: 'var(--fg-subtle)', fontSize: 12 }}>…</span>}</>}
+            {fuPageWindow.map(n => <PageBtn key={n} active={n === page} onClick={() => { setPage(n); setOpenId(null); }}>{n}</PageBtn>)}
+            {fuPageWindow[fuPageWindow.length-1] < totalPages && <>{fuPageWindow[fuPageWindow.length-1] < totalPages-1 && <span style={{ color: 'var(--fg-subtle)', fontSize: 12 }}>…</span>}<PageBtn onClick={() => { setPage(totalPages); setOpenId(null); }}>{totalPages}</PageBtn></>}
+            <PageBtn disabled={page >= totalPages} onClick={() => { setPage(p => Math.min(totalPages, p + 1)); setOpenId(null); }}>다음</PageBtn>
+          </div>
+        )}
+
         <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginTop: 8, padding: '0 4px' }}>※ 미국 대학은 College Scorecard, 그 외는 한국국제교류재단 표준 명칭 기준이에요.</div>
       </div>
     </div>

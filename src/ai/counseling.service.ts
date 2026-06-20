@@ -58,6 +58,8 @@ export function stripLeakedState(text: string): string {
     .replace(/<state>[\s\S]*$/i, '') // 닫는 태그 없이 잘린 경우
     .replace(/\[상담 단계 안내[\s\S]*$/i, '')
     .replace(/\[학생 학년 안내[\s\S]*$/i, '')
+    .replace(/\[학생 성적[\s\S]*$/i, '')
+    .replace(/\[형식 지침[\s\S]*$/i, '')
     .trimEnd();
 }
 
@@ -75,8 +77,30 @@ export function gradeKoreanLabel(grade: string): string {
   return map[grade] ?? grade;
 }
 
+/** 성적 레코드 배열 → 시스템 프롬프트용 짧은 요약 (없으면 null) */
+export function summarizeGrades(
+  grades: { term: string; subject: string; category: string | null; score: number | null; rank: number | null }[],
+): string | null {
+  if (!grades.length) return null;
+  // 최신 학기 우선 — term 내림차순 정렬 후 상위 학기만 사용 (토큰 절약)
+  const sorted = [...grades].sort((a, b) => (a.term < b.term ? 1 : a.term > b.term ? -1 : 0));
+  const latestTerm = sorted[0]!.term;
+  const latest = sorted.filter((g) => g.term === latestTerm);
+  const parts = latest.slice(0, 8).map((g) => {
+    const label = g.subject || g.category || '과목';
+    const bits: string[] = [];
+    if (g.rank != null) bits.push(`${g.rank}등급`);
+    if (g.score != null) bits.push(`${g.score}점`);
+    return bits.length ? `${label} ${bits.join('·')}` : label;
+  });
+  const ranks = latest.map((g) => g.rank).filter((r): r is number => r != null);
+  const avg = ranks.length ? (ranks.reduce((a, r) => a + r, 0) / ranks.length).toFixed(1) : null;
+  const head = avg ? `최근 학기(${latestTerm}) 평균 ${avg}등급` : `최근 학기(${latestTerm})`;
+  return `${head} — ${parts.join(', ')}`;
+}
+
 /** 단위테스트 전용 export */
-export const __test = { parseReportJson, stripFence, stripLeakedState, gradeToTarget, gradeKoreanLabel };
+export const __test = { parseReportJson, stripFence, stripLeakedState, gradeToTarget, gradeKoreanLabel, summarizeGrades };
 
 // 교사 코칭 모드 — AI가 '학생을 상담하는 척'하지 않고, 교사의 상담 설계를 돕는 코치 역할.
 const TEACHER_COACH_PROMPT = [
@@ -162,8 +186,10 @@ export class CounselingService {
     ]);
     const distinctTags = new Set(signals.map((s) => s.tag)).size;
     let stage: 'explore' | 'profile' | 'recommend' | 'prepare';
-    if (signals.length < 3 || distinctTags < 2) stage = 'explore';
-    else if (signals.length < 6) stage = 'profile';
+    // 단계 진행을 쉽게 — 단서가 조금만 쌓여도 다음 단계로 (사용자가 진행이 더디다는 피드백 반영).
+    // explore: 단서 2개 미만 / profile: 단서 4개 미만 / 그 이후 recommend(또는 목표 있으면 prepare).
+    if (signals.length < 2) stage = 'explore';
+    else if (signals.length < 4) stage = 'profile';
     else stage = hasTarget > 0 ? 'prepare' : 'recommend';
     return { stage, signals: signals.map((s) => ({ tag: s.tag, text: s.text })), userTurns };
   }
@@ -221,6 +247,9 @@ export class CounselingService {
       const session = await this.prisma.counselingSession.findUnique({ where: { id: sessionId }, include: { user: true } });
       const grade = session?.user.grade ?? null;
       const isTeacher = session?.user.role === 'teacher';
+      // 성적 반영 — 학생 본인 성적을 짧게 요약해 시스템 프롬프트에 주입 (없으면 null → AI가 자연스럽게 학년/성적대 물음)
+      const gradeRows = session ? await this.prisma.grade.findMany({ where: { userId: session.userId } }) : [];
+      const gradesSummary = summarizeGrades(gradeRows);
       // 교사 코칭 모드는 항상 RAG(학과·진로·대학 데이터)를 제공. 학생은 탐색 단계에선 자유 대화 유지.
       const docs = (isTeacher || stageInfo.stage !== 'explore') ? await this.retriever.retrieve(text, 6) : [];
       let ragContext = docs.map((d) => `[${d.kind}] ${d.title}: ${d.body}`).join('\n');
@@ -261,23 +290,51 @@ export class CounselingService {
         if (mat.length) ragContext += '\n[체험자료] ' + mat.map((m) => m.title).join(' / ');
       }
 
-      // 히스토리 (최근 20개로 제한 — 토큰 가드)
+      // RAG 컨텍스트 길이 가드 — recommend/prepare에서 도구 결과가 누적되면 입력 상한(AI_MAX_INPUT_CHARS)을
+      // 넘겨 'AI_CONTEXT_TOO_LARGE'로 실패(=대학 추천 멈춤)하던 문제. 컨텍스트를 잘라 항상 응답이 끝나게 한다.
+      if (ragContext.length > 8_000) ragContext = ragContext.slice(0, 8_000);
+
+      // 히스토리 (최근 20개 + 메시지당 길이 가드 — 긴 대화에서 입력 상한 초과로 스트림이 끝까지 안 가던 문제 방어)
       const history = await this.prisma.counselingMessage.findMany({
         where: { sessionId },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
         take: 20,
       });
-      const messages = history.map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
+      const messages = history
+        .reverse()
+        .map((m) => ({
+          role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
+          content: m.text.length > 1_500 ? m.text.slice(0, 1_500) : m.text,
+        }));
 
       // 단계·단서·학년을 자연어 안내로 주입 → AI가 단계적으로 진행 (prompt.md 단계 설계).
       // 구조화 태그(<state>)는 모델이 응답에 모방·누수하므로 자연어 문장으로 전달한다.
       const stageLabel = { explore: '탐색(질문으로 파악)', profile: '파악(정리·확인 후 제안)', recommend: '추천(데이터 근거 직업·전공·대학)', prepare: '준비(입시·성적 연결)' }[stageInfo.stage];
       const signalSummary = stageInfo.signals.map((s) => `[${s.tag}]${s.text}`).join(', ') || '아직 없음';
       const gradeLabel = grade ? gradeKoreanLabel(grade) : '미확인';
+      // 단계 진행을 적극적으로 — 단서가 충분히 쌓이면 머뭇거리지 말고 다음 단계로 자연스럽게 이끈다.
+      const STAGE_GUIDE: Record<string, string> = {
+        explore: '아직 탐색 단계지만, 학생이 답을 줄 때마다 단서를 빠르게 모아 2~3턴 안에 파악 단계로 넘어가도록 진행하라. 같은 질문을 반복하지 말 것.',
+        profile: '단서가 어느 정도 모였다. 지금까지 들은 것을 짧게 정리해 확인하고, 학생이 동의하면 바로 추천으로 넘어가라. 너무 오래 파악에 머물지 말 것.',
+        recommend: '추천 단계다. 데이터 근거로 직업·전공·대학을 구체적으로 제안하라. 학생이 대학 추천을 요청하면 미루지 말고 제공된 [참고 데이터]를 근거로 바로 추천하라.',
+        prepare: '준비 단계다. 관심 학과의 입시 정보와 학생 성적을 연결해 구체적 실천을 제안하라.',
+      };
+      const gradeContext = gradesSummary
+        ? `[학생 성적 — 내부 정보, 응답에 노출 금지] 등록된 성적: ${gradesSummary}. 추천·준비 단계에서 이 성적을 근거로 현실적으로 조언하라. 성적을 단정적으로 평가하지 말고 강점과 보완점을 균형 있게.`
+        : `[학생 성적 — 내부 정보, 응답에 노출 금지] 등록된 성적이 없다. 대화 초반에 자연스럽게 한 번, 대략적인 성적대(예: 내신 등급 수준)나 학년을 가볍게 물어보고 그에 맞춰 조언하라. 캐묻지는 말 것.`;
+      const formatGuide =
+        '[형식 지침] 답변이 길어질 때는 짧은 문단으로 나누고, 줄바꿈을 활용하라. 항목을 나열할 때는 "- " 또는 "1. "로 시작하는 목록을 쓰고 한 줄에 하나씩 적어라. 핵심은 짧은 단락으로, 한 덩어리로 쏟아내지 말 것.';
+      // 빠른 답변(quick-reply) 보기 — 학생이 답을 떠올리기 어려울 때 골라서 답할 수 있게 한다.
+      // 질문을 던질 때마다 응답의 맨 마지막 줄에 정확히 이 형식으로 한 줄을 붙인다. 이 줄은 프론트가 칩으로 렌더한다.
+      const quickReplyGuide =
+        '[빠른 답변 보기 지침] 학생에게 질문을 던질 때는, 응답의 맨 마지막에 반드시 별도의 한 줄로 보기를 제시하라. 형식은 정확히 다음과 같다: "[보기] 짧은답변1 | 짧은답변2 | 짧은답변3". ' +
+        '학생이 실제로 그대로 골라 답할 수 있는, 1인칭의 짧고 구체적인 예시 답변을 2~3개 제시하라(예: "영상 편집이 재밌어요 | 사람들 앞에서 발표할 때 | 아직 잘 모르겠어요"). ' +
+        '가능하면 "아직 잘 모르겠어요" 같은 부담 없는 선택지를 하나 포함하라. 질문하지 않는 응답(정리·추천 등)에는 [보기] 줄을 붙이지 말 것. 이 줄 외에 다른 설명을 덧붙이지 말 것.';
       const systemWithState = isTeacher
         ? TEACHER_COACH_PROMPT
-        : `${SYSTEM_PROMPT}\n\n[상담 단계 안내 — 내부 정보, 응답에 노출 금지] 현재 단계: ${stageLabel}. 지금까지 모은 단서(${stageInfo.signals.length}개): ${signalSummary}. 학생 발화 ${stageInfo.userTurns}회. 이 단계에 맞게만 응답하라.\n` +
-          `[학생 학년 안내 — 내부 정보, 응답에 노출 금지] 학년: ${gradeLabel}. 위 "학년별 톤·내용 지침"을 그대로 따르라.`;
+        : `${SYSTEM_PROMPT}\n\n[상담 단계 안내 — 내부 정보, 응답에 노출 금지] 현재 단계: ${stageLabel}. 지금까지 모은 단서(${stageInfo.signals.length}개): ${signalSummary}. 학생 발화 ${stageInfo.userTurns}회. ${STAGE_GUIDE[stageInfo.stage] ?? '이 단계에 맞게 응답하라.'}\n` +
+          `[학생 학년 안내 — 내부 정보, 응답에 노출 금지] 학년: ${gradeLabel}. 위 "학년별 톤·내용 지침"을 그대로 따르라.\n` +
+          `${gradeContext}\n${formatGuide}\n${quickReplyGuide}`;
 
       const aiMsg = await this.prisma.counselingMessage.create({ data: { sessionId, role: 'ai', text: '' } });
       const streamChannel = `sse:aimsg:${aiMsg.id}`;

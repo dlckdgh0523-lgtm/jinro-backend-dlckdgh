@@ -70,9 +70,19 @@ function GradesInputV2({ go }) {
                   <TextInput value={r.rank} onChange={v => upd(i, 'rank', v.replace(/[^1-9]/g, '').slice(0, 1))} placeholder="등급 1~9" trailing={<span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>등급</span>} style={{ flex: 1 }}/>
                 </div>
                 <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {CATS.map(c => (
-                    <button key={c} onClick={() => upd(i, 'category', r.category === c ? '' : c)} style={{ border: 'none', padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: r.category === c ? 'var(--brand-500)' : 'var(--bg-surface)', color: r.category === c ? '#fff' : 'var(--fg-muted)' }}>{c}</button>
-                  ))}
+                  {CATS.map(c => {
+                    const sel = r.category === c;
+                    const pickCat = (row) => sel ? '' : c;
+                    // 칩 클릭: 분류(category) 토글 + 과목명이 비어있거나 직전 칩 값이면 과목명도 함께 채움.
+                    const pickSubject = (row) => {
+                      if (sel) return row.subject; // 토글 해제 시 과목명은 그대로 둠
+                      if (!row.subject.trim() || row.subject.trim() === row.category) return c;
+                      return row.subject;
+                    };
+                    return (
+                      <button key={c} onClick={() => setRows(rs => rs.map((x, j) => j === i ? { ...x, subject: pickSubject(x), category: pickCat(x) } : x))} style={{ border: 'none', padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: sel ? 'var(--brand-500)' : 'var(--bg-surface)', color: sel ? '#fff' : 'var(--fg-muted)' }}>{c}</button>
+                    );
+                  })}
                 </div>
               </div>
             ))}

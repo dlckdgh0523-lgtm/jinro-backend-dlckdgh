@@ -73,6 +73,18 @@ function StudentDashboard({ go, openNotif, variant = 'A' }) {
     (async () => { try { const r = await window.__apiFetch('/auth/me', { method: 'GET' }); setMe(r.data || r); } catch (e) { setMe({}); } })();
   }, []);
 
+  // 알림 배지 — 미읽음 개수 실데이터 (GET /notifications?unreadOnly=true). 실패/0이면 배지 숨김.
+  const [unread, setUnread] = React.useState(0);
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.__apiFetch('/notifications?unreadOnly=true&limit=50', { method: 'GET' });
+        const items = Array.isArray(r.data) ? r.data : (r.data || []);
+        setUnread(items.filter(n => !n.read).length);
+      } catch (e) { setUnread(0); }
+    })();
+  }, []);
+
   if (dash.loading) return <StudentDashboardSkeleton/>;
   if (dash.error) return (
     <div style={{ padding: '24px 16px', background: 'var(--bg-canvas)', minHeight: '100%' }}>
@@ -86,7 +98,7 @@ function StudentDashboard({ go, openNotif, variant = 'A' }) {
     { id: 'experience', emoji: '🎯', title: '진로·직업체험', desc: '커리어넷 자료 455+건 · 학생부 전공적합성 핵심', goTo: 'materials' },
     { id: 'foreign', emoji: '🌏', title: '해외대학', desc: '미국·일본·영국 등 학비·졸업률·취업률', goTo: 'foreign' },
     { id: 'scholarship', emoji: '💰', title: '장학금', desc: '한국장학재단 1,850+건 · 지자체·기업 장학금', goTo: 'scholarship' },
-    { id: 'employment', emoji: '📊', title: '대학 취업률', desc: '학과별 취업률·유지율 데이터', goTo: 'admissions' },
+    { id: 'employment', emoji: '📊', title: '대학 취업률', desc: '학과별 취업률·유지율 데이터', goTo: 'admissions-hub' },
     { id: 'ai', emoji: '🤖', title: 'AI 진로 상담', desc: '단계별 맞춤 상담 · 데이터 근거 추천', goTo: 'ai-chat' },
   ];
 
@@ -105,7 +117,7 @@ function StudentDashboard({ go, openNotif, variant = 'A' }) {
           <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>오늘도 한 걸음씩 나아가볼까요?</div>
         </div>
         <div style={{ flexShrink: 0 }}>
-          <IconButton icon={<IcBell size={22}/>} onClick={openNotif} badge={2} ariaLabel="알림"/>
+          <IconButton icon={<IcBell size={22}/>} onClick={openNotif} badge={unread} ariaLabel="알림"/>
         </div>
       </div>
 
@@ -440,8 +452,8 @@ function AICounseling({ go, openSignals }) {
         {(() => {
           const STEPS = [['explore','탐색'],['profile','파악'],['recommend','추천'],['prepare','준비']];
           const cur = STEPS.findIndex(s => s[0] === stage);
-          const hint = stage === 'explore' ? `단서를 ${Math.max(1, 3 - signals.length)}개 더 모으면 ‘파악’ 단계로 넘어가요`
-            : stage === 'profile' ? `단서를 ${Math.max(1, 6 - signals.length)}개 더 모으면 ‘추천’ 단계로 넘어가요`
+          const hint = stage === 'explore' ? `단서를 ${Math.max(1, 2 - signals.length)}개 더 모으면 ‘파악’ 단계로 넘어가요`
+            : stage === 'profile' ? `단서를 ${Math.max(1, 4 - signals.length)}개 더 모으면 ‘추천’ 단계로 넘어가요`
             : stage === 'recommend' ? `마음에 드는 진로를 ‘진로 목표’로 저장하면 ‘준비’ 단계로 넘어가요`
             : `입시·성적과 연결해 상담을 마무리해요`;
           return (
@@ -498,7 +510,31 @@ function AICounseling({ go, openSignals }) {
         flex: 1, padding: '12px 14px 8px', overflow: 'auto',
         display: 'flex', flexDirection: 'column', gap: 8,
       }}>
-        {msgs.map((m, i) => <ChatBubble key={i} msg={m}/>)}
+        {(() => {
+          // 가장 최근 AI 메시지 인덱스 — quick-reply 칩은 이 메시지에만, 스트리밍/로딩 중이 아닐 때만 노출.
+          let lastAiIdx = -1;
+          for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].role === 'ai') { lastAiIdx = i; break; } }
+          return msgs.map((m, i) => {
+            const isLastAi = i === lastAiIdx && m.role === 'ai';
+            const options = isLastAi && !thinking ? parseQuickReplies(m.text).options : [];
+            return (
+              <React.Fragment key={i}>
+                <ChatBubble msg={m}/>
+                {options.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginLeft: 32, marginTop: 2 }}>
+                    {options.map((opt, j) => (
+                      <button key={j} onClick={() => send(opt)} disabled={thinking} style={{
+                        border: '1px solid var(--brand-200, var(--line))', background: 'var(--brand-50, var(--bg-surface))',
+                        borderRadius: 999, padding: '8px 14px', fontSize: 13, color: 'var(--brand-600)', fontWeight: 600,
+                        cursor: thinking ? 'not-allowed' : 'pointer', whiteSpace: 'normal', textAlign: 'left', lineHeight: 1.4,
+                      }} className="kr-heading">{opt}</button>
+                    ))}
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          });
+        })()}
         {thinking && <ChatThinking/>}
         {initErr && (
           <div style={{ alignSelf: 'center', marginTop: 8 }}>
@@ -506,21 +542,26 @@ function AICounseling({ go, openSignals }) {
           </div>
         )}
 
-        {/* progress hint when enough evidence */}
-        {evidenceCount >= 3 && (
+        {/* progress hint when enough evidence — 실제 추출된 단서를 태그별로 요약 (하드코딩 금지) */}
+        {evidenceCount >= 3 && signals.length > 0 && (
           <div style={{
             marginTop: 8, padding: 14, borderRadius: 14,
             background: 'linear-gradient(135deg, #F4ECFF 0%, #EBF4FF 100%)',
             border: '1px solid rgba(123,97,255,0.15)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
               <IcSparkles size={14} color="var(--accent-purple)"/>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-purple)' }}>지금까지 보이는 진로 단서</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-purple)' }}>지금까지 보인 진로 단서</span>
             </div>
-            <div style={{ fontSize: 13, color: 'var(--fg-default)', lineHeight: 1.5 }} className="kr-heading">
-              영상 편집·시각적 흐름·타인의 반응에서 동기를 얻는 모습이 보여요. 콘텐츠 디자인, 영상 연출 쪽이 잠정 가설이에요.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {signals.slice(0, 6).map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <Chip tone={SIG_TONE[s.tag] || 'neutral'} size="sm">{s.tag}</Chip>
+                  <span style={{ fontSize: 13, color: 'var(--fg-default)', flex: 1, lineHeight: 1.5 }} className="kr-heading">{s.text}</span>
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 8 }}>
               ※ 아직 확정이 아니에요. 대화를 더 이어가며 함께 확인해볼게요.
             </div>
           </div>
@@ -599,11 +640,69 @@ function ChatBubble({ msg }) {
         color: isUser ? '#fff' : 'var(--fg-strong)',
         padding: '10px 14px',
         borderRadius: isUser ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
-        fontSize: 14, lineHeight: 1.5,
+        fontSize: 14, lineHeight: 1.6,
         boxShadow: isUser ? 'none' : '0 1px 2px rgba(0,0,0,0.04)',
-      }} className="kr-heading">{msg.text}</div>
+      }} className="kr-heading">{isUser ? msg.text : <FormattedText text={parseQuickReplies(msg.text).clean}/>}</div>
     </div>
   );
+}
+
+// AI 응답 끝에 붙는 "[보기] a | b | c" 줄을 파싱. { options, clean } 반환.
+// options: 트림된 보기 배열(빈 항목 제거), clean: [보기] 줄을 제거한 본문.
+// 모델이 [보기]를 생략하면 options는 빈 배열, clean은 원문 그대로.
+function parseQuickReplies(text) {
+  const raw = text || '';
+  const lines = raw.replace(/\r\n/g, '\n').split('\n');
+  let optionLineIdx = -1;
+  let options = [];
+  // 맨 끝에서부터 [보기] 줄을 찾는다 (보통 마지막 줄).
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = lines[i].match(/^\s*\[보기\]\s*(.*)$/);
+    if (m) {
+      options = m[1].split('|').map(s => s.trim()).filter(Boolean);
+      optionLineIdx = i;
+      break;
+    }
+    // 비어있지 않은 줄을 먼저 만나면 [보기]가 맨 끝 줄이 아니므로 중단(안전)
+    if (lines[i].trim() !== '') break;
+  }
+  if (optionLineIdx < 0) return { options: [], clean: raw };
+  const clean = lines.slice(0, optionLineIdx).join('\n').replace(/\s+$/, '');
+  return { options, clean };
+}
+
+// AI 답변을 읽기 좋게 — 줄바꿈 보존 + 간단한 목록(- / 1.)을 들여쓰기로 렌더 (마크다운 유사).
+function FormattedText({ text }) {
+  const raw = text || '';
+  if (!raw) return null;
+  const lines = raw.replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+  let key = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (trimmed === '') { out.push(<div key={key++} style={{ height: 6 }}/>); continue; }
+    const bullet = trimmed.match(/^[-*•]\s+(.*)$/);
+    const numbered = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
+    if (bullet) {
+      out.push(
+        <div key={key++} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', margin: '1px 0' }}>
+          <span style={{ color: 'var(--brand-500)', lineHeight: 1.6 }}>•</span>
+          <span style={{ flex: 1 }}>{bullet[1]}</span>
+        </div>,
+      );
+    } else if (numbered) {
+      out.push(
+        <div key={key++} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', margin: '1px 0' }}>
+          <span style={{ color: 'var(--brand-500)', fontWeight: 700, minWidth: 16 }}>{numbered[1]}.</span>
+          <span style={{ flex: 1 }}>{numbered[2]}</span>
+        </div>,
+      );
+    } else {
+      out.push(<div key={key++}>{line}</div>);
+    }
+  }
+  return <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{out}</div>;
 }
 
 function ChatThinking() {
@@ -728,7 +827,14 @@ function CareerReport({ go }) {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Button variant="primary" size="lg" full leading={<IcGraduation size={18}/>} onClick={() => go('admissions-hub')}>추천 학과 입시 정보 보기</Button>
+              <Button variant="primary" size="lg" full leading={<IcGraduation size={18}/>} onClick={() => {
+                // 대화/목표에 근거한 검색어로 대학·입시 화면을 연다 (지어내지 않음).
+                // 우선순위: 진로목표의 대학명 → 학과명 → 직업명. 없으면 검색어 없이 진입.
+                const t = targets[0];
+                const seed = t && (t.univ || t.dept || t.career);
+                try { if (seed) window.__admissionsQuery = String(seed).trim(); else delete window.__admissionsQuery; } catch (e) {}
+                go('admissions-hub');
+              }}>추천 학과 입시 정보 보기</Button>
               <Button variant="outline" size="md" full leading={<IcMessage size={16}/>} onClick={() => go('ai-counseling')}>AI 상담 이어가기</Button>
             </div>
           </>
@@ -1506,6 +1612,9 @@ function StudentApp({ initialScreen = 'dashboard', heroVariant = 'A' }) {
         {screen === 'settings-terms' && <SettingsTerms back={() => setScreen('profile')}/>}
         {screen === 'counseling-request' && <CounselingRequest go={setScreen}/>}
         {screen === 'admissions-hub' && <AdmissionsHub go={setScreen}/>}
+        {(screen === 'volunteer' || screen === 'volunteers') && <VolunteersScreen go={setScreen}/>}
+        {(screen === 'scholarship' || screen === 'scholarships') && <ScholarshipsScreen go={setScreen}/>}
+        {(screen === 'foreign' || screen === 'foreign-univ') && <ForeignUnivScreen go={setScreen}/>}
         {screen === 'admissions-univ' && <UniversityDetail go={setScreen}/>}
         {screen === 'admissions-dept' && <DepartmentDetail go={setScreen}/>}
         {screen === 'admissions-analysis' && <AdmissionsAnalysis go={setScreen}/>}

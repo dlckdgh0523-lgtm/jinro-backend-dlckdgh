@@ -433,12 +433,52 @@ function ingestOAuthHash() {
   return null;
 }
 
+// 액세스 토큰(JWT)에서 role 클레임만 디코드 — 라우팅 가드용(보안은 서버가 강제).
+function tokenRole() {
+  try {
+    const t = localStorage.getItem('jinro:accessToken');
+    if (!t) return null;
+    const p = t.split('.')[1];
+    if (!p) return null;
+    let b = p.replace(/-/g, '+').replace(/_/g, '/');
+    b += '='.repeat((4 - (b.length % 4)) % 4);
+    const payload = JSON.parse(decodeURIComponent(escape(atob(b))));
+    return (payload && payload.role) || null;
+  } catch (e) { return null; }
+}
+
+// 뷰포트가 좁은지(폰) 추적 — 리사이즈 시 갱신. 반응형 셸 전환에 사용.
+function useViewportMobile(bp = 768) {
+  const [m, setM] = React.useState(() => { try { return window.innerWidth < bp; } catch (e) { return false; } });
+  React.useEffect(() => {
+    const on = () => { try { setM(window.innerWidth < bp); } catch (e) {} };
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, [bp]);
+  return m;
+}
+
 function LiveRunner() {
   const initialRole = (() => {
     const fromOAuth = ingestOAuthHash();
     if (fromOAuth) return fromOAuth;
     const h = (window.location.hash || '').replace(/^#/, '').split('/')[0];
-    if (LIVE_ROLES.find(r => r.id === h)) return h;
+    const authRole = (LIVE_ROLES.find(r => /^auth/.test(r.id)) || LIVE_ROLES[0] || {}).id;
+    if (LIVE_ROLES.find(r => r.id === h)) {
+      // 보호된 역할(학생/교사/관리자)은 "그 역할의 유효한 토큰"이 있어야 진입.
+      // 토큰이 없거나 역할이 안 맞으면(예: 학생이 /admin 진입) → 로그인 화면으로.
+      const isProtected = !/^auth/.test(h);
+      if (isProtected) {
+        const tr = tokenRole(); // 'admin' | 'teacher' | 'student' | null
+        const ok = !!tr && (
+          (h === 'admin' && tr === 'admin') ||
+          ((h === 'teacher-web' || h === 'teacher-mobile') && tr === 'teacher') ||
+          ((h === 'student-web' || h === 'student-mobile') && tr === 'student')
+        );
+        if (!ok) return authRole;
+      }
+      return h;
+    }
     return LIVE_ROLES[0] ? LIVE_ROLES[0].id : 'student-mobile';
   })();
   const [role, setRole] = React.useState(initialRole);
@@ -446,6 +486,9 @@ function LiveRunner() {
   const [width, setWidth] = React.useState(roleCfg.mobile ? 390 : 0);
   const [apiMode, setApiModeState] = React.useState(window.__API_MODE);
   const [remount, setRemount] = React.useState(0);
+  const isMobile = useViewportMobile();
+  // 좁은 화면(폰)에서는 데스크톱 웹 셸 대신 폰 최적화 셸을 렌더 (반응형).
+  const mobileSwap = isMobile && (role === 'student-web' || role === 'teacher-web');
 
   React.useEffect(() => { window.__ACTIVE_ROLE = role; }, [role]);
 
@@ -574,16 +617,23 @@ function LiveRunner() {
 
       {/* APP MOUNT */}
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'stretch', padding: width === 0 ? 0 : '16px 0' }}>
-        <div key={role + ':' + remount} style={{ ...frameStyle, background: 'var(--bg-canvas)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div key={role + ':' + remount} style={{ ...frameStyle, ...(mobileSwap ? { maxWidth: 480, width: '100%' } : {}), background: 'var(--bg-canvas)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <AuthProvider role={role.startsWith('teacher') ? 'teacher' : role === 'admin' ? 'admin' : 'student'}>
             {role === 'auth-mobile'
               ? <MobileAuthApp onEnter={handleAuthComplete}/>
               : role === 'onboarding'
                 ? <OnboardingFlow role={onbRole} onFinish={finishOnboarding}/>
-                : roleCfg.render()}
+                : (mobileSwap && role === 'student-web' && typeof StudentApp === 'function')
+                  ? <StudentApp/>
+                  : (mobileSwap && role === 'teacher-web' && typeof TeacherMobileFullApp === 'function')
+                    ? <TeacherMobileFullApp/>
+                    : roleCfg.render()}
           </AuthProvider>
         </div>
       </div>
+      {/* 소셜 신규 가입자 온보딩 — 어떤 역할 셸로 진입하든 최상위에서 1회 표시.
+          (jinro:onboard 플래그가 없으면 OAuthOnboarding가 스스로 null 반환) */}
+      {typeof OAuthOnboarding === 'function' && <OAuthOnboarding/>}
     </div>
   );
 }

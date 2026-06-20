@@ -726,8 +726,9 @@ function AuthScreen({ role = 'student', mode = 'login', onNav, onBack, setRole, 
         if (data.accessToken) localStorage.setItem('jinro:accessToken', data.accessToken);
         if (data.refreshToken) localStorage.setItem('jinro:refreshToken', data.refreshToken);
       } catch (e) {}
-      // 역할에 맞는 화면으로 전환
-      const targetRole = (data.user && data.user.role === 'teacher') ? 'teacher-web' : 'student-web';
+      // 역할에 맞는 화면으로 전환 (admin 포함)
+      const _role = data.user && data.user.role;
+      const targetRole = _role === 'teacher' ? 'teacher-web' : _role === 'admin' ? 'admin' : 'student-web';
       if (typeof window.__navTo === 'function') window.__navTo(targetRole);
       else { window.location.hash = targetRole; window.location.reload(); }
     } catch (e) {
@@ -1006,6 +1007,8 @@ function WebAuthScreen() {
   if (view === 'auth') {
     return <AuthScreen role={role} mode={mode} setRole={setRole} setMode={setMode} onBack={() => setView('landing')} onNav={nav}/>;
   }
+  // three.js 스크롤 내러티브 랜딩 (로드 실패 시 기존 랜딩으로 폴백)
+  if (typeof Landing3D === 'function') return <Landing3D onNav={nav}/>;
   return <LandingPage variant="A" onNav={nav}/>;
 }
 

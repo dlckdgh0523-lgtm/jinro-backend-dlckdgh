@@ -308,8 +308,52 @@ function GoalSetting({ go }) {
   const [career, setCareer] = React.useState('');
   const [univ, setUniv] = React.useState('');
   const [dept, setDept] = React.useState('');
+  const [track, setTrack] = React.useState('');
   const [reason, setReason] = React.useState('');
   const [step, setStep] = React.useState(1);
+
+  // 대학·학과 검색 — GET /admissions/search?q= (디바운스). null=미검색, []=결과없음.
+  const [query, setQuery] = React.useState('');
+  const [results, setResults] = React.useState(null); // { universities, departments, offeringUniversities } | null
+  const [searching, setSearching] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    const q = query.trim();
+    if (!q) { setResults(null); setSearching(false); return; }
+    let alive = true;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await window.__apiFetch('/admissions/search?q=' + encodeURIComponent(q), { method: 'GET' });
+        if (alive) setResults(r.data || { universities: [], departments: [], offeringUniversities: [] });
+      } catch (e) {
+        if (alive) setResults({ universities: [], departments: [], offeringUniversities: [] });
+      } finally {
+        if (alive) setSearching(false);
+      }
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [query]);
+
+  const save = async () => {
+    if (saving || !career.trim()) return;
+    setSaving(true);
+    const body = {
+      career: career.trim(),
+      ...(univ.trim() ? { univ: univ.trim() } : {}),
+      ...(dept.trim() ? { dept: dept.trim() } : {}),
+      ...(track ? { track } : {}),
+      ...(reason.trim() ? { reason: reason.trim() } : {}),
+    };
+    try {
+      await window.__apiFetch('/career/target', { method: 'POST', body: JSON.stringify(body) });
+      go('career-targets');
+    } catch (e) {
+      setSaving(false);
+      alert((e && e.body && e.body.message) || '목표 저장에 실패했어요.');
+    }
+  };
 
   return (
     <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
@@ -331,7 +375,7 @@ function GoalSetting({ go }) {
                 {GOAL_PRESETS.map(p => {
                   const active = career === p.career;
                   return (
-                    <button key={p.career} onClick={() => { setCareer(p.career); setUniv(p.univ); setDept(p.dept); }} style={{
+                    <button key={p.career} onClick={() => { setCareer(p.career); setUniv(p.univ); setDept(p.dept); setTrack(p.track || ''); }} style={{
                       textAlign: 'left', padding: '12px 14px', border: '1px solid',
                       borderColor: active ? 'var(--brand-500)' : 'var(--line-subtle)',
                       background: active ? 'var(--brand-50)' : 'var(--bg-surface)',
@@ -360,10 +404,54 @@ function GoalSetting({ go }) {
             <FormField label="대학" required style={{ marginBottom: 14 }}>
               <TextInput value={univ} onChange={setUniv} placeholder="예) 홍익대학교" leading={<IcSchool size={16}/>}/>
             </FormField>
-            <FormField label="학과" required style={{ marginBottom: 20 }}>
+            <FormField label="학과" required style={{ marginBottom: 16 }}>
               <TextInput value={dept} onChange={setDept} placeholder="예) 디지털콘텐츠디자인학과" leading={<IcGraduation size={16}/>}/>
             </FormField>
-            <Button variant="brandSoft" size="md" full leading={<IcSearch size={14}/>} style={{ marginBottom: 16 }}>대학·학과 검색</Button>
+
+            <SectionCard title="대학·학과 검색" subtitle="대학명 또는 학과명으로 찾아 선택하세요" style={{ marginBottom: 16 }}>
+              <TextInput value={query} onChange={setQuery} placeholder="예) 홍익대 또는 디자인" leading={<IcSearch size={16}/>}/>
+              {query.trim() === '' ? (
+                <div style={{ padding: '14px 4px', fontSize: 12, color: 'var(--fg-muted)', lineHeight: 1.55 }} className="kr-heading">대학명이나 학과명을 입력하면 결과가 여기에 나와요.</div>
+              ) : searching ? (
+                <div style={{ marginTop: 10 }}><Skeleton height={44} radius={10}/></div>
+              ) : !results || (results.universities.length === 0 && results.departments.length === 0 && (results.offeringUniversities || []).length === 0) ? (
+                <div style={{ padding: '14px 4px', fontSize: 12, color: 'var(--fg-muted)', lineHeight: 1.55 }} className="kr-heading">"{query.trim()}"에 대한 검색 결과가 없어요. 철자를 바꿔보거나 직접 입력해주세요.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+                  {results.universities.map(u => (
+                    <button key={'u' + u.id} onClick={() => { setUniv(u.name); setQuery(''); }} style={{
+                      textAlign: 'left', padding: '10px 12px', border: '1px solid var(--line-subtle)', background: 'var(--bg-surface)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <IcSchool size={14}/>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">{u.name}</span>
+                      {u.region && <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{u.region}</span>}
+                    </button>
+                  ))}
+                  {(results.offeringUniversities || []).map((o, i) => (
+                    <button key={'o' + i} onClick={() => { setUniv(o.schoolName); setDept(o.department); if (o.track) setTrack(o.track); setQuery(''); }} style={{
+                      textAlign: 'left', padding: '10px 12px', border: '1px solid var(--line-subtle)', background: 'var(--bg-surface)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <IcGraduation size={14}/>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">{o.department}</div>
+                        <div style={{ fontSize: 11, color: 'var(--fg-muted)' }} className="kr-heading">{o.schoolName}{o.college ? ' · ' + o.college : ''}</div>
+                      </div>
+                      {o.track && <Chip tone="purple" size="sm">{o.track}</Chip>}
+                    </button>
+                  ))}
+                  {results.departments.map(d => (
+                    <button key={'d' + d.id} onClick={() => { setDept(d.name); setQuery(''); }} style={{
+                      textAlign: 'left', padding: '10px 12px', border: '1px solid var(--line-subtle)', background: 'var(--bg-surface)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <IcGraduation size={14}/>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">{d.name}</span>
+                      {d.college && <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{d.college}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+
             <Button variant="primary" size="lg" full disabled={!univ.trim() || !dept.trim()} onClick={() => setStep(3)} trailing={<IcArrowRight size={16}/>}>다음</Button>
           </>
         )}
@@ -382,7 +470,7 @@ function GoalSetting({ go }) {
                 <li>다음 학습 계획에 우선순위 반영</li>
               </ul>
             </Card>
-            <Button variant="primary" size="lg" full onClick={() => go('profile')}>목표 저장하기</Button>
+            <Button variant="primary" size="lg" full disabled={saving} onClick={save}>{saving ? '저장 중…' : '목표 저장하기'}</Button>
           </>
         )}
       </div>

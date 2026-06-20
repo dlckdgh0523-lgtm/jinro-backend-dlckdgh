@@ -48,7 +48,7 @@ const STUDENT_WEB_NAV = [
   { id: 'focus-timer', label: '자습 타임어택', icon: <IcZap/> },
   { section: '소통·일정' },
   { id: 'calendar', label: '캘린더', icon: <IcCalendar/> },
-  { id: 'messages', label: '메시지', icon: <IcMessage/>, badge: 2 },
+  { id: 'messages', label: '메시지', icon: <IcMessage/> },
   { id: 'counseling', label: '상담 · 기록', icon: <IcClipboard/> },
   { id: 'announcements', label: '공지사항', icon: <IcFlag/> },
   { section: '계정' },
@@ -330,7 +330,13 @@ function OAuthOnboarding() {
           consents: { tos: true, privacy: true, academic: true, ai: true, age: true, mkt },
         }),
       });
-      try { localStorage.removeItem('jinro:onboard'); } catch (e) {}
+      // 온보딩 완료 → 신규 사용자는 첫 AI 상담으로 자동 안내.
+      try {
+        localStorage.removeItem('jinro:onboard');
+        const role = (typeof window !== 'undefined' && window.__ACTIVE_ROLE) || 'student-web';
+        localStorage.setItem('jinro:screen:' + role, 'ai-counseling');
+        window.location.hash = role + '/ai-counseling';
+      } catch (e) {}
       window.location.reload();
     } catch (e) {
       const msg = (e && e.body && (e.body.message || (e.body.error && e.body.error.message))) || '저장에 실패했어요. 잠시 후 다시 시도해주세요.';
@@ -471,7 +477,6 @@ function StudentWebApp({ initialScreen = 'dashboard', withToasts = false }) {
       </main>
       {withToasts && <WebToastHost toasts={cycle.active} onClose={cycle.close}/>}
       <TourOverlay tour={tour}/>
-      <OAuthOnboarding/>
     </div>
   );
 }
@@ -735,5 +740,5 @@ function StudentMobileWithToasts() {
 Object.assign(window, {
   StudentWebApp, TeacherMobileApp, AdminMobileApp,
   TeacherWebWithToasts, AdminWebWithToasts, StudentMobileWithToasts,
-  useToastCycle,
+  useToastCycle, OAuthOnboarding,
 });
