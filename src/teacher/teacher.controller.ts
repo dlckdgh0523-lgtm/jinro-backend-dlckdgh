@@ -70,6 +70,11 @@ export class TeacherController {
   async students(@Req() req: Request) {
     const me = requireTeacher(req);
     const teacher = await this.prisma.user.findUnique({ where: { id: me.id } });
+    // 스코핑: 학급 미배정 교사(school/classroom 없음)는 전체 학생 무차별 노출을 막기 위해 빈 목록.
+    // (messages.controller와 동일 정책 — 미성년자 데이터 과다 노출 방지) admin만 예외.
+    if (me.role === 'teacher' && (!teacher?.school || !teacher?.classroom)) {
+      return { data: [], meta: { classroom: teacher?.classroom ?? null, school: teacher?.school ?? null, count: 0 } };
+    }
     const students = await this.prisma.user.findMany({
       where: {
         role: 'student',
@@ -150,6 +155,10 @@ export class TeacherController {
   async gradeTrend(@Req() req: Request) {
     const me = requireTeacher(req);
     const teacher = await this.prisma.user.findUnique({ where: { id: me.id } });
+    // 스코핑: 학급 미배정 교사는 전체 학생 성적 집계 노출 차단 (students와 동일 정책). admin만 예외.
+    if (me.role === 'teacher' && (!teacher?.school || !teacher?.classroom)) {
+      return { data: [], meta: { studentCount: 0, gradeCount: 0 } };
+    }
     const students = await this.prisma.user.findMany({
       where: {
         role: 'student', status: 'active',
@@ -181,9 +190,16 @@ export class TeacherController {
     const teacher = await this.prisma.user.findUnique({ where: { id: me.id } });
     const student = await this.prisma.user.findUnique({ where: { id } });
     if (!student || student.role !== 'student') throw new AppError(ErrorCode.NOT_FOUND, '학생을 찾을 수 없어요.');
-    // admin은 전체, teacher는 같은 학급만
-    if (me.role === 'teacher' && (student.school !== teacher?.school || student.classroom !== teacher?.classroom)) {
-      throw new AppError(ErrorCode.AUTH_FORBIDDEN, '담당 학급 학생만 조회할 수 있어요.');
+    // admin은 전체, teacher는 같은 학급만.
+    // 학급 미배정 교사(school/classroom null)는 null===null 매칭으로 미배정 학생을 보는 것을 막기 위해
+    // 먼저 본인 학급 정보 보유를 요구한다.
+    if (me.role === 'teacher') {
+      if (!teacher?.school || !teacher?.classroom) {
+        throw new AppError(ErrorCode.AUTH_FORBIDDEN, '담당 학급 학생만 조회할 수 있어요.');
+      }
+      if (student.school !== teacher.school || student.classroom !== teacher.classroom) {
+        throw new AppError(ErrorCode.AUTH_FORBIDDEN, '담당 학급 학생만 조회할 수 있어요.');
+      }
     }
 
     const [grades, session, targets] = await Promise.all([

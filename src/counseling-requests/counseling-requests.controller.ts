@@ -47,6 +47,12 @@ export class CounselingRequestsController {
       });
       if (!teacher) throw new AppError(ErrorCode.NOT_FOUND, '담당 선생님을 찾을 수 없어요. 학교/반 정보를 확인해주세요.');
       teacherId = teacher.id;
+    } else {
+      // 명시적 teacherId는 반드시 실재 교사 + 학생과 같은 학급이어야 한다.
+      // (임의 teacherId로 학급 밖 교사에게 상담요청·알림을 보내는 것을 차단 — messages 스코핑 정책과 동일)
+      const teacher = await this.prisma.user.findUnique({ where: { id: teacherId } });
+      const sameClass = !!teacher && teacher.role === 'teacher' && !!student?.school && !!student?.classroom && teacher.school === student.school && teacher.classroom === student.classroom;
+      if (!sameClass) throw new AppError(ErrorCode.AUTH_FORBIDDEN, '담당 학급 선생님에게만 상담을 요청할 수 있어요.');
     }
     const reqRow = await this.prisma.counselingRequest.create({
       data: { studentId: me.id, teacherId, topic: input.topic, note: input.note ?? null, preferredAt: input.preferredAt ? new Date(input.preferredAt) : null },

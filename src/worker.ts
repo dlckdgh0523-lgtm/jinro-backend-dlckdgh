@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { loadEnv } from './common/env';
 import { logger } from './common/logger';
+import { initSentry, sentry } from './common/sentry';
 import { startPdfWorker, workerDeps } from './jobs/pdf.worker';
 import { startIngestWorker } from './jobs/ingest.worker';
 import { startEmbedWorker } from './jobs/embed.worker';
@@ -11,6 +12,7 @@ import { closeQueues } from './jobs/queues';
 
 async function main(): Promise<void> {
   loadEnv();
+  initSentry(); // SENTRY_DSN 있으면 활성화, 없으면 무해하게 스킵
   const deps = workerDeps();
   await deps.prisma.$connect();
 
@@ -27,9 +29,15 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
-  // 워커 프로세스는 어떤 잡 실패에도 죽지 않는다 — 마지막 안전망
-  process.on('unhandledRejection', (e) => logger.error({ err: e instanceof Error ? e.message : String(e) }, 'unhandledRejection'));
-  process.on('uncaughtException', (e) => logger.error({ err: e.message, stack: e.stack }, 'uncaughtException'));
+  // 워커 프로세스는 어떤 잡 실패에도 죽지 않는다 — 마지막 안전망 (+ Sentry 캡처)
+  process.on('unhandledRejection', (e) => {
+    logger.error({ err: e instanceof Error ? e.message : String(e) }, 'unhandledRejection');
+    sentry().captureException(e, { source: 'worker.unhandledRejection' });
+  });
+  process.on('uncaughtException', (e) => {
+    logger.error({ err: e.message, stack: e.stack }, 'uncaughtException');
+    sentry().captureException(e, { source: 'worker.uncaughtException' });
+  });
 }
 
 if (require.main === module) {

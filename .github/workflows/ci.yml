@@ -1,0 +1,38 @@
+# CI — push/PR 시 타입체크 + 빌드 검증 (DB 필요한 통합테스트는 제외)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Typecheck (build config, no emit)
+        run: npx tsc -p tsconfig.build.json --noEmit
+
+      # 단위 테스트만 — Docker(testcontainers) 필요한 통합테스트는 CI에서 제외.
+      - name: Unit tests
+        run: pnpm test:unit

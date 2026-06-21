@@ -61,6 +61,8 @@ services:
       KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
       OAUTH_REDIRECT_BASE: ${OAUTH_REDIRECT_BASE:-}
+      # 에러 모니터링 — DSN 없으면 무해(noop). run-prod.sh에서 주입.
+      SENTRY_DSN: ${SENTRY_DSN:-}
       # 첫 배포 1회만 true 권장(공공데이터 적재, 수 분 소요). 이후 INGEST_CRON(기본 04:00)이 갱신.
       INGEST_ON_BOOT: ${INGEST_ON_BOOT:-false}
     command: ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

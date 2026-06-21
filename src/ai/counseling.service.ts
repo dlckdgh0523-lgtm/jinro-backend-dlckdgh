@@ -15,6 +15,22 @@ import { getQueues } from '../jobs/queues';
 
 const REPORT_MIN_EVIDENCE = 5;
 
+// 합격 가능성(입결) 환각 차단 — 시스템 프롬프트에 강하게 주입.
+// 우리 DB에는 대학 단위 경쟁률/충원율/등록률만 있고, 학과별 합격선/내신 등급컷(입결)은 없다.
+// 따라서 "내신 N등급 → OO대 안정/적정/소신" 같은 판정은 근거가 없으므로 절대 지어내지 않게 한다.
+const ADMISSION_GUARD = [
+  '[입시·합격 가능성 — 매우 중요한 원칙]',
+  '- 합격선·내신 등급컷·표준점수컷, 그리고 "안정/적정/소신/상향/하향" 같은 합격 가능성 판정은,',
+  '  제공된 [참고 데이터]에 그 수치가 실제로 있을 때만 말하라. 데이터에 없으면 절대 추측하지 말 것.',
+  '- 학과별 합격선(입결) 데이터는 아직 제공되지 않는다. 그러므로 "내신 몇 등급이면 어느 대학 가능"',
+  '  같은 합격 가능성 판정은 하지 말고, "학과별 합격선(입결) 데이터는 아직 제공되지 않아 정확한',
+  '  합격 가능성은 말씀드리기 어려워요"라고 솔직히 밝혀라.',
+  '- 대신 우리가 가진 정보(대학 단위 경쟁률·충원율·등록률, 계열, 학과 개설 여부)만 근거로 제시하라.',
+  '  이 수치는 [대학지표]로 제공되며, 인용할 때 출처와 조사년도를 함께 밝혀라.',
+  '- 입시·합격 관련 답변 끝에는 "※ 참고용이며 정확한 합격선·전형은 어디가(adiga.kr)와 입학처,',
+  '  담임 선생님 상담에서 확인하세요." 같은 안내를 자연스럽게 한 번 덧붙여라(매 문장 강제 금지).',
+].join('\n');
+
 /** ```json 코드펜스 제거 (모델이 종종 감싸서 반환) */
 function stripFence(text: string): string {
   return text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
@@ -99,8 +115,46 @@ export function summarizeGrades(
   return `${head} — ${parts.join(', ')}`;
 }
 
+/** School.raw.admissions 의 형태 (대학알리미 적재 — ingest.worker.ts 참고) */
+interface AdmissionsRaw {
+  competitionRate?: number | null;
+  freshmanFillRate?: number | null;
+  finalRegistrationRate?: number | null;
+  svyYr?: number;
+  source?: string;
+}
+
+/**
+ * 텍스트에서 "OO대/OO대학교" 형태의 대학명 토큰을 추출한다(간단 매칭).
+ * 정식 매칭은 DB 조회( buildUniversityMetrics )에서 School.name LIKE 로 한다 — 여기선 후보만 뽑는다.
+ */
+export function extractUniversityNames(text: string): string[] {
+  const out = new Set<string>();
+  // "가천대", "서울대학교", "한국외국어대학교" 등 — 한글 2~10자 + 대/대학/대학교
+  const re = /([가-힣]{2,10}?)(?:대학교|대학|대)(?![가-힣])/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const stem = m[1]!.trim();
+    // 너무 일반적인 어휘 오탐 방지 (예: "우리대", "이번대")
+    if (stem.length >= 2 && !/^(우리|이번|저번|그|이|저|어느|무슨|어떤)$/.test(stem)) out.add(stem);
+  }
+  return [...out];
+}
+
+/** AdmissionsRaw + 학교명 → "[대학지표] OO대: 경쟁률 X:1, 충원율 Y%, 등록률 Z% (출처, 조사년도)" 한 줄. 값이 하나도 없으면 null. */
+export function formatAdmissionMetricLine(name: string, a: AdmissionsRaw): string | null {
+  const bits: string[] = [];
+  if (a.competitionRate != null) bits.push(`경쟁률 ${a.competitionRate}:1`);
+  if (a.freshmanFillRate != null) bits.push(`충원율 ${a.freshmanFillRate}%`);
+  if (a.finalRegistrationRate != null) bits.push(`등록률 ${a.finalRegistrationRate}%`);
+  if (!bits.length) return null;
+  const src = a.source ?? '대학알리미';
+  const yr = a.svyYr != null ? `, 조사년도 ${a.svyYr}` : '';
+  return `[대학지표] ${name}: ${bits.join(', ')} (출처 ${src}${yr})`;
+}
+
 /** 단위테스트 전용 export */
-export const __test = { parseReportJson, stripFence, stripLeakedState, gradeToTarget, gradeKoreanLabel, summarizeGrades };
+export const __test = { parseReportJson, stripFence, stripLeakedState, gradeToTarget, gradeKoreanLabel, summarizeGrades, extractUniversityNames, formatAdmissionMetricLine };
 
 // 교사 코칭 모드 — AI가 '학생을 상담하는 척'하지 않고, 교사의 상담 설계를 돕는 코치 역할.
 const TEACHER_COACH_PROMPT = [
@@ -192,6 +246,45 @@ export class CounselingService {
     else if (signals.length < 4) stage = 'profile';
     else stage = hasTarget > 0 ? 'prepare' : 'recommend';
     return { stage, signals: signals.map((s) => ({ tag: s.tag, text: s.text })), userTurns };
+  }
+
+  /**
+   * 실데이터 grounding — 대화/추천 대상 대학의 경쟁률·충원율·등록률(School.raw.admissions)을 결정적으로 주입.
+   * retriever 의미검색에만 의존하면 누락되므로, 대학명 후보를 추출해 School 레코드를 직접 조회한다.
+   * 데이터가 없으면 줄을 만들지 않는다(없는 걸 지어내지 않음).
+   * @param recentTexts 최근 대화/추천 대상 텍스트들 (대학명 추출 소스)
+   */
+  private async buildUniversityMetrics(recentTexts: string[]): Promise<string[]> {
+    const stems = [...new Set(recentTexts.flatMap((t) => extractUniversityNames(t)))].slice(0, 6);
+    if (!stems.length) return [];
+    // School.name LIKE 로 후보 학교를 모은다(스템당 소수). admissions 가 있는 것만 사용.
+    const seen = new Set<string>();
+    const lines: string[] = [];
+    for (const stem of stems) {
+      let schools: { name: string; raw: unknown }[] = [];
+      try {
+        schools = await this.prisma.school.findMany({
+          where: { name: { contains: stem } },
+          select: { name: true, raw: true },
+          take: 3,
+        });
+      } catch (e) {
+        logger.warn({ stem, err: (e as Error).message }, 'school metric lookup failed');
+        continue;
+      }
+      for (const s of schools) {
+        if (seen.has(s.name)) continue;
+        const admissions = (s.raw as Record<string, unknown> | null)?.['admissions'] as AdmissionsRaw | undefined;
+        if (!admissions) continue;
+        const line = formatAdmissionMetricLine(s.name, admissions);
+        if (line) {
+          lines.push(line);
+          seen.add(s.name);
+        }
+      }
+      if (lines.length >= 6) break;
+    }
+    return lines.slice(0, 6);
   }
 
   private async progressOf(sessionId: string) {
@@ -290,6 +383,20 @@ export class CounselingService {
         if (mat.length) ragContext += '\n[체험자료] ' + mat.map((m) => m.title).join(' / ');
       }
 
+      // 실데이터 grounding — recommend/prepare 단계에서 대화에 등장하는 대학의 경쟁률·충원율·등록률을
+      // School.raw.admissions에서 직접 조회해 결정적으로 주입한다(retriever 의미검색 누락 보강).
+      // 최근 사용자 발화 몇 개 + 방금 메시지에서 대학명 후보를 추출한다.
+      if (stageInfo.stage === 'recommend' || stageInfo.stage === 'prepare') {
+        const recentUserMsgs = await this.prisma.counselingMessage.findMany({
+          where: { sessionId, role: 'user' },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: { text: true },
+        });
+        const metricLines = await this.buildUniversityMetrics([text, ...recentUserMsgs.map((m) => m.text)]);
+        if (metricLines.length) ragContext += '\n' + metricLines.join('\n');
+      }
+
       // RAG 컨텍스트 길이 가드 — recommend/prepare에서 도구 결과가 누적되면 입력 상한(AI_MAX_INPUT_CHARS)을
       // 넘겨 'AI_CONTEXT_TOO_LARGE'로 실패(=대학 추천 멈춤)하던 문제. 컨텍스트를 잘라 항상 응답이 끝나게 한다.
       if (ragContext.length > 8_000) ragContext = ragContext.slice(0, 8_000);
@@ -336,7 +443,7 @@ export class CounselingService {
         ? TEACHER_COACH_PROMPT
         : `${SYSTEM_PROMPT}\n\n[상담 단계 안내 — 내부 정보, 응답에 노출 금지] 현재 단계: ${stageLabel}. 지금까지 모은 단서(${stageInfo.signals.length}개): ${signalSummary}. 학생 발화 ${stageInfo.userTurns}회. ${STAGE_GUIDE[stageInfo.stage] ?? '이 단계에 맞게 응답하라.'}\n` +
           `[학생 학년 안내 — 내부 정보, 응답에 노출 금지] 학년: ${gradeLabel}. 위 "학년별 톤·내용 지침"을 그대로 따르라.\n` +
-          `${gradeContext}\n${formatGuide}\n${quickReplyGuide}`;
+          `${ADMISSION_GUARD}\n${gradeContext}\n${formatGuide}\n${quickReplyGuide}`;
 
       const aiMsg = await this.prisma.counselingMessage.create({ data: { sessionId, role: 'ai', text: '' } });
       const streamChannel = `sse:aimsg:${aiMsg.id}`;
@@ -515,7 +622,8 @@ export class CounselingService {
         '\n\n지금은 리포트 합성 모드다. 대화 전체와 단서를 보고 진로 리포트를 JSON으로만 출력하라. ' +
         '마크다운 코드펜스(```) 없이 순수 JSON 객체 하나만 출력한다. ' +
         '형식: {"headline":string,"summary":string,"careers":[{"title":string,"score":number,"why":string}],"majors":string[],"strengths":string[],"risks":string[],"nextActions":string[]}. ' +
-        'careers는 3개, majors는 3~5개로 간결하게. 단정 금지("꼭 ~가 될 거야" 금지), 잠정 가설로 표현, 현실적 어려움도 균형 있게.',
+        'careers는 3개, majors는 3~5개로 간결하게. 단정 금지("꼭 ~가 될 거야" 금지), 잠정 가설로 표현, 현실적 어려움도 균형 있게. ' +
+        '합격선·내신 등급컷·"안정/적정/소신" 같은 합격 가능성 판정은 제공된 데이터에 수치가 있을 때만 쓰고, 없으면 절대 지어내지 말 것(학과별 입결 데이터는 제공되지 않는다).',
       messages: [{ role: 'user', content: `<단서>\n${JSON.stringify(signals)}\n</단서>\n<대화>\n${transcript}\n</대화>` }],
       maxTokens: 2500, // 한국어 리포트 JSON이 1500토큰에서 잘려 파싱 실패하던 문제 (실키 검증으로 발견)
     });

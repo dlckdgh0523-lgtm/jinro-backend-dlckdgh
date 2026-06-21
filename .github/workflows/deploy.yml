@@ -1,0 +1,38 @@
+# CD — EC2 단일 호스트로 배포. 수동 트리거(workflow_dispatch) 또는 v* 태그 푸시 시에만 실행.
+# (매 푸시 자동배포 안 함 — 의도적으로 수동/태그로 제한)
+#
+# 사용자가 추가할 GitHub Secrets (Settings → Secrets and variables → Actions):
+#   - EC2_SSH_KEY : EC2 접속용 개인키(PEM 전체 내용)
+#   - EC2_HOST    : 15.164.218.176
+#   - EC2_USER    : ubuntu
+#
+# 서버에는 시크릿이 deploy/run-prod.sh(.gitignore됨)에 export 형태로 존재해야 한다.
+# 배포 시 그 export 라인만 읽어 env로 주입한 뒤 build & up 한다(.env 미사용 — 하드스톱 준수).
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    name: ssh deploy to EC2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ~/jinro-backend-dlckdgh
+            git pull
+            # run-prod.sh 의 export 라인만 읽어 시크릿을 env로 주입(.env 미사용)
+            source <(grep '^export' deploy/run-prod.sh)
+            docker compose -f docker-compose.prod.yml build
+            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml ps

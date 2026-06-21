@@ -28,6 +28,9 @@ export GOOGLE_CLIENT_SECRET="GOCSPX-..."
 # 운영은 redirect_uri 정확도를 위해 도메인 명시 권장(구글/카카오 콘솔 등록값과 일치해야 함):
 export OAUTH_REDIRECT_BASE="$PUBLIC_BASE_URL"
 
+# ── 에러 모니터링(Sentry) ── (선택) 비우면 비활성. sentry.io 프로젝트 DSN을 넣으세요.
+# export SENTRY_DSN="https://...@o000000.ingest.sentry.io/000000"
+
 # ── 첫 배포 1회만 true: 공공데이터 적재(수 분). 이후엔 false로 두면 INGEST_CRON(매일 04:00)이 갱신 ──
 export INGEST_ON_BOOT="${INGEST_ON_BOOT:-false}"
 

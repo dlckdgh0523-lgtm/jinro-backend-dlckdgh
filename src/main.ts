@@ -5,11 +5,13 @@ import express from 'express';
 import { AppModule } from './app.module';
 import { env } from './common/env';
 import { logger } from './common/logger';
+import { initSentry } from './common/sentry';
 import { runWithTrace } from './common/trace';
 import { getQueues } from './jobs/queues';
 
 export async function createApp(): Promise<NestExpressApplication> {
   env(); // 미로드 시에만 검증 로드 — 테스트의 loadEnv(overrides)를 보존
+  initSentry(); // SENTRY_DSN 있으면 활성화, 없으면 무해하게 스킵
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false, // 크기 제한을 위해 직접 등록
     logger: ['error', 'warn'],
