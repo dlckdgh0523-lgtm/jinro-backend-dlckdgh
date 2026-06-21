@@ -25,7 +25,8 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # pnpm 10: 빌드 스크립트(esbuild 등)·최신 릴리스 정책 허용 (Dockerfile과 동일)
+        run: pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true --config.minimumReleaseAge=0
 
       - name: Prisma generate
         run: npx prisma generate

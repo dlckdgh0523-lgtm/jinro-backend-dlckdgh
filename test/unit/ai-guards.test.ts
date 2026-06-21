@@ -24,14 +24,17 @@ describe('AI 가드/시그널/임베딩 (mock provider)', () => {
     expect(text.length).toBeGreaterThan(20);
   });
 
-  it('입력 컨텍스트 상한 초과 → AI_CONTEXT_TOO_LARGE', async () => {
+  it('입력 컨텍스트 상한 초과 → 에러 대신 잘라서 정상 완료(끊김 방지)', async () => {
+    // 정책 변경: 길이 초과 시 throw(AI_CONTEXT_TOO_LARGE) 대신 입력을 예산에 맞게 잘라
+    // 답변이 항상 끝까지 나오도록 한다. 따라서 더 이상 던지지 않고 done까지 완료해야 한다.
     const client = new AiClient();
-    const big = 'ㄱ'.repeat(2000);
-    await expect(async () => {
-      for await (const _ of client.streamChat({ tier: 'light', system: big, messages: [{ role: 'user', content: '안녕' }] })) {
-        /* drain */
-      }
-    }).rejects.toThrowError(/대화가 너무 길어/);
+    const big = 'ㄱ'.repeat(2000); // AI_MAX_INPUT_CHARS=1000 초과
+    const events: string[] = [];
+    for await (const ev of client.streamChat({ tier: 'light', system: big, messages: [{ role: 'user', content: '안녕' }] })) {
+      events.push(ev.type);
+    }
+    expect(events[events.length - 1]).toBe('done');
+    expect(events).not.toContain('error');
   });
 
   it('abort signal → AI_STREAM_ABORTED (disconnect 시 중단 계약)', async () => {
