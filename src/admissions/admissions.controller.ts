@@ -20,6 +20,20 @@ function univType(estType: string | null): 'national' | 'private' | 'municipal' 
   return 'private';
 }
 
+// 커리어넷 통칭 ↔ 대학알리미 정식명. 약칭으로 별도 School 레코드가 생겨 학과가 비는 명문대 보정.
+const NAME_ALIASES: ReadonlyArray<readonly [string, string]> = [
+  ['카이스트', '한국과학기술원'],
+  ['KAIST', '한국과학기술원'],
+  ['포스텍', '포항공과대학교'],
+  ['POSTECH', '포항공과대학교'],
+  ['지스트', '광주과학기술원'],
+  ['GIST', '광주과학기술원'],
+  ['유니스트', '울산과학기술원'],
+  ['UNIST', '울산과학기술원'],
+  ['디지스트', '대구경북과학기술원'],
+  ['DGIST', '대구경북과학기술원'],
+];
+
 const listQuery = z.object({ region: qText, type: qText, q: qText, page: z.coerce.number().int().min(1).optional(), cursor: z.coerce.number().int().min(0).optional(), limit: qLimit });
 
 // 프론트 지역 그룹 라벨 → School.region 부분문자열 집합
@@ -168,6 +182,12 @@ export class AdmissionsController {
     if (stripGukrip !== school.name) nameCandidates.push(stripGukrip);
     const addGukrip = school.name.startsWith('국립') ? null : `국립${school.name}`;
     if (addGukrip) nameCandidates.push(addGukrip);
+    // 통칭(커리어넷) ↔ 정식명(대학알리미) 별칭 — 약칭으로 별도 School 레코드가 잡혀 학과가 비는 경우.
+    // 양방향 매칭(통칭으로 와도 정식명, 정식명으로 와도 통칭 후보를 추가).
+    for (const [alias, formal] of NAME_ALIASES) {
+      if (school.name === alias || stripGukrip === alias) nameCandidates.push(formal);
+      if (school.name === formal || stripGukrip === formal) nameCandidates.push(alias);
+    }
     // 캠퍼스 표기 차이: "고려대학교 세종캠퍼스"/"건국대학교 글로컬캠퍼스" → 본명 "고려대학교" + 캠퍼스 키워드.
     // (이전 정규식 /.+캠퍼스/ 는 탐욕적이라 대학명 전체를 먹어 빈 문자열이 되는 버그가 있었음)
     let campusHint: string | null = null;

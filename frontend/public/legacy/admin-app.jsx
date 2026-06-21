@@ -769,7 +769,7 @@ function AdminApp({ initialScreen = 'dashboard' }) {
       {isMobile
         ? <SidebarDrawer open={navOpen} onClose={() => setNavOpen(false)}><AdminSidebar activeId={screen} onChange={wrapNav}/></SidebarDrawer>
         : <AdminSidebar activeId={screen} onChange={setScreen}/>}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, position: 'relative' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, position: 'relative', overflowY: 'auto' }}>
         {screen === 'dashboard' && <AdminDashboard go={setScreen}/>}
         {screen === 'users' && <AdminUsers/>}
         {screen === 'payments' && <AdminPayments/>}

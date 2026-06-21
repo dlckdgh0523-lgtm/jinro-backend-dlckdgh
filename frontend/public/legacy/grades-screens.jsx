@@ -62,12 +62,12 @@ function GradesInputV2({ go }) {
             {rows.map((r, i) => (
               <div key={i} style={{ padding: 12, background: 'var(--bg-muted)', borderRadius: 12 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                  <TextInput value={r.subject} onChange={v => upd(i, 'subject', v)} placeholder="과목명 (예: 미적분)" style={{ flex: 1 }}/>
+                  <TextInput value={r.subject} onChange={v => upd(i, 'subject', v)} placeholder="과목명 (예: 미적분)" style={{ flex: 1, minWidth: 0, boxSizing: 'border-box' }}/>
                   {rows.length > 1 && <IconButton icon={<IcTrash size={16}/>} ariaLabel="삭제" onClick={() => delRow(i)}/>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <TextInput value={r.score} onChange={v => upd(i, 'score', v.replace(/[^0-9.]/g, ''))} placeholder="점수 0~100" trailing={<span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>점</span>} style={{ flex: 1 }}/>
-                  <TextInput value={r.rank} onChange={v => upd(i, 'rank', v.replace(/[^1-9]/g, '').slice(0, 1))} placeholder="등급 1~9" trailing={<span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>등급</span>} style={{ flex: 1 }}/>
+                  <TextInput value={r.score} onChange={v => upd(i, 'score', v.replace(/[^0-9.]/g, ''))} placeholder="점수 0~100" trailing={<span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>점</span>} style={{ flex: 1, minWidth: 0, boxSizing: 'border-box' }}/>
+                  <TextInput value={r.rank} onChange={v => upd(i, 'rank', v.replace(/[^1-9]/g, '').slice(0, 1))} placeholder="등급 1~9" trailing={<span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>등급</span>} style={{ flex: 1, minWidth: 0, boxSizing: 'border-box' }}/>
                 </div>
                 <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {CATS.map(c => {

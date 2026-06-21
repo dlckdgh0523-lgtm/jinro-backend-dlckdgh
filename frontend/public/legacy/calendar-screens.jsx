@@ -42,7 +42,7 @@ function WeekStudyPanel({ compact, go }) {
 
 // Dropdown select + date/time option sets for calendar sheets.
 const TIME_OPTIONS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
-const DATE_OPTIONS = Array.from({ length: 21 }, (_, i) => { const d = new Date(2026, 4, 17 + i); return `2026-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; });
+const DATE_OPTIONS = Array.from({ length: 21 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; });
 function CalSelect({ value, onChange, options, render }) {
   return (
     <div style={{ position: 'relative' }}>
@@ -384,7 +384,7 @@ function EventCard({ ev, onReschedule, onAccept }) {
 
 // Reschedule a counseling time — usable by both student & teacher.
 function RescheduleDialog({ ev, onClose }) {
-  const [date, setDate] = React.useState(typeof DATE_OPTIONS !== 'undefined' ? DATE_OPTIONS[2] : '2026-05-19');
+  const [date, setDate] = React.useState(typeof DATE_OPTIONS !== 'undefined' ? DATE_OPTIONS[2] : (() => { const d = new Date(); d.setDate(d.getDate() + 2); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })());
   const [time, setTime] = React.useState((ev.time || '15:00').slice(0, 5));
   const trapRef = (typeof useFocusTrap !== 'undefined') ? useFocusTrap(true, onClose) : null;
   const Sel = typeof CalSelect !== 'undefined' ? CalSelect : null;
@@ -455,7 +455,7 @@ function BroadcastDetailSheet({ open, ev, onClose, forTeacher }) {
 // SCREEN: Counseling request (student)
 // ────────────────────────────────────────────────────────
 function CounselingRequest({ go }) {
-  const [date, setDate] = React.useState('2026-05-22');
+  const [date, setDate] = React.useState(typeof DATE_OPTIONS !== 'undefined' ? DATE_OPTIONS[0] : (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })());
   const [time, setTime] = React.useState('15:00');
   const [why, setWhy] = React.useState('');
   return (

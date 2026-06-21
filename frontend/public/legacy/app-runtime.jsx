@@ -531,6 +531,37 @@ function LiveRunner() {
     return () => { try { delete window.__navTo; } catch (e) {} };
   }, []);
 
+  // 로그아웃 — SidebarUserMenu가 쏘는 'jinro:logout' 이벤트를 받아 실제 로그아웃 수행.
+  // 모든 역할(학생/교사/관리자)에서 동작: (1) 서버 세션 폐기 시도 → (2) 토큰/온보딩 정리 → (3) 로그인 화면 전환.
+  React.useEffect(() => {
+    const onLogout = async () => {
+      // (1) 서버 refresh 토큰 폐기 — 실패해도 무시(베스트 에포트).
+      try {
+        if (typeof window.__apiFetch === 'function') {
+          await window.__apiFetch('/auth/logout', { method: 'POST' });
+        }
+      } catch (e) { /* ignore */ }
+      // (2) 클라이언트 자격증명/온보딩 플래그 제거.
+      try {
+        localStorage.removeItem('jinro:accessToken');
+        localStorage.removeItem('jinro:refreshToken');
+        localStorage.removeItem('jinro:onboard');
+      } catch (e) {}
+      // (3) 로그인 화면으로 전환.
+      const authRole = (LIVE_ROLES.find(r => /^auth/.test(r.id)) || LIVE_ROLES[0] || {}).id;
+      try {
+        window.location.hash = '';
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      } catch (e) {}
+      window.__ACTIVE_ROLE = authRole;
+      setRole(authRole);
+      setWidth((LIVE_ROLES.find(r => r.id === authRole) || {}).mobile ? 390 : 0);
+      setRemount(n => n + 1);
+    };
+    window.addEventListener('jinro:logout', onLogout);
+    return () => window.removeEventListener('jinro:logout', onLogout);
+  }, []);
+
   // Auth completion → go straight to the role's dashboard.
   // First login shows the translucent arrow coachmark tour (no full-screen onboarding gate).
   const [onbRole, setOnbRole] = React.useState('student');

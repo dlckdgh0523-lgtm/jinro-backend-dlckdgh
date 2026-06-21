@@ -26,7 +26,7 @@ async function main(): Promise<void> {
       passwordHash,
       status: 'active',
       ...(role === 'teacher' ? { school: school || '진로고등학교', classroom: classroom || '1-1' } : {}),
-      ...(role === 'student' ? { grade: 'H1' } : {}),
+      ...(role === 'student' ? { grade: 'H1', ...(school ? { school } : {}), ...(classroom ? { classroom } : {}) } : {}),
     },
     create: {
       email,
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
       passwordHash,
       consents,
       ...(role === 'teacher' ? { school: school || '진로고등학교', classroom: classroom || '1-1' } : {}),
-      ...(role === 'student' ? { grade: 'H1' } : {}),
+      ...(role === 'student' ? { grade: 'H1', ...(school ? { school } : {}), ...(classroom ? { classroom } : {}) } : {}),
     },
   });
   console.log(`${role} ready: ${user.email} (${user.id})`);

@@ -79,16 +79,49 @@ export class AiClient {
 
   /** 토큰 스트림. 호출자가 disconnect 시 signal abort → 즉시 중단. */
   async *streamChat(opts: ChatOptions): AsyncGenerator<StreamEvent> {
-    // 토큰/비용 가드 — 입력 컨텍스트 길이 상한
-    const totalChars = opts.system.length + (opts.ragContext?.length ?? 0) + opts.messages.reduce((a, m) => a + m.content.length, 0);
-    if (totalChars > env().AI_MAX_INPUT_CHARS) {
-      throw new AppError(ErrorCode.AI_CONTEXT_TOO_LARGE, '대화가 너무 길어졌어요. 새 상담을 시작해주세요.');
-    }
+    // 입력 길이 가드 — 상한을 넘으면 에러를 던지지 않고 오래된 컨텍스트/메시지를 잘라서 진행한다.
+    // (이전: throw AI_CONTEXT_TOO_LARGE → 대화가 길어지면 답변 자체가 막힘. 이제는 항상 응답이 끝나게 한다.)
+    const trimmed = this.fitToInputBudget(opts);
     if (this.provider === 'mock') {
-      yield* this.mockStream(opts);
+      yield* this.mockStream(trimmed);
       return;
     }
-    yield* this.anthropicStream(opts);
+    yield* this.anthropicStream(trimmed);
+  }
+
+  /**
+   * 입력 컨텍스트가 AI_MAX_INPUT_CHARS를 넘으면 잘라 맞춘다 (에러로 끊지 않음).
+   * 우선순위: system은 보존 → ragContext를 먼저 줄이고 → 그래도 넘으면 오래된 메시지부터 버린다.
+   */
+  private fitToInputBudget(opts: ChatOptions): ChatOptions {
+    const limit = env().AI_MAX_INPUT_CHARS;
+    const sysLen = opts.system.length;
+    let ragContext = opts.ragContext;
+    let messages = opts.messages;
+
+    const total = () => sysLen + (ragContext?.length ?? 0) + messages.reduce((a, m) => a + m.content.length, 0);
+    if (total() <= limit) return opts;
+
+    // 1) ragContext 축소 — system과 최근 메시지를 위한 예산을 남긴다.
+    if (ragContext) {
+      const msgLen = messages.reduce((a, m) => a + m.content.length, 0);
+      const ragBudget = Math.max(0, limit - sysLen - msgLen);
+      if (ragContext.length > ragBudget) ragContext = ragBudget > 0 ? ragContext.slice(0, ragBudget) : undefined;
+    }
+    if (total() <= limit) return { ...opts, ragContext, messages };
+
+    // 2) 그래도 초과하면 오래된 메시지부터 버린다 (가장 최근 대화는 항상 유지).
+    while (messages.length > 1 && total() > limit) {
+      messages = messages.slice(1);
+    }
+    // 3) 마지막 한 메시지가 단독으로 한도를 넘으면 내용을 잘라 맞춘다.
+    if (total() > limit && messages.length) {
+      const last = messages[messages.length - 1]!;
+      const allowed = Math.max(0, limit - sysLen - (ragContext?.length ?? 0));
+      messages = [...messages.slice(0, -1), { ...last, content: last.content.slice(-allowed) }];
+    }
+    logger.warn({ provider: this.provider }, 'ai input trimmed to fit budget (no error thrown)');
+    return { ...opts, ragContext, messages };
   }
 
   private async *mockStream(opts: ChatOptions): AsyncGenerator<StreamEvent> {

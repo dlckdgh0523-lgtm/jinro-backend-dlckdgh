@@ -31,6 +31,7 @@ model User {
   school       String?
   classroom    String?
   grade        String? // E4|E5|E6|M1|M2|M3|H1|H2|H3 — 학년별 프롬프트 분기 키
+  inviteCode   String?    @unique // 교사 학급 초대코드 (6자 영숫자) — 학생 가입 시 학급 자동 참여
   consents     Json
   status       UserStatus @default(active)
   tourCompleted Boolean   @default(false)

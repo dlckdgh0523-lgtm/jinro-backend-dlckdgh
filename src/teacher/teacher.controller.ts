@@ -1,8 +1,17 @@
 import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
+import { randomInt } from 'node:crypto';
 import { JwtAuthGuard, type AuthUser } from '../auth/jwt.guard';
 import { PrismaService } from '../db/prisma.service';
 import { AppError, ErrorCode } from '../common/errors';
+
+// 혼동되는 문자(0/O, 1/I) 제외한 영숫자 — 6자 초대코드 생성용.
+const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function genInviteCode(len = 6): string {
+  let out = '';
+  for (let i = 0; i < len; i++) out += INVITE_ALPHABET[randomInt(INVITE_ALPHABET.length)];
+  return out;
+}
 
 function requireTeacher(req: Request): AuthUser {
   const user = (req as Request & { user?: AuthUser }).user;
@@ -28,6 +37,33 @@ function round1(n: number): number {
 @UseGuards(JwtAuthGuard)
 export class TeacherController {
   constructor(private readonly prisma: PrismaService) {}
+
+  // 교사 학급 초대코드 — 없으면 충돌 안 나는 유니크 6자 코드를 생성해 저장 후 반환.
+  // 학생은 회원가입 시 이 코드를 입력해 학급에 자동 참여(auth.service).
+  @Get('invite-code')
+  async inviteCode(@Req() req: Request) {
+    const me = requireTeacher(req);
+    const teacher = await this.prisma.user.findUnique({ where: { id: me.id } });
+    if (teacher?.inviteCode) {
+      return { data: { inviteCode: teacher.inviteCode } };
+    }
+    // 유니크 코드 생성 — 충돌 시 재시도(유니크 제약 충돌 P2002).
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const code = genInviteCode();
+      try {
+        const updated = await this.prisma.user.update({ where: { id: me.id }, data: { inviteCode: code } });
+        return { data: { inviteCode: updated.inviteCode } };
+      } catch (e) {
+        const code2 = (e as { code?: string })?.code;
+        // 동시 생성으로 내 코드가 이미 채워졌다면 그걸 반환.
+        const fresh = await this.prisma.user.findUnique({ where: { id: me.id } });
+        if (fresh?.inviteCode) return { data: { inviteCode: fresh.inviteCode } };
+        if (code2 !== 'P2002') throw e; // 코드 중복 외 에러는 전파
+        // P2002 → 코드 충돌, 다음 시도
+      }
+    }
+    throw new AppError(ErrorCode.INTERNAL, '초대코드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.');
+  }
 
   // 내 학급 학생 — 같은 학교+반. 각 학생의 핵심 지표 집계.
   @Get('students')

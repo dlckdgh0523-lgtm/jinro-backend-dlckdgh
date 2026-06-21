@@ -45,7 +45,19 @@ export class AuthService {
   }
 
   async signupStudent(input: { email: string; password: string; name: string; inviteCode?: string; grade?: string; consents: Consents }) {
-    return this.signup({ ...input, role: 'student' });
+    // 초대코드가 있으면 해당 교사의 학교/반을 상속해 학급에 자동 참여.
+    let school: string | undefined;
+    let classroom: string | undefined;
+    const code = input.inviteCode?.trim().toUpperCase();
+    if (code) {
+      const teacher = await this.prisma.user.findUnique({ where: { inviteCode: code } });
+      if (!teacher || teacher.role !== 'teacher') {
+        throw new AppError(ErrorCode.VALIDATION_FAILED, '유효하지 않은 초대코드예요.');
+      }
+      school = teacher.school ?? undefined;
+      classroom = teacher.classroom ?? undefined;
+    }
+    return this.signup({ ...input, role: 'student', school, classroom });
   }
 
   async signupTeacher(input: { email: string; password: string; name: string; school: string; classroom: string; consents: Consents }) {

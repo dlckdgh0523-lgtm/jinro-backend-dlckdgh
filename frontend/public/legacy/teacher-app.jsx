@@ -46,6 +46,27 @@ function useTeacherRoster() {
   return { rows: rows || [], meta, loading: rows === null, error, refetch: load };
 }
 
+// 교사 학급 초대코드 — 백엔드 GET /teacher/invite-code 에서 실 코드를 불러온다(고정 묵값 금지).
+// 반환: { code, display, loading }. code=null이면 아직 로딩 중.
+function useInviteCode() {
+  const [code, setCode] = React.useState(null); // null = loading
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await window.__apiFetch('/teacher/invite-code', { method: 'GET' });
+        const c = (r && r.data && r.data.inviteCode) || (r && r.inviteCode) || '';
+        if (alive) setCode(c || '');
+      } catch (e) {
+        if (alive) setCode('');
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+  // 표시용: 3글자 단위 공백(예: H8K4 9P → 'H8K 49P'은 피하고 코드 그대로 + 간격은 letterSpacing로).
+  return { code, display: code || '', loading: code === null };
+}
+
 // AI progress (0-100) → status badge, honestly derived from real signal data.
 const aiProgressBadge = (p) => {
   if (p >= 60) return <Chip tone="success" size="sm">진행 활발</Chip>;
@@ -191,6 +212,7 @@ function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
 function TeacherDashboard({ go, openNotif }) {
   const [trendMode, setTrendMode] = React.useState('avg');
   const { rows, meta, loading } = useTeacherRoster();
+  const invite = useInviteCode();
 
   const total = meta?.count ?? rows.length;
   const activeCount = rows.filter(s => (s.studyDone || 0) > 0 || (s.aiProgress || 0) > 0).length;
@@ -262,9 +284,9 @@ function TeacherDashboard({ go, openNotif }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Card padding={18} style={{ background: 'linear-gradient(135deg, #3182F6 0%, #1957C2 100%)', color: '#fff' }}>
               <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>학급 초대코드</div>
-              <div className="num" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '4px' }}>H8 K4 9P</div>
+              <div className="num" style={{ fontSize: 28, fontWeight: 800, letterSpacing: '4px' }}>{invite.loading ? '······' : (invite.display || '코드 없음')}</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                <button style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 10, background: 'rgba(255,255,255,0.18)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <button disabled={!invite.display} onClick={() => invite.display && copyToast(invite.display, '초대코드를 복사했어요')} style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 10, background: 'rgba(255,255,255,0.18)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: invite.display ? 'pointer' : 'default', opacity: invite.display ? 1 : 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                   <IcCopy size={13}/> 복사
                 </button>
                 <button onClick={() => go('classroom')} style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 10, background: '#fff', color: 'var(--brand-600)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>학급 보기</button>
@@ -381,6 +403,7 @@ function ClassTrendChart({ mode = 'avg' }) {
 function TeacherClassroom({ go, openNotif }) {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const { rows, meta, loading } = useTeacherRoster();
+  const invite = useInviteCode();
   const count = meta?.count ?? rows.length;
   const avgProgress = rows.length ? Math.round(rows.reduce((a, s) => a + (s.aiProgress || 0), 0) / rows.length) : 0;
   const graded = rows.filter(s => s.gradeAverage != null);
@@ -397,13 +420,13 @@ function TeacherClassroom({ go, openNotif }) {
           }}>
             <Chip tone="brand" size="sm" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }}>학급 초대코드</Chip>
             <div className="num" style={{ fontSize: 56, fontWeight: 800, letterSpacing: '8px', marginTop: 16, fontFamily: 'var(--font-num)' }}>
-              H8K4 9P
+              {invite.loading ? '······' : (invite.display || '코드 없음')}
             </div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }} className="kr-heading">
               학생이 회원가입 시 이 코드를 입력하면 자동으로 학급에 참여돼요.
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <Button variant="primary" size="md" leading={<IcCopy size={14}/>} style={{ background: '#fff', color: 'var(--brand-600)' }} onClick={() => copyToast('H8K49P', '초대코드를 복사했어요')}>
+              <Button variant="primary" size="md" leading={<IcCopy size={14}/>} disabled={!invite.display} style={{ background: '#fff', color: 'var(--brand-600)' }} onClick={() => invite.display && copyToast(invite.display, '초대코드를 복사했어요')}>
                 코드 복사
               </Button>
               <Button variant="ghost" size="md" leading={<IcRefresh size={14}/>} style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }} onClick={() => setConfirmOpen(true)}>
@@ -594,6 +617,7 @@ function TeacherStudents({ go, openNotif }) {
 // Teacher manually registers a student into the classroom.
 function StudentRegisterDialog({ onSave, onClose }) {
   const trapRef = useFocusTrap(true, onClose);
+  const invite = useInviteCode();
   const [name, setName] = React.useState('');
   const [grade, setGrade] = React.useState('2-3');
   const [method, setMethod] = React.useState('invite'); // invite | direct
@@ -637,8 +661,8 @@ function StudentRegisterDialog({ onSave, onClose }) {
         {method === 'invite' ? (
           <div style={{ padding: 18, background: 'linear-gradient(135deg, #3182F6 0%, #1957C2 100%)', borderRadius: 14, color: '#fff', textAlign: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>이 코드를 학생에게 공유하세요</div>
-            <div className="num" style={{ fontSize: 32, fontWeight: 800, letterSpacing: '6px' }}>H8K4 9P</div>
-            <Button variant="primary" size="sm" leading={<IcCopy size={13}/>} style={{ background: '#fff', color: 'var(--brand-600)', marginTop: 12 }} onClick={() => copyToast('H8K49P', '초대코드를 복사했어요')}>코드 복사</Button>
+            <div className="num" style={{ fontSize: 32, fontWeight: 800, letterSpacing: '6px' }}>{invite.loading ? '······' : (invite.display || '코드 없음')}</div>
+            <Button variant="primary" size="sm" leading={<IcCopy size={13}/>} disabled={!invite.display} style={{ background: '#fff', color: 'var(--brand-600)', marginTop: 12 }} onClick={() => invite.display && copyToast(invite.display, '초대코드를 복사했어요')}>코드 복사</Button>
           </div>
         ) : (
           <>
@@ -1314,7 +1338,7 @@ function TeacherApp({ initialScreen = 'dashboard' }) {
       {isMobile
         ? <SidebarDrawer open={navOpen} onClose={() => setNavOpen(false)}><TeacherSidebar activeId={teacherNavId} onChange={wrapNav}/></SidebarDrawer>
         : <TeacherSidebar activeId={teacherNavId} onChange={setScreen}/>}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
         {screen === 'dashboard' && <TeacherDashboard go={setScreen} openNotif={openNotif}/>}
         {screen === 'classroom' && <TeacherClassroom go={setScreen} openNotif={openNotif}/>}
         {screen === 'students' && <TeacherStudents go={setScreen} openNotif={openNotif}/>}

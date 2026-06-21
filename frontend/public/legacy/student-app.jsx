@@ -671,7 +671,54 @@ function parseQuickReplies(text) {
   return { options, clean };
 }
 
-// AI 답변을 읽기 좋게 — 줄바꿈 보존 + 간단한 목록(- / 1.)을 들여쓰기로 렌더 (마크다운 유사).
+// 인라인 마크다운(굵게/기울임/인라인코드)을 React 노드 배열로 변환.
+// 번들러 없는 browser-babel 환경 → 의존성 없이 직접 파싱. **bold**, *italic*/_italic_, `code`.
+function renderInline(text, keyPrefix) {
+  const src = text == null ? '' : String(text);
+  const nodes = [];
+  let buf = '';
+  let k = 0;
+  const flush = () => { if (buf) { nodes.push(buf); buf = ''; } };
+  // 토큰: **...** | *...* | _..._ | `...`  (가장 앞의 매치를 우선 소비)
+  const re = /(\*\*([^*]+?)\*\*)|(\*([^*]+?)\*)|(_([^_]+?)_)|(`([^`]+?)`)/g;
+  let last = 0;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    if (m.index > last) buf += src.slice(last, m.index);
+    flush();
+    if (m[1] != null) {
+      nodes.push(<strong key={keyPrefix + '-b' + k++} style={{ fontWeight: 700 }}>{m[2]}</strong>);
+    } else if (m[3] != null) {
+      nodes.push(<em key={keyPrefix + '-i' + k++} style={{ fontStyle: 'italic' }}>{m[4]}</em>);
+    } else if (m[5] != null) {
+      nodes.push(<em key={keyPrefix + '-u' + k++} style={{ fontStyle: 'italic' }}>{m[6]}</em>);
+    } else if (m[7] != null) {
+      nodes.push(
+        <code key={keyPrefix + '-c' + k++} style={{ background: 'var(--bg-subtle, rgba(0,0,0,0.06))', borderRadius: 4, padding: '1px 5px', fontSize: '0.92em' }}>{m[8]}</code>,
+      );
+    }
+    last = re.lastIndex;
+  }
+  if (last < src.length) buf += src.slice(last);
+  flush();
+  return nodes.length ? nodes : [src];
+}
+
+// "| a | b |" 한 줄을 셀 배열로. 양 끝 파이프는 무시.
+function splitTableRow(line) {
+  let s = line.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|')) s = s.slice(0, -1);
+  return s.split('|').map((c) => c.trim());
+}
+function isTableSeparator(line) {
+  // |---|:--:|---| 형태 — 셀이 전부 -, :, 공백으로만 구성
+  if (!/\|/.test(line)) return false;
+  return splitTableRow(line).every((c) => /^:?-{1,}:?$/.test(c));
+}
+
+// AI 답변을 읽기 좋게 렌더 — 줄바꿈 보존 + 경량 마크다운(제목/목록/굵게·기울임/표).
+// 번들러가 없어 npm 마크다운 모듈을 못 쓰므로 의존성 없이 직접 구현. [보기] 칩은 parseQuickReplies가 이미 분리.
 function FormattedText({ text }) {
   const raw = text || '';
   if (!raw) return null;
@@ -681,25 +728,76 @@ function FormattedText({ text }) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
+
+    // 마크다운 표 — 헤더 줄 + 구분(|---|) 줄 + 데이터 줄들
+    if (/\|/.test(trimmed) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+      const header = splitTableRow(trimmed);
+      const rows = [];
+      let j = i + 2;
+      while (j < lines.length && /\|/.test(lines[j]) && lines[j].trim() !== '') {
+        rows.push(splitTableRow(lines[j]));
+        j++;
+      }
+      out.push(
+        <div key={key++} style={{ overflowX: 'auto', margin: '6px 0' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+            <thead>
+              <tr>
+                {header.map((h, ci) => (
+                  <th key={ci} style={{ border: '1px solid var(--border, rgba(0,0,0,0.12))', padding: '6px 10px', textAlign: 'left', fontWeight: 700, background: 'var(--bg-subtle, rgba(0,0,0,0.04))' }}>
+                    {renderInline(h, 'th' + ci)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, ri) => (
+                <tr key={ri}>
+                  {header.map((_, ci) => (
+                    <td key={ci} style={{ border: '1px solid var(--border, rgba(0,0,0,0.12))', padding: '6px 10px', verticalAlign: 'top' }}>
+                      {renderInline(r[ci] == null ? '' : r[ci], 'td' + ri + '-' + ci)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      i = j - 1;
+      continue;
+    }
+
     if (trimmed === '') { out.push(<div key={key++} style={{ height: 6 }}/>); continue; }
+
+    // 제목 (# / ## / ### …)
+    const heading = trimmed.match(/^(#{1,6})\s+(.*)$/);
     const bullet = trimmed.match(/^[-*•]\s+(.*)$/);
     const numbered = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
-    if (bullet) {
+    if (heading) {
+      const level = heading[1].length;
+      const size = level <= 1 ? 17 : level === 2 ? 15.5 : 14.5;
+      out.push(
+        <div key={key++} style={{ fontWeight: 700, fontSize: size, margin: '6px 0 2px', lineHeight: 1.4 }}>
+          {renderInline(heading[2], 'h' + key)}
+        </div>,
+      );
+    } else if (bullet) {
       out.push(
         <div key={key++} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', margin: '1px 0' }}>
           <span style={{ color: 'var(--brand-500)', lineHeight: 1.6 }}>•</span>
-          <span style={{ flex: 1 }}>{bullet[1]}</span>
+          <span style={{ flex: 1 }}>{renderInline(bullet[1], 'bl' + key)}</span>
         </div>,
       );
     } else if (numbered) {
       out.push(
         <div key={key++} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', margin: '1px 0' }}>
           <span style={{ color: 'var(--brand-500)', fontWeight: 700, minWidth: 16 }}>{numbered[1]}.</span>
-          <span style={{ flex: 1 }}>{numbered[2]}</span>
+          <span style={{ flex: 1 }}>{renderInline(numbered[2], 'nm' + key)}</span>
         </div>,
       );
     } else {
-      out.push(<div key={key++}>{line}</div>);
+      out.push(<div key={key++}>{renderInline(line, 'p' + key)}</div>);
     }
   }
   return <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{out}</div>;

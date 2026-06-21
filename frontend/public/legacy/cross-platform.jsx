@@ -478,7 +478,7 @@ function StudentWebApp({ initialScreen = 'dashboard', withToasts = false }) {
       {isMobile
         ? <SidebarDrawer open={navOpen} onClose={() => setNavOpen(false)}><StudentWebSidebar activeId={navId} onChange={wrapNav}/></SidebarDrawer>
         : <StudentWebSidebar activeId={navId} onChange={setScreen}/>}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
         {renderContent()}
       </main>
       {withToasts && <WebToastHost toasts={cycle.active} onClose={cycle.close}/>}

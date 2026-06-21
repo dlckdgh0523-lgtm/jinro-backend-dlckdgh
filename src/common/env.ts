@@ -63,7 +63,7 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   AI_MODEL_LIGHT: z.string().default('claude-haiku-4-5-20251001'),
   AI_MODEL_HEAVY: z.string().default('claude-sonnet-4-6'),
-  AI_MAX_OUTPUT_TOKENS: z.coerce.number().default(4000), // 채팅 답변이 길어도 안 잘리게 (1024는 표·목록 답변에서 중간에 끊김)
+  AI_MAX_OUTPUT_TOKENS: z.coerce.number().default(8000), // 채팅 답변이 길어도 안 잘리게 (Haiku는 길게 답해도 됨; 4000도 표·목록 긴 답변에서 끊김)
   AI_MAX_REPORT_TOKENS: z.coerce.number().default(3000), // 리포트 합성(Sonnet)은 더 긴 출력 필요
   AI_MAX_INPUT_CHARS: z.coerce.number().default(24_000),
   AI_MAX_CONCURRENT_STREAMS: z.coerce.number().default(50),
