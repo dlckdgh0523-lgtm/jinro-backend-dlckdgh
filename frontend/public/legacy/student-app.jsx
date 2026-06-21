@@ -568,16 +568,7 @@ function AICounseling({ go, openSignals }) {
         )}
       </div>
 
-      {/* Quick replies */}
-      <div style={{ padding: '4px 12px 8px', display: 'flex', gap: 6, overflow: 'auto' }} className="toss-scroll">
-        {QUICK_REPLIES.map(q => (
-          <button key={q} onClick={() => send(q)} style={{
-            border: '1px solid var(--line)', background: 'var(--bg-surface)',
-            borderRadius: 999, padding: '8px 12px', fontSize: 12, color: 'var(--fg-default)',
-            whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0,
-          }}>{q}</button>
-        ))}
-      </div>
+      {/* 고정 예상답변 행 제거 — 상황에 맞는 보기는 AI 응답의 [보기](맥락 기반)로만 노출 */}
 
       {/* Composer */}
       <div style={{ padding: '8px 12px 12px', background: 'var(--bg-surface)', borderTop: '1px solid var(--line-subtle)' }}>
