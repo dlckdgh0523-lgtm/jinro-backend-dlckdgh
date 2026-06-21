@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
+<!-- ⚙️ 이 파일은 build-legacy.mjs가 생성합니다. 수정은 index.src.html / *.jsx 에서. -->
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>진로나침반 — 웹 (학생·교사·관리자)</title>
@@ -25,56 +26,52 @@
 <!-- React / Babel -->
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
 <!-- three.js (랜딩 히어로 — 밝은 나침반 배경) -->
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 
 <!-- Foundations -->
-<script type="text/babel" src="icons.jsx"></script>
-<script type="text/babel" src="ui.jsx"></script>
+<script src="icons.js"></script>
+<script src="ui.js"></script>
 
 <!-- Screens (no device frames / design-canvas in live mode) -->
-<script type="text/babel" src="public-screens.jsx"></script>
-<script type="text/babel" src="landing-3d.jsx"></script>
-<script type="text/babel" src="grades-screens.jsx"></script>
-<script type="text/babel" src="admissions.jsx"></script>
-<script type="text/babel" src="messages-screens.jsx"></script>
-<script type="text/babel" src="calendar-screens.jsx"></script>
-<script type="text/babel" src="student-app.jsx"></script>
-<script type="text/babel" src="teacher-app.jsx"></script>
-<script type="text/babel" src="admin-app.jsx"></script>
-<script type="text/babel" src="admin-export.jsx"></script>
-<script type="text/babel" src="admin-screens-v5.jsx"></script>
+<script src="public-screens.js"></script>
+<script src="landing-3d.js"></script>
+<script src="grades-screens.js"></script>
+<script src="admissions.js"></script>
+<script src="messages-screens.js"></script>
+<script src="calendar-screens.js"></script>
+<script src="student-app.js"></script>
+<script src="teacher-app.js"></script>
+<script src="admin-app.js"></script>
+<script src="admin-export.js"></script>
+<script src="admin-screens-v5.js"></script>
 <!-- Teacher→student broadcast store -->
-<script type="text/babel" src="teacher-broadcast.jsx"></script>
-<script type="text/babel" src="study-store.jsx"></script>
-<script type="text/babel" src="announcements.jsx"></script>
-<script type="text/babel" src="mobile-auth.jsx"></script>
-<script type="text/babel" src="onboarding-flow.jsx"></script>
-<script type="text/babel" src="legal-docs.jsx"></script>
-<script type="text/babel" src="phase2-screens.jsx"></script>
-<script type="text/babel" src="phase3-screens.jsx"></script>
-<script type="text/babel" src="focus-timer.jsx"></script>
-<script type="text/babel" src="settings-screens.jsx"></script>
-<script type="text/babel" src="extras-v4.jsx"></script>
-<script type="text/babel" src="shared-profile.jsx"></script>
-<script type="text/babel" src="toast-notifications.jsx"></script>
-<script type="text/babel" src="cross-platform.jsx"></script>
-<script type="text/babel" src="teacher-mobile.jsx"></script>
-<script type="text/babel" src="onboarding-tour.jsx"></script>
-<script type="text/babel" src="page-help.jsx"></script>
-<script type="text/babel" src="tour-demos.jsx"></script>
+<script src="teacher-broadcast.js"></script>
+<script src="study-store.js"></script>
+<script src="announcements.js"></script>
+<script src="mobile-auth.js"></script>
+<script src="onboarding-flow.js"></script>
+<script src="legal-docs.js"></script>
+<script src="phase2-screens.js"></script>
+<script src="phase3-screens.js"></script>
+<script src="focus-timer.js"></script>
+<script src="settings-screens.js"></script>
+<script src="extras-v4.js"></script>
+<script src="shared-profile.js"></script>
+<script src="toast-notifications.js"></script>
+<script src="cross-platform.js"></script>
+<script src="teacher-mobile.js"></script>
+<script src="onboarding-tour.js"></script>
+<script src="page-help.js"></script>
+<script src="tour-demos.js"></script>
 
 <!-- Runtime layer: hooks + mock API + contexts + LiveRunner -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script type="text/babel" src="app-runtime.jsx"></script>
+<script src="app-runtime.js"></script>
 
 <!-- Mount in LIVE mode -->
-<script type="text/babel">
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(<LiveRunner/>);
-</script>
+<script src="_mount.js"></script>
 </body>
 </html>

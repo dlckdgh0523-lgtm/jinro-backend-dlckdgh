@@ -1,0 +1,453 @@
+const ADMIN_NAV = [
+  { section: "\uC6B4\uC601", items: [
+    { id: "dashboard", label: "\uB300\uC2DC\uBCF4\uB4DC", icon: /* @__PURE__ */ React.createElement(IcHome, null) },
+    { id: "users", label: "\uC0AC\uC6A9\uC790", icon: /* @__PURE__ */ React.createElement(IcUsers, null) },
+    { id: "teachers", label: "\uAD50\uC0AC", icon: /* @__PURE__ */ React.createElement(IcGraduation, null) },
+    { id: "students", label: "\uD559\uC0DD", icon: /* @__PURE__ */ React.createElement(IcUser, null) },
+    { id: "classrooms", label: "\uD559\uAE09", icon: /* @__PURE__ */ React.createElement(IcSchool, null) }
+  ] },
+  { section: "\uACB0\uC81C \xB7 AI", items: [
+    { id: "subscriptions", label: "\uAD6C\uB3C5", icon: /* @__PURE__ */ React.createElement(IcStar, null) },
+    { id: "payments", label: "\uACB0\uC81C", icon: /* @__PURE__ */ React.createElement(IcCreditCard, null) },
+    { id: "ai-usage", label: "AI \uC0AC\uC6A9\uB7C9", icon: /* @__PURE__ */ React.createElement(IcSparkles, null) },
+    { id: "counseling", label: "\uC0C1\uB2F4 \uC138\uC158", icon: /* @__PURE__ */ React.createElement(IcMessage, null) }
+  ] },
+  { section: "\uC2DC\uC2A4\uD15C", items: [
+    { id: "notifications", label: "\uC54C\uB9BC \uC774\uBCA4\uD2B8", icon: /* @__PURE__ */ React.createElement(IcBell, null) },
+    { id: "audit-logs", label: "\uAC10\uC0AC \uB85C\uADF8", icon: /* @__PURE__ */ React.createElement(IcDoc, null) },
+    { id: "system", label: "\uC2DC\uC2A4\uD15C \uC0C1\uD0DC", icon: /* @__PURE__ */ React.createElement(IcServer, null) }
+  ] }
+];
+function adminFetch(path) {
+  if (typeof window !== "undefined" && window.__apiFetch) return window.__apiFetch(path, { method: "GET" });
+  return Promise.reject(new Error("no api"));
+}
+function fmtDate(d) {
+  if (!d) return "\u2014";
+  try {
+    const t = new Date(d);
+    if (!isNaN(t)) return t.toISOString().slice(0, 10);
+  } catch (e) {
+  }
+  return String(d);
+}
+function fmtDateTime(d) {
+  if (!d) return "\u2014";
+  try {
+    const t = new Date(d);
+    if (!isNaN(t)) return t.toISOString().slice(0, 16).replace("T", " ");
+  } catch (e) {
+  }
+  return String(d);
+}
+const planChip = (p) => ({
+  trial: /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "sm" }, "\uCCB4\uD5D8\uC911"),
+  active: /* @__PURE__ */ React.createElement(Chip, { tone: "success", size: "sm" }, "\uACB0\uC81C\uC911"),
+  past_due: /* @__PURE__ */ React.createElement(Chip, { tone: "warning", size: "sm" }, "\uC5F0\uCCB4"),
+  canceled: /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, "\uD574\uC9C0"),
+  expired: /* @__PURE__ */ React.createElement(Chip, { tone: "danger", size: "sm" }, "\uB9CC\uB8CC")
+})[p];
+const statusChip = (s) => ({
+  active: /* @__PURE__ */ React.createElement(Chip, { tone: "success", size: "sm", leading: /* @__PURE__ */ React.createElement(IcDot, { size: 6 }) }, "\uD65C\uC131"),
+  disabled: /* @__PURE__ */ React.createElement(Chip, { tone: "danger", size: "sm", leading: /* @__PURE__ */ React.createElement(IcDot, { size: 6 }) }, "\uBE44\uD65C\uC131")
+})[s];
+const roleChip = (r) => ({
+  student: /* @__PURE__ */ React.createElement(Chip, { tone: "brand", size: "sm" }, "\uD559\uC0DD"),
+  teacher: /* @__PURE__ */ React.createElement(Chip, { tone: "purple", size: "sm" }, "\uAD50\uC0AC"),
+  admin: /* @__PURE__ */ React.createElement(Chip, { tone: "warning", size: "sm" }, "\uAD00\uB9AC\uC790")
+})[r];
+function AdminSidebar({ activeId, onChange }) {
+  return /* @__PURE__ */ React.createElement("aside", { style: {
+    width: 240,
+    flexShrink: 0,
+    background: "#101727",
+    color: "#fff",
+    display: "flex",
+    flexDirection: "column",
+    padding: "20px 12px 16px"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "0 8px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 28, height: 28, borderRadius: 8, background: "var(--brand-500)", display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(IcShield, { size: 16, color: "#fff" })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, "\uC9C4\uB85C\uB098\uCE68\uBC18"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#94A3B8" } }, "Super Admin"))), /* @__PURE__ */ React.createElement("nav", { style: { display: "flex", flexDirection: "column", gap: 16, overflow: "auto" }, className: "toss-scroll" }, ADMIN_NAV.map((group) => /* @__PURE__ */ React.createElement("div", { key: group.section }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: 1, padding: "0 12px 6px" } }, group.section), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 1 } }, group.items.map((it) => {
+    const active = activeId === it.id;
+    return /* @__PURE__ */ React.createElement("button", { key: it.id, onClick: () => onChange(it.id), style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "8px 12px",
+      border: "none",
+      borderRadius: 8,
+      background: active ? "rgba(49,130,246,0.18)" : "transparent",
+      color: active ? "#7AB4FF" : "#CBD5E1",
+      fontSize: 13,
+      fontWeight: active ? 600 : 500,
+      cursor: "pointer",
+      textAlign: "left",
+      width: "100%"
+    } }, React.cloneElement(it.icon, { size: 16 }), /* @__PURE__ */ React.createElement("span", null, it.label));
+  }))))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("div", { style: {
+    padding: 10,
+    background: "rgba(34,197,94,0.12)",
+    borderRadius: 8,
+    fontSize: 11,
+    color: "#86EFAC",
+    display: "flex",
+    alignItems: "center",
+    gap: 6
+  } }, /* @__PURE__ */ React.createElement("span", { style: { width: 6, height: 6, borderRadius: "50%", background: "#22C55E" } }), "\uBAA8\uB4E0 \uC2DC\uC2A4\uD15C \uC815\uC0C1"));
+}
+function AdminTopbar({ title, subtitle, action }) {
+  const [me, setMe] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await adminFetch("/auth/me");
+        if (alive) setMe(r && r.data || r || {});
+      } catch (e) {
+        if (alive) setMe({});
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const adminName = me && me.name || "\uAD00\uB9AC\uC790";
+  return /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 24px",
+    borderBottom: "1px solid var(--line-subtle)",
+    background: "var(--bg-surface)"
+  } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, title), subtitle && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", marginTop: 2 } }, subtitle)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, action, /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 12px",
+    background: "var(--bg-muted)",
+    borderRadius: 10,
+    fontSize: 12,
+    color: "var(--fg-muted)"
+  } }, /* @__PURE__ */ React.createElement(Avatar, { name: adminName[0], size: 22 }), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 600, color: "var(--fg-strong)" } }, adminName))));
+}
+function AdminDashboard({ go }) {
+  const [stats, setStats] = React.useState(null);
+  const [recent, setRecent] = React.useState(null);
+  const [err, setErr] = React.useState(false);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await adminFetch("/admin/stats");
+        if (alive) setStats(res && res.data || {});
+      } catch (e) {
+        if (alive) {
+          setStats({});
+          setErr(true);
+        }
+      }
+    })();
+    (async () => {
+      try {
+        const res = await adminFetch("/admin/ai-usage");
+        if (alive) setRecent(res && res.data && res.data.recent || []);
+      } catch (e) {
+        if (alive) setRecent([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const loading = stats === null;
+  const u = stats && stats.users || {};
+  const ai = stats && stats.ai || {};
+  const c = stats && stats.content || {};
+  const n = (v) => (v == null ? 0 : v).toLocaleString();
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(AdminTopbar, { title: "\uC6B4\uC601 \uB300\uC2DC\uBCF4\uB4DC", subtitle: "\uC2E4\uC2DC\uAC04 \uC9D1\uACC4 \uAE30\uC900" }), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: 24, background: "var(--bg-canvas)" } }, loading ? /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 16 } }, [0, 1, 2, 3, 4, 5].map((i) => /* @__PURE__ */ React.createElement(Card, { key: i, padding: 18 }, /* @__PURE__ */ React.createElement(Skeleton, { width: "60%", height: 12 }), /* @__PURE__ */ React.createElement(Skeleton, { width: "40%", height: 24, style: { marginTop: 12 } })))) : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(MetricCard, { label: "\uCD1D \uC0AC\uC6A9\uC790", value: n(u.total), icon: /* @__PURE__ */ React.createElement(IcUsers, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uD559\uC0DD", value: n(u.students), icon: /* @__PURE__ */ React.createElement(IcUser, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uAD50\uC0AC", value: n(u.teachers), icon: /* @__PURE__ */ React.createElement(IcGraduation, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "AI \uC138\uC158", value: n(ai.sessions), icon: /* @__PURE__ */ React.createElement(IcSparkles, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uB9AC\uD3EC\uD2B8", value: n(ai.reports), icon: /* @__PURE__ */ React.createElement(IcStar, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uD559\uACFC \uB370\uC774\uD130", value: n(c.departments), icon: /* @__PURE__ */ React.createElement(IcServer, { size: 16 }) })), !loading && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(MetricCard, { label: "\uD65C\uC131 \uC0AC\uC6A9\uC790", value: n(u.active), icon: /* @__PURE__ */ React.createElement(IcUsers, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uBD09\uC0AC \uB370\uC774\uD130", value: n(c.volunteers), icon: /* @__PURE__ */ React.createElement(IcMessage, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uC7A5\uD559\uAE08 \uB370\uC774\uD130", value: n(c.scholarships), icon: /* @__PURE__ */ React.createElement(IcCreditCard, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uD574\uC678\uB300\uD559 \uB370\uC774\uD130", value: n(c.foreignUniv), icon: /* @__PURE__ */ React.createElement(IcGraduation, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } }, /* @__PURE__ */ React.createElement(
+    SectionCard,
+    {
+      title: "\uCD5C\uADFC AI \uC0C1\uB2F4 \uC138\uC158",
+      subtitle: "\uC138\uC158 \uBA54\uD0C0\uB370\uC774\uD130 (\uB0B4\uC6A9 \uBE44\uACF5\uAC1C)",
+      action: /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", trailing: /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14 }), onClick: () => go && go("ai-usage") }, "\uC804\uCCB4")
+    },
+    /* @__PURE__ */ React.createElement(RecentSessions, { recent, mini: true })
+  ), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uAC10\uC0AC \uB85C\uADF8" }, /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcServer, { size: 22 }), title: "\uAC10\uC0AC \uB85C\uADF8 \uC5F0\uB3D9 \uC608\uC815", body: "\uAD00\uB9AC\uC790 \uC870\uCE58 \uAC10\uC0AC \uB85C\uADF8\uB294 \uBC31\uC5D4\uB4DC \uC5F0\uB3D9 \uD6C4 \uC81C\uACF5\uB429\uB2C8\uB2E4." }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } }, /* @__PURE__ */ React.createElement(SectionCard, { title: "\uCF58\uD150\uCE20 \uB370\uC774\uD130", padding: 18 }, loading ? /* @__PURE__ */ React.createElement(Skeleton, { height: 120 }) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, [
+    { label: "\uD559\uACFC", value: c.departments, icon: /* @__PURE__ */ React.createElement(IcServer, { size: 14 }) },
+    { label: "\uC131\uC801 \uB808\uCF54\uB4DC", value: c.grades, icon: /* @__PURE__ */ React.createElement(IcStar, { size: 14 }) },
+    { label: "\uBD09\uC0AC\uD65C\uB3D9", value: c.volunteers, icon: /* @__PURE__ */ React.createElement(IcMessage, { size: 14 }) },
+    { label: "\uC7A5\uD559\uAE08", value: c.scholarships, icon: /* @__PURE__ */ React.createElement(IcCreditCard, { size: 14 }) },
+    { label: "\uD574\uC678\uB300\uD559", value: c.foreignUniv, icon: /* @__PURE__ */ React.createElement(IcGraduation, { size: 14 }) }
+  ].map((s, i, arr) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--line-subtle)" : "none" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 28, height: 28, borderRadius: 8, background: "var(--bg-muted)", color: "var(--fg-muted)", display: "flex", alignItems: "center", justifyContent: "center" } }, s.icon), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, fontSize: 13, fontWeight: 600, color: "var(--fg-strong)" } }, s.label), /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontWeight: 700, color: "var(--fg-strong)" } }, n(s.value), "\uAC74"))))), /* @__PURE__ */ React.createElement(SectionCard, { title: "AI \uC0C1\uB2F4 \uC9D1\uACC4", padding: 18 }, loading ? /* @__PURE__ */ React.createElement(Skeleton, { height: 80 }) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, [
+    { label: "\uCD1D \uC138\uC158", value: ai.sessions },
+    { label: "\uCD1D \uBA54\uC2DC\uC9C0", value: ai.messages },
+    { label: "\uC0DD\uC131\uB41C \uB9AC\uD3EC\uD2B8", value: ai.reports }
+  ].map((s, i, arr) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--line-subtle)" : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--fg-muted)" } }, s.label), /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontWeight: 700, color: "var(--fg-strong)" } }, n(s.value))))))))));
+}
+function RecentSessions({ recent, mini }) {
+  if (recent === null) {
+    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement(Skeleton, { key: i, height: 40 })));
+  }
+  if (!recent.length) {
+    return /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcMessage, { size: 22 }), title: "\uCD5C\uADFC \uC0C1\uB2F4 \uC138\uC158\uC774 \uC5C6\uC5B4\uC694", body: "\uD559\uC0DD\uC774 AI \uC0C1\uB2F4\uC744 \uC2DC\uC791\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uD45C\uC2DC\uB3FC\uC694." });
+  }
+  const items = mini ? recent.slice(0, 5) : recent;
+  const sChip = (s) => ({
+    active: /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "sm" }, "\uC9C4\uD589"),
+    completed: /* @__PURE__ */ React.createElement(Chip, { tone: "success", size: "sm" }, "\uC644\uB8CC"),
+    report_ready: /* @__PURE__ */ React.createElement(Chip, { tone: "success", size: "sm" }, "\uB9AC\uD3EC\uD2B8 \uC644\uB8CC")
+  })[s] || /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, s || "\u2014");
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column" } }, items.map((it, i) => {
+    var _a, _b;
+    return /* @__PURE__ */ React.createElement("div", { key: it.id || i, style: { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: i < items.length - 1 ? "1px solid var(--line-subtle)" : "none" } }, /* @__PURE__ */ React.createElement(Avatar, { name: (it.student || "?").slice(0, 1), size: 32 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)" } }, it.student || "\uC775\uBA85"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" } }, "\uBA54\uC2DC\uC9C0 ", (_a = it.messages) != null ? _a : 0, " \xB7 \uB2E8\uC11C ", (_b = it.signals) != null ? _b : 0)), sChip(it.status), /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontSize: 11, color: "var(--fg-subtle)", minWidth: 92, textAlign: "right" } }, fmtDateTime(it.startedAt)));
+  }));
+}
+function AdminUsers() {
+  const [q, setQ] = React.useState("");
+  const [role, setRole] = React.useState("all");
+  const [selectedUser, setSelectedUser] = React.useState(null);
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [rows, setRows] = React.useState(null);
+  const [total, setTotal] = React.useState(null);
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try {
+      const params = new URLSearchParams();
+      if (role !== "all") params.set("role", role);
+      if (q.trim()) params.set("q", q.trim());
+      params.set("limit", "50");
+      const res = await adminFetch("/admin/users?" + params.toString());
+      const list2 = res && res.data || [];
+      setRows(list2);
+      setTotal(res && res.meta && res.meta.count != null ? res.meta.count : list2.length);
+    } catch (e) {
+      setRows([]);
+      setTotal(0);
+    }
+  }, [q, role]);
+  React.useEffect(() => {
+    const id = setTimeout(load, 300);
+    return () => clearTimeout(id);
+  }, [load]);
+  const loading = rows === null;
+  const list = rows || [];
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(
+    AdminTopbar,
+    {
+      title: "\uC0AC\uC6A9\uC790",
+      subtitle: loading ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : `\uD604\uC7AC ${total != null ? total : list.length}\uAC74 \uD45C\uC2DC`,
+      action: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", leading: /* @__PURE__ */ React.createElement(IcDownload, { size: 14 }), onClick: () => exportReportPDF("\uC0AC\uC6A9\uC790 \uBAA9\uB85D", ["\uC774\uB984", "\uC774\uBA54\uC77C", "\uC5ED\uD560", "\uD559\uAD50", "\uD559\uAE09", "\uAC00\uC785\uC77C", "\uC0C1\uD0DC"], list.map((u) => [u.name, u.email, u.role, u.school || "", u.classroom || "", fmtDate(u.createdAt), u.status]), { "\uC5ED\uD560": role === "all" ? "\uC804\uCCB4" : role }) }, "PDF \uB0B4\uBCF4\uB0B4\uAE30"), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "sm", leading: /* @__PURE__ */ React.createElement(IcPlus, { size: 14 }), onClick: () => setAddOpen(true) }, "\uC0AC\uC6A9\uC790 \uCD94\uAC00"))
+    }
+  ), /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 24px 12px", display: "flex", gap: 12, alignItems: "center", background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(TextInput, { value: q, onChange: setQ, placeholder: "\uC774\uB984, \uC774\uBA54\uC77C \uAC80\uC0C9", leading: /* @__PURE__ */ React.createElement(IcSearch, { size: 16 }), style: { flex: 1, maxWidth: 320, height: 40 } }), /* @__PURE__ */ React.createElement(Tabs, { items: [
+    { id: "all", label: "\uC804\uCCB4" },
+    { id: "student", label: "\uD559\uC0DD" },
+    { id: "teacher", label: "\uAD50\uC0AC" },
+    { id: "admin", label: "\uAD00\uB9AC\uC790" }
+  ], activeId: role, onChange: setRole })), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: "0 24px 24px", background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(Card, { padding: 0, style: { minWidth: 880 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    display: "grid",
+    gridTemplateColumns: "2.2fr 1fr 1.4fr 1.2fr 1.2fr 1fr 36px",
+    padding: "12px 20px",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "var(--fg-muted)",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    borderBottom: "1px solid var(--line-subtle)"
+  } }, /* @__PURE__ */ React.createElement("span", null, "\uC0AC\uC6A9\uC790"), /* @__PURE__ */ React.createElement("span", null, "\uC5ED\uD560"), /* @__PURE__ */ React.createElement("span", null, "\uD559\uAD50"), /* @__PURE__ */ React.createElement("span", null, "\uD559\uAE09"), /* @__PURE__ */ React.createElement("span", null, "\uAC00\uC785\uC77C"), /* @__PURE__ */ React.createElement("span", null, "\uC0C1\uD0DC"), /* @__PURE__ */ React.createElement("span", null)), loading ? [0, 1, 2, 3, 4].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", borderBottom: "1px solid var(--line-subtle)" } }, /* @__PURE__ */ React.createElement(Skeleton, { width: 32, height: 32, radius: 16 }), /* @__PURE__ */ React.createElement(Skeleton, { width: "40%", height: 14 }))) : list.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 24 } }, /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcUsers, { size: 22 }), title: "\uD45C\uC2DC\uD560 \uC0AC\uC6A9\uC790\uAC00 \uC5C6\uC5B4\uC694", body: q.trim() ? "\uAC80\uC0C9 \uC870\uAC74\uC744 \uBC14\uAFD4\uBCF4\uC138\uC694." : "\uC544\uC9C1 \uAC00\uC785\uD55C \uC0AC\uC6A9\uC790\uAC00 \uC5C6\uC5B4\uC694." })) : list.map((u, i) => /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      key: u.id,
+      onClick: () => setSelectedUser(u),
+      style: {
+        display: "grid",
+        gridTemplateColumns: "2.2fr 1fr 1.4fr 1.2fr 1.2fr 1fr 36px",
+        padding: "14px 20px",
+        alignItems: "center",
+        fontSize: 13,
+        borderBottom: i < list.length - 1 ? "1px solid var(--line-subtle)" : "none",
+        cursor: "pointer",
+        transition: "background 120ms"
+      },
+      onMouseEnter: (e) => e.currentTarget.style.background = "var(--bg-muted)",
+      onMouseLeave: (e) => e.currentTarget.style.background = "transparent"
+    },
+    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement(Avatar, { name: (u.name || "?").slice(0, 1), size: 32 }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, color: "var(--fg-strong)" } }, u.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" } }, u.email))),
+    /* @__PURE__ */ React.createElement("div", null, roleChip(u.role)),
+    /* @__PURE__ */ React.createElement("div", { style: { color: "var(--fg-default)" } }, u.school || "\u2014"),
+    /* @__PURE__ */ React.createElement("div", { style: { color: "var(--fg-default)" } }, u.classroom || "\u2014"),
+    /* @__PURE__ */ React.createElement("div", { className: "num", style: { color: "var(--fg-muted)", fontSize: 12 } }, fmtDate(u.createdAt)),
+    /* @__PURE__ */ React.createElement("div", null, statusChip(u.status)),
+    /* @__PURE__ */ React.createElement(IcChevronRight, { size: 16, color: "var(--fg-subtle)" })
+  )))), selectedUser && /* @__PURE__ */ React.createElement(UserDetailDrawer, { user: selectedUser, onClose: () => setSelectedUser(null) }), addOpen && /* @__PURE__ */ React.createElement(AddUserDialog, { onClose: () => setAddOpen(false) }));
+}
+function AddUserDialog({ onClose }) {
+  const [f, setF] = React.useState({ name: "", email: "", role: "student" });
+  const trapRef = useFocusTrap(true, onClose);
+  const can = f.name.trim() && f.email.includes("@");
+  return /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.5)" } }), /* @__PURE__ */ React.createElement("div", { ref: trapRef, role: "dialog", "aria-modal": "true", "aria-label": "\uC0AC\uC6A9\uC790 \uCD94\uAC00", style: { position: "relative", width: 420, maxWidth: "94%", background: "var(--bg-elevated)", borderRadius: 20, padding: 24, boxShadow: "var(--shadow-pop)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, "\uC0AC\uC6A9\uC790 \uCD94\uAC00"), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 20 }), onClick: onClose, ariaLabel: "\uB2EB\uAE30" })), /* @__PURE__ */ React.createElement(FormField, { label: "\uC774\uB984", required: true, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(TextInput, { value: f.name, onChange: (v) => setF((s) => ({ ...s, name: v })), placeholder: "\uC608) \uAE40\uBBFC\uC9C0" })), /* @__PURE__ */ React.createElement(FormField, { label: "\uC774\uBA54\uC77C", required: true, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(TextInput, { value: f.email, onChange: (v) => setF((s) => ({ ...s, email: v })), placeholder: "email@example.com", type: "email" })), /* @__PURE__ */ React.createElement(FormField, { label: "\uC5ED\uD560", style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "student", label: "\uD559\uC0DD" }, { id: "teacher", label: "\uAD50\uC0AC" }, { id: "admin", label: "\uAD00\uB9AC\uC790" }], activeId: f.role, onChange: (v) => setF((s) => ({ ...s, role: v })) })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: onClose }, "\uCDE8\uC18C"), /* @__PURE__ */ React.createElement(Button, { variant: "primary", full: true, disabled: !can, onClick: () => {
+    showToast("\uC0AC\uC6A9\uC790 \uCD94\uAC00 \uAE30\uB2A5\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694", "info");
+    onClose();
+  } }, "\uCD94\uAC00\uD558\uACE0 \uCD08\uB300"))));
+}
+function UserDetailDrawer({ user, onClose }) {
+  const [confirmDisable, setConfirmDisable] = React.useState(false);
+  const trapRef = useFocusTrap(true, onClose);
+  return /* @__PURE__ */ React.createElement("div", { style: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 50,
+    display: "flex",
+    justifyContent: "flex-end"
+  } }, /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.4)", animation: "fadeIn 200ms" } }), /* @__PURE__ */ React.createElement("div", { ref: trapRef, role: "dialog", "aria-modal": "true", "aria-label": `${user.name} \uC0C1\uC138`, style: {
+    position: "relative",
+    width: 480,
+    background: "var(--bg-elevated)",
+    height: "100%",
+    boxShadow: "var(--shadow-pop)",
+    overflow: "auto",
+    animation: "slideRight 280ms var(--ease-toss)"
+  }, className: "toss-scroll" }, /* @__PURE__ */ React.createElement("style", null, `@keyframes slideRight { from { transform: translateX(100%); } to { transform: translateX(0); } }`), /* @__PURE__ */ React.createElement("div", { style: { padding: 24, borderBottom: "1px solid var(--line-subtle)", display: "flex", alignItems: "center", gap: 14 } }, /* @__PURE__ */ React.createElement(Avatar, { name: (user.name || "?").slice(0, 1), size: 56 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--fg-strong)" } }, user.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", fontFamily: "monospace" } }, user.id), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } }, roleChip(user.role), statusChip(user.status))), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 20 }), onClick: onClose })), /* @__PURE__ */ React.createElement("div", { style: { padding: 24, display: "flex", flexDirection: "column", gap: 16 } }, /* @__PURE__ */ React.createElement(SectionCard, { title: "\uAE30\uBCF8 \uC815\uBCF4", padding: 18 }, /* @__PURE__ */ React.createElement(KVRow, { k: "\uC774\uBA54\uC77C", v: user.email }), /* @__PURE__ */ React.createElement(KVRow, { k: "\uAC00\uC785\uC77C", v: fmtDate(user.createdAt) }), /* @__PURE__ */ React.createElement(KVRow, { k: "\uD559\uAD50", v: user.school || "\u2014" }), /* @__PURE__ */ React.createElement(KVRow, { k: "\uD559\uAE09", v: user.classroom || "\u2014" }), user.grade != null && /* @__PURE__ */ React.createElement(KVRow, { k: "\uD559\uB144", v: String(user.grade) })), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC704\uD5D8 \uC791\uC5C5", padding: 18 }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "md", full: true, onClick: () => showToast("\uBE44\uBC00\uBC88\uD638 \uC7AC\uC124\uC815 \uAE30\uB2A5\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694", "info") }, "\uBE44\uBC00\uBC88\uD638 \uC7AC\uC124\uC815 \uBA54\uC77C \uBCF4\uB0B4\uAE30"), /* @__PURE__ */ React.createElement(Button, { variant: "danger", size: "md", full: true, onClick: () => setConfirmDisable(true), leading: /* @__PURE__ */ React.createElement(IcLock, { size: 14 }) }, "\uACC4\uC815 \uBE44\uD65C\uC131\uD654")), /* @__PURE__ */ React.createElement("div", { style: {
+    padding: 10,
+    background: "var(--warning-bg)",
+    color: "var(--warning)",
+    borderRadius: 8,
+    fontSize: 12,
+    marginTop: 10,
+    lineHeight: 1.5
+  }, className: "kr-heading" }, "\u26A0 \uAD00\uB9AC\uC790 \uC870\uCE58 \uBC31\uC5D4\uB4DC\uB294 \uC900\uBE44 \uC911\uC774\uC5D0\uC694. \uD604\uC7AC\uB294 \uB3D9\uC791\uD558\uC9C0 \uC54A\uC544\uC694.")))), /* @__PURE__ */ React.createElement(
+    ConfirmDialog,
+    {
+      open: confirmDisable,
+      title: `${user.name}\uB2D8\uC744 \uBE44\uD65C\uC131\uD654\uD560\uAE4C\uC694?`,
+      body: "\uACC4\uC815 \uBE44\uD65C\uC131\uD654 \uBC31\uC5D4\uB4DC\uB294 \uC900\uBE44 \uC911\uC774\uC5D0\uC694. \uC9C0\uAE08\uC740 \uC2E4\uC81C\uB85C \uC801\uC6A9\uB418\uC9C0 \uC54A\uC544\uC694.",
+      confirmLabel: "\uD655\uC778",
+      cancelLabel: "\uCDE8\uC18C",
+      danger: true,
+      onConfirm: () => {
+        setConfirmDisable(false);
+        showToast("\uACC4\uC815 \uBE44\uD65C\uC131\uD654 \uAE30\uB2A5\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694", "info");
+      },
+      onCancel: () => setConfirmDisable(false)
+    }
+  ));
+}
+function KVRow({ k, v }) {
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 13, borderBottom: "1px solid var(--line-subtle)" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--fg-muted)" } }, k), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--fg-strong)", fontWeight: 600 } }, v));
+}
+function AdminPayments() {
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(AdminTopbar, { title: "\uACB0\uC81C \uC774\uBCA4\uD2B8", subtitle: "\uACB0\uC81C \uC5F0\uB3D9 \uC900\uBE44 \uC911" }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-canvas)", padding: 24 } }, /* @__PURE__ */ React.createElement(Card, { padding: 32, style: { width: 480, textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+    EmptyState,
+    {
+      icon: /* @__PURE__ */ React.createElement(IcCreditCard, { size: 24 }),
+      title: "\uACB0\uC81C \uC5F0\uB3D9\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694",
+      body: "\uD604\uC7AC\uB294 \uBB34\uB8CC \uCCB4\uD5D8 \uBAA8\uB4DC\uB85C \uC6B4\uC601\uB3FC\uC694. \uACB0\uC81C\xB7\uD658\uBD88\xB7Webhook \uB370\uC774\uD130\uB294 \uACB0\uC81C PG \uC5F0\uB3D9 \uD6C4 \uC81C\uACF5\uB429\uB2C8\uB2E4."
+    }
+  ))));
+}
+function AdminAuditLogs() {
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(AdminTopbar, { title: "\uAC10\uC0AC \uB85C\uADF8", subtitle: "\uAD00\uB9AC\uC790 \uC870\uCE58 \uAC10\uC0AC \uB85C\uADF8 \uC900\uBE44 \uC911" }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-canvas)", padding: 24 } }, /* @__PURE__ */ React.createElement(Card, { padding: 32, style: { width: 480, textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+    EmptyState,
+    {
+      icon: /* @__PURE__ */ React.createElement(IcServer, { size: 24 }),
+      title: "\uAC10\uC0AC \uB85C\uADF8 \uC5F0\uB3D9\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694",
+      body: "\uAD00\uB9AC\uC790 \uC870\uCE58\uB97C \uC0AC\uC720\uC640 \uD568\uAED8 \uAE30\uB85D\uD558\uB294 \uAC10\uC0AC \uB85C\uADF8 \uBC31\uC5D4\uB4DC\uB294 \uC544\uC9C1 \uC5F0\uB3D9\uB418\uC9C0 \uC54A\uC558\uC5B4\uC694."
+    }
+  ))));
+}
+function AdminSystem() {
+  var _a, _b, _c, _d, _e;
+  const [data, setData] = React.useState(null);
+  const [err, setErr] = React.useState(false);
+  const load = React.useCallback(async () => {
+    setErr(false);
+    setData(null);
+    try {
+      const res2 = await adminFetch("/admin/system/health");
+      setData(res2 && res2.data || {});
+    } catch (e) {
+      setErr(true);
+      setData({});
+    }
+  }, []);
+  React.useEffect(() => {
+    load();
+  }, [load]);
+  const statusTone = (s) => s === "ok" ? "success" : s === "down" ? "danger" : s === "preparing" || s === "planned" ? "neutral" : "warning";
+  const statusLabel = (s) => s === "ok" ? "OK" : s === "down" ? "\uB2E4\uC6B4" : s === "preparing" ? "\uC900\uBE44 \uC911" : s || "\u2014";
+  if (data === null) {
+    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(AdminTopbar, { title: "\uC2DC\uC2A4\uD15C \uC0C1\uD0DC", subtitle: "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" }), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: 24, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(Skeleton, { height: 100, style: { marginBottom: 16 } }), /* @__PURE__ */ React.createElement(Skeleton, { height: 140, style: { marginBottom: 16 } }), /* @__PURE__ */ React.createElement(Skeleton, { height: 120 })));
+  }
+  if (err) {
+    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(
+      AdminTopbar,
+      {
+        title: "\uC2DC\uC2A4\uD15C \uC0C1\uD0DC",
+        subtitle: "\uD655\uC778 \uBD88\uAC00",
+        action: /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", leading: /* @__PURE__ */ React.createElement(IcRefresh, { size: 14 }), onClick: load }, "\uC0C8\uB85C\uACE0\uCE68")
+      }
+    ), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-canvas)", padding: 24 } }, /* @__PURE__ */ React.createElement(Card, { padding: 32, style: { width: 480, textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+      EmptyState,
+      {
+        icon: /* @__PURE__ */ React.createElement(IcServer, { size: 24 }),
+        title: "\uC2DC\uC2A4\uD15C \uC0C1\uD0DC\uB97C \uD655\uC778\uD560 \uC218 \uC5C6\uC5B4\uC694",
+        body: "\uD5EC\uC2A4 \uC5D4\uB4DC\uD3EC\uC778\uD2B8\uC5D0 \uC5F0\uACB0\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.",
+        action: /* @__PURE__ */ React.createElement(Button, { variant: "secondary", size: "sm", leading: /* @__PURE__ */ React.createElement(IcRefresh, { size: 14 }), onClick: load }, "\uB2E4\uC2DC \uC2DC\uB3C4")
+      }
+    ))));
+  }
+  const build = data.build || {};
+  const svc = data.services || {};
+  const res = data.resources || {};
+  const ai = svc.aiProvider || {};
+  const recentErrors = data.recentErrors || [];
+  const recentDeploys = data.recentDeploys || [];
+  const allOk = ["api", "db", "redis", "sse"].every((k) => !svc[k] || svc[k].status === "ok");
+  const serviceCards = [
+    svc.api && { name: "API \uC11C\uBC84", status: statusLabel(svc.api.status), detail: "\uC560\uD50C\uB9AC\uCF00\uC774\uC158 \uC11C\uBC84", icon: /* @__PURE__ */ React.createElement(IcServer, null), tone: statusTone(svc.api.status) },
+    svc.db && { name: "DB (PostgreSQL)", status: statusLabel(svc.db.status), detail: "Prisma \xB7 SELECT 1 \uD5EC\uC2A4\uCCB4\uD06C", icon: /* @__PURE__ */ React.createElement(IcDb, null), tone: statusTone(svc.db.status) },
+    svc.redis && { name: "Redis", status: statusLabel(svc.redis.status), detail: "PING \uD5EC\uC2A4\uCCB4\uD06C", icon: /* @__PURE__ */ React.createElement(IcZap, null), tone: statusTone(svc.redis.status) },
+    svc.queue && { name: "BullMQ Queue", status: statusLabel(svc.queue.status), detail: `\uB300\uAE30 ${(_a = svc.queue.pendingJobs) != null ? _a : 0} \xB7 \uC2E4\uD328 ${(_b = svc.queue.failedJobs) != null ? _b : 0}`, icon: /* @__PURE__ */ React.createElement(IcRefresh, null), tone: statusTone(svc.queue.status) },
+    svc.sse && { name: "SSE", status: statusLabel(svc.sse.status), detail: "\uC2A4\uD2B8\uB9AC\uBC0D \uC5F0\uACB0", icon: /* @__PURE__ */ React.createElement(IcWifi, null), tone: statusTone(svc.sse.status) }
+  ].filter(Boolean);
+  const providerCards = [
+    ai.primary && { name: "AI Provider", status: statusLabel(ai.primary.status), detail: `${ai.primary.name || "\u2014"}${ai.fallback ? " \xB7 fallback " + (ai.fallback.name || "") : ""}`, icon: /* @__PURE__ */ React.createElement(IcSparkles, null), tone: statusTone(ai.primary.status) },
+    svc.paymentProvider && { name: "\uACB0\uC81C Provider", status: svc.paymentProvider.mode === "preparing" ? "\uC900\uBE44 \uC911" : statusLabel(svc.paymentProvider.status), detail: `${svc.paymentProvider.name || "none"}${svc.paymentProvider.mode ? " \xB7 " + svc.paymentProvider.mode : ""}`, icon: /* @__PURE__ */ React.createElement(IcCreditCard, null), tone: svc.paymentProvider.mode === "preparing" ? "warning" : statusTone(svc.paymentProvider.status) },
+    svc.oauth && { name: "OAuth", status: "\u2014", detail: `Google ${statusLabel((svc.oauth.google || {}).status)} \xB7 \uCE74\uCE74\uC624 ${statusLabel((svc.oauth.kakao || {}).status)}`, icon: /* @__PURE__ */ React.createElement(IcGoogle, null), tone: "neutral" }
+  ].filter(Boolean);
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(
+    AdminTopbar,
+    {
+      title: "\uC2DC\uC2A4\uD15C \uC0C1\uD0DC",
+      subtitle: "\uBC30\uD3EC \uD658\uACBD \xB7 \uC11C\uBE44\uC2A4 \xB7 \uC678\uBD80 \uC758\uC874\uC131 \xB7 \uB9AC\uC18C\uC2A4",
+      action: /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", leading: /* @__PURE__ */ React.createElement(IcRefresh, { size: 14 }), onClick: load }, "\uC0C8\uB85C\uACE0\uCE68"), /* @__PURE__ */ React.createElement(Chip, { tone: allOk ? "success" : "warning", size: "md", leading: /* @__PURE__ */ React.createElement(IcDot, { size: 6 }) }, allOk ? "\uBAA8\uB4E0 \uC2DC\uC2A4\uD15C \uC815\uC0C1" : "\uC810\uAC80 \uD544\uC694"))
+    }
+  ), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: 24, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(SectionCard, { title: "\uBC30\uD3EC / \uB7F0\uD0C0\uC784", subtitle: "\uD604\uC7AC \uB77C\uC774\uBE0C \uD658\uACBD", style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 } }, /* @__PURE__ */ React.createElement(InfoTile, { label: "\uBC30\uD3EC \uBC84\uC804", value: build.version || "\u2014", tone: "success" }), /* @__PURE__ */ React.createElement(InfoTile, { label: "Git SHA", value: build.gitSha || "\u2014", mono: true }), /* @__PURE__ */ React.createElement(InfoTile, { label: "\uD658\uACBD", value: build.env || "\u2014" }), /* @__PURE__ */ React.createElement(InfoTile, { label: "Node \uBC84\uC804", value: build.nodeVersion || "\u2014", mono: true }), /* @__PURE__ */ React.createElement(InfoTile, { label: "Uptime", value: build.uptimeSec != null ? `${Math.floor(build.uptimeSec / 3600)}h ${Math.floor(build.uptimeSec % 3600 / 60)}m` : "\u2014", sub: build.region ? `region ${build.region}` : "" }))), serviceCards.length > 0 && /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC11C\uBE44\uC2A4 \uC0C1\uD0DC", subtitle: "API \xB7 DB \xB7 Redis \xB7 Queue \xB7 SSE", style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 } }, serviceCards.map((s, i) => /* @__PURE__ */ React.createElement(ServiceCard, { key: i, ...s })))), providerCards.length > 0 && /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC678\uBD80 Provider", subtitle: "AI \xB7 \uACB0\uC81C \xB7 OAuth", style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 } }, providerCards.map((s, i) => /* @__PURE__ */ React.createElement(ServiceCard, { key: i, ...s })))), res.memory && /* @__PURE__ */ React.createElement(SectionCard, { title: "\uB9AC\uC18C\uC2A4 \uC0AC\uC6A9\uB7C9", subtitle: "\uD504\uB85C\uC138\uC2A4", style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 } }, /* @__PURE__ */ React.createElement(InfoTile, { label: "RSS \uBA54\uBAA8\uB9AC", value: `${(_c = res.memory.usedMB) != null ? _c : 0} MB` }), /* @__PURE__ */ React.createElement(InfoTile, { label: "Heap \uC0AC\uC6A9\uB7C9", value: `${(_d = res.memory.heapMB) != null ? _d : 0} MB` }), /* @__PURE__ */ React.createElement(InfoTile, { label: "CPU \uCF54\uC5B4", value: String((_e = res.cpu && res.cpu.cores) != null ? _e : "\u2014") }))), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uCD5C\uADFC \uC624\uB958", subtitle: "\uCD5C\uADFC 24\uC2DC\uAC04", style: { marginBottom: 16 } }, recentErrors.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcServer, { size: 22 }), title: "\uAE30\uB85D\uB41C \uC624\uB958\uAC00 \uC5C6\uC5B4\uC694", body: "\uCD5C\uADFC \uC624\uB958 \uC9D1\uACC4 \uB370\uC774\uD130\uAC00 \uBE44\uC5B4 \uC788\uC5B4\uC694." }) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column" } }, recentErrors.map((e, i, arr) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "grid", gridTemplateColumns: "60px 160px 1fr 80px", padding: "12px 0", alignItems: "center", fontSize: 12, borderBottom: i < arr.length - 1 ? "1px solid var(--line-subtle)" : "none", gap: 12 } }, /* @__PURE__ */ React.createElement(Chip, { tone: e.level === "error" ? "danger" : "warning", size: "sm" }, e.level || "\u2014"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "monospace", fontWeight: 700, color: "var(--fg-strong)" } }, e.code || "\u2014"), /* @__PURE__ */ React.createElement("span", { style: { color: "var(--fg-default)" }, className: "kr-heading" }, e.msg || ""), /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontWeight: 700, color: "var(--fg-strong)" } }, e.count != null ? `${e.count}\uD68C` : ""))))), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uCD5C\uADFC \uBC30\uD3EC \uAE30\uB85D", style: { marginBottom: 16 } }, recentDeploys.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcServer, { size: 22 }), title: "\uBC30\uD3EC \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694", body: "\uBC30\uD3EC \uC774\uB825 \uC9D1\uACC4 \uB370\uC774\uD130\uAC00 \uBE44\uC5B4 \uC788\uC5B4\uC694." }) : recentDeploys.map((d, i, arr) => /* @__PURE__ */ React.createElement("div", { key: i, style: { padding: "12px 0", display: "flex", alignItems: "center", gap: 16, borderBottom: i < arr.length - 1 ? "1px solid var(--line-subtle)" : "none" } }, /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontFamily: "monospace", fontWeight: 700, color: "var(--brand-600)", fontSize: 13, minWidth: 70 } }, d.v || d.version || "\u2014"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "monospace", fontSize: 11, color: "var(--fg-muted)", background: "var(--bg-muted)", padding: "2px 6px", borderRadius: 4, minWidth: 70 } }, d.sha || d.gitSha || ""), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--fg-strong)", flex: 1 }, className: "kr-heading" }, d.what || d.message || ""), /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontSize: 11, color: "var(--fg-subtle)" } }, fmtDateTime(d.when || d.at)))))));
+}
+function InfoTile({ label, value, sub, mono, tone }) {
+  return /* @__PURE__ */ React.createElement("div", { style: { padding: 14, background: "var(--bg-muted)", borderRadius: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "var(--fg-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 } }, label), /* @__PURE__ */ React.createElement("div", { className: "num", style: {
+    fontSize: 17,
+    fontWeight: 800,
+    color: tone === "success" ? "var(--success)" : "var(--fg-strong)",
+    fontFamily: mono ? "monospace" : "inherit"
+  } }, value), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", marginTop: 4 } }, sub));
+}
+function ServiceCard({ name, status, detail, icon, tone }) {
+  return /* @__PURE__ */ React.createElement(Card, { padding: 16 }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 32, height: 32, borderRadius: 10, background: `var(--${tone}-bg)`, color: `var(--${tone === "neutral" ? "fg-muted" : tone})`, display: "flex", alignItems: "center", justifyContent: "center" } }, React.cloneElement(icon, { size: 16 })), /* @__PURE__ */ React.createElement(Chip, { tone, size: "sm", leading: /* @__PURE__ */ React.createElement(IcDot, { size: 6 }) }, status)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)" } }, name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", marginTop: 4, lineHeight: 1.5 }, className: "kr-heading" }, detail));
+}
+function ResourceGauge({ label, value, max = 100, unit, detail }) {
+  const pct = Math.min(100, value / max * 100);
+  const tone = pct > 80 ? "danger" : pct > 60 ? "warning" : "success";
+  return /* @__PURE__ */ React.createElement("div", { style: { padding: 14, background: "var(--bg-muted)", borderRadius: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "var(--fg-default)" } }, label), /* @__PURE__ */ React.createElement(Chip, { tone, size: "sm" }, tone === "danger" ? "\uB192\uC74C" : tone === "warning" ? "\uC8FC\uC758" : "\uC815\uC0C1")), /* @__PURE__ */ React.createElement("div", { className: "num", style: { fontSize: 24, fontWeight: 800, color: "var(--fg-strong)" } }, value, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--fg-muted)", fontWeight: 500 } }, unit || "")), /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "rgba(0,0,0,0.06)", borderRadius: 999, overflow: "hidden", marginTop: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { width: `${pct}%`, height: "100%", background: `var(--${tone})`, borderRadius: 999 } })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-muted)", marginTop: 6 } }, detail));
+}
+function AdminPlaceholder({ title, subtitle }) {
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(AdminTopbar, { title, subtitle }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(Card, { padding: 32, style: { width: 480, textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 56, height: 56, borderRadius: 14, background: "var(--brand-50)", color: "var(--brand-600)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--fg-strong)", marginBottom: 6 }, className: "kr-heading" }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", lineHeight: 1.55 }, className: "kr-heading" }, "\uC774 \uD654\uBA74\uC758 \uBCF8\uACA9\uC801 \uB514\uC790\uC778\uC740 \uBC31\uC5D4\uB4DC \uCEE8\uD2B8\uB799\uD2B8 \uD655\uC815 \uD6C4 \uC6B0\uC120\uC21C\uC704\uC5D0 \uB9DE\uCDB0 \uC9C4\uD589\uB429\uB2C8\uB2E4.", /* @__PURE__ */ React.createElement("br", null), "\uAD6C\uC870\uC640 \uAD8C\uD55C \uAC00\uB4DC\uB294 \uC774\uBBF8 \uB77C\uC6B0\uD2B8\uC5D0 \uBC18\uC601\uB3FC \uC788\uC5B4\uC694."))));
+}
+function AdminApp({ initialScreen = "dashboard" }) {
+  const [screen, setScreen] = usePersistentScreen("admin", initialScreen);
+  const isMobile = useViewportMobile();
+  const [navOpen, setNavOpen] = React.useState(false);
+  const wrapNav = (s) => {
+    setScreen(s);
+    setNavOpen(false);
+  };
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", height: "100%", position: "relative", overflow: "hidden" } }, isMobile && /* @__PURE__ */ React.createElement(MobileTopBar, { title: "\uC9C4\uB85C\uB098\uCE68\uBC18 \xB7 \uAD00\uB9AC\uC790", onMenu: () => setNavOpen(true) }), isMobile ? /* @__PURE__ */ React.createElement(SidebarDrawer, { open: navOpen, onClose: () => setNavOpen(false) }, /* @__PURE__ */ React.createElement(AdminSidebar, { activeId: screen, onChange: wrapNav })) : /* @__PURE__ */ React.createElement(AdminSidebar, { activeId: screen, onChange: setScreen }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, position: "relative", overflowY: "auto" } }, screen === "dashboard" && /* @__PURE__ */ React.createElement(AdminDashboard, { go: setScreen }), screen === "users" && /* @__PURE__ */ React.createElement(AdminUsers, null), screen === "payments" && /* @__PURE__ */ React.createElement(AdminPayments, null), screen === "audit-logs" && /* @__PURE__ */ React.createElement(AdminAuditLogs, null), screen === "system" && /* @__PURE__ */ React.createElement(AdminSystem, null), screen === "teachers" && /* @__PURE__ */ React.createElement(AdminTeachers, null), screen === "students" && /* @__PURE__ */ React.createElement(AdminStudents, null), screen === "classrooms" && /* @__PURE__ */ React.createElement(AdminClassrooms, null), screen === "subscriptions" && /* @__PURE__ */ React.createElement(AdminSubscriptions, null), screen === "ai-usage" && /* @__PURE__ */ React.createElement(AdminAIUsage, null), screen === "counseling" && /* @__PURE__ */ React.createElement(AdminCounseling, null), screen === "notifications" && /* @__PURE__ */ React.createElement(AdminNotifEvents, null)));
+}
+Object.assign(window, { AdminApp });
