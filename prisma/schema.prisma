@@ -50,6 +50,7 @@ model User {
   receivedMessages Message[] @relation("receivedMessages")
   studentRequests  CounselingRequest[] @relation("studentRequests")
   teacherRequests  CounselingRequest[] @relation("teacherRequests")
+  auditLogs        AuditLog[] @relation("AuditActor")
 }
 
 model RefreshToken {
@@ -469,6 +470,24 @@ model Notification {
 
   @@index([userId, createdAt])
   @@unique([userId, dedupeKey])
+}
+
+// ─── 감사 로그 (관리자 조치 기록) ───
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation("AuditActor", fields: [actorId], references: [id], onDelete: Cascade)
+  action     String   // user.disable | user.enable | user.create
+  targetType String?  // 'user' 등
+  targetId   String?
+  summary    String   // 사람이 읽는 한 줄 요약
+  reason     String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
 }
 
 // ─── 진로 목표 ───

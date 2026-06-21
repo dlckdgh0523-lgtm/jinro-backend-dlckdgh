@@ -58,10 +58,57 @@ const roleChip = (r) => ({
   admin: <Chip tone="warning" size="sm">관리자</Chip>,
 }[r]);
 
+// 감사 로그 action 코드 → 사람이 읽는 라벨/톤.
+function auditActionMeta(action) {
+  return ({
+    'user.disable': { label: '계정 비활성화', tone: 'danger' },
+    'user.enable': { label: '계정 활성화', tone: 'success' },
+    'user.create': { label: '계정 생성', tone: 'brand' },
+  }[action]) || { label: action || '—', tone: 'neutral' };
+}
+
+// 감사 로그 미니 리스트 (대시보드용). rows: null=loading, []=empty.
+function AuditMiniList({ rows }) {
+  if (rows === null) return <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0,1,2].map(i => <Skeleton key={i} height={32}/>)}</div>;
+  if (!rows.length) return <EmptyState icon={<IcDoc size={22}/>} title="기록된 감사 로그가 없어요" body="관리자가 계정을 조치하면 여기에 표시돼요."/>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {rows.map((a, i) => {
+        const meta = auditActionMeta(a.action);
+        return (
+          <div key={a.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < rows.length-1 ? '1px solid var(--line-subtle)' : 'none' }}>
+            <Chip tone={meta.tone} size="sm">{meta.label}</Chip>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">{a.summary}</span>
+            <span className="num" style={{ fontSize: 11, color: 'var(--fg-subtle)' }}>{fmtDateTime(a.createdAt)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ────────────────────────────────────────────────────────
 // Sidebar
 // ────────────────────────────────────────────────────────
 function AdminSidebar({ activeId, onChange }) {
+  const [ok, setOk] = React.useState(null); // null=확인 중, true/false=실제 상태
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await adminFetch('/admin/system/health');
+        const svc = (res && res.data && res.data.services) || {};
+        const allOk = ['api','db','redis','sse'].every(k => !svc[k] || svc[k].status === 'ok');
+        if (alive) setOk(allOk);
+      } catch (e) { if (alive) setOk(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const health = ok === null
+    ? { bg: 'rgba(148,163,184,0.15)', fg: '#94A3B8', dot: '#94A3B8', label: '상태 확인 중…' }
+    : ok
+      ? { bg: 'rgba(34,197,94,0.12)', fg: '#86EFAC', dot: '#22C55E', label: '모든 시스템 정상' }
+      : { bg: 'rgba(245,158,11,0.14)', fg: '#FCD34D', dot: '#F59E0B', label: '점검 필요' };
   return (
     <aside style={{
       width: 240, flexShrink: 0,
@@ -106,11 +153,11 @@ function AdminSidebar({ activeId, onChange }) {
       </nav>
       <div style={{ flex: 1 }}/>
       <div style={{
-        padding: 10, background: 'rgba(34,197,94,0.12)', borderRadius: 8,
-        fontSize: 11, color: '#86EFAC', display: 'flex', alignItems: 'center', gap: 6,
+        padding: 10, background: health.bg, borderRadius: 8,
+        fontSize: 11, color: health.fg, display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }}/>
-        모든 시스템 정상
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: health.dot }}/>
+        {health.label}
       </div>
     </aside>
   );
@@ -156,6 +203,7 @@ function AdminTopbar({ title, subtitle, action }) {
 function AdminDashboard({ go }) {
   const [stats, setStats] = React.useState(null); // null=loading
   const [recent, setRecent] = React.useState(null); // null=loading
+  const [audit, setAudit] = React.useState(null); // null=loading
   const [err, setErr] = React.useState(false);
 
   React.useEffect(() => {
@@ -171,6 +219,12 @@ function AdminDashboard({ go }) {
         const res = await adminFetch('/admin/ai-usage');
         if (alive) setRecent(((res && res.data && res.data.recent) || []));
       } catch (e) { if (alive) setRecent([]); }
+    })();
+    (async () => {
+      try {
+        const res = await adminFetch('/admin/audit-logs?limit=6');
+        if (alive) setAudit((res && res.data) || []);
+      } catch (e) { if (alive) setAudit([]); }
     })();
     return () => { alive = false; };
   }, []);
@@ -217,8 +271,10 @@ function AdminDashboard({ go }) {
             >
               <RecentSessions recent={recent} mini/>
             </SectionCard>
-            <SectionCard title="감사 로그">
-              <EmptyState icon={<IcServer size={22}/>} title="감사 로그 연동 예정" body="관리자 조치 감사 로그는 백엔드 연동 후 제공됩니다."/>
+            <SectionCard title="감사 로그" subtitle="최근 관리자 조치"
+              action={<Button variant="ghost" size="sm" trailing={<IcChevronRight size={14}/>} onClick={() => go && go('audit-logs')}>전체</Button>}
+            >
+              <AuditMiniList rows={audit}/>
             </SectionCard>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -396,16 +452,32 @@ function AdminUsers() {
           ))}
         </Card>
       </div>
-      {selectedUser && <UserDetailDrawer user={selectedUser} onClose={() => setSelectedUser(null)}/>}
-      {addOpen && <AddUserDialog onClose={() => setAddOpen(false)}/>}
+      {selectedUser && <UserDetailDrawer user={selectedUser} onClose={() => setSelectedUser(null)} onChanged={load}/>}
+      {addOpen && <AddUserDialog onClose={() => setAddOpen(false)} onChanged={load}/>}
     </div>
   );
 }
 
-function AddUserDialog({ onClose }) {
+function AddUserDialog({ onClose, onChanged }) {
   const [f, setF] = React.useState({ name: '', email: '', role: 'student' });
+  const [busy, setBusy] = React.useState(false);
+  const [created, setCreated] = React.useState(null); // 생성 성공 시 { email, tempPassword, ... }
   const trapRef = useFocusTrap(true, onClose);
   const can = f.name.trim() && f.email.includes('@');
+
+  const submit = async () => {
+    if (!can || busy) return;
+    setBusy(true);
+    try {
+      const res = await window.__apiFetch('/admin/users', { method: 'POST', body: JSON.stringify({ name: f.name.trim(), email: f.email.trim(), role: f.role }) });
+      setCreated((res && res.data) || {});
+      showToast('사용자를 생성했어요', 'success');
+      onChanged && onChanged();
+    } catch (e) {
+      showToast((e && e.body && e.body.message) || '생성하지 못했어요', 'error');
+    } finally { setBusy(false); }
+  };
+
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.5)' }}/>
@@ -414,23 +486,55 @@ function AddUserDialog({ onClose }) {
           <div style={{ fontSize: 18, fontWeight: 700 }}>사용자 추가</div>
           <IconButton icon={<IcX size={20}/>} onClick={onClose} ariaLabel="닫기"/>
         </div>
-        <FormField label="이름" required style={{ marginBottom: 14 }}><TextInput value={f.name} onChange={(v) => setF(s => ({ ...s, name: v }))} placeholder="예) 김민지"/></FormField>
-        <FormField label="이메일" required style={{ marginBottom: 14 }}><TextInput value={f.email} onChange={(v) => setF(s => ({ ...s, email: v }))} placeholder="email@example.com" type="email"/></FormField>
-        <FormField label="역할" style={{ marginBottom: 20 }}>
-          <Tabs items={[{id:'student',label:'학생'},{id:'teacher',label:'교사'},{id:'admin',label:'관리자'}]} activeId={f.role} onChange={(v) => setF(s => ({ ...s, role: v }))}/>
-        </FormField>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="secondary" full onClick={onClose}>취소</Button>
-          <Button variant="primary" full disabled={!can} onClick={() => { showToast('사용자 추가 기능은 준비 중이에요', 'info'); onClose(); }}>추가하고 초대</Button>
-        </div>
+        {created ? (
+          <div>
+            <div style={{ padding: 14, background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 10, fontSize: 13, marginBottom: 14, lineHeight: 1.6 }}>
+              ✓ <b>{created.name}</b> ({created.email}) 계정을 생성했어요.<br/>
+              아래 <b>임시 비밀번호</b>를 본인에게 전달하세요. 첫 로그인 후 변경을 안내해주세요.
+            </div>
+            <FormField label="임시 비밀번호" style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <TextInput value={created.tempPassword || ''} onChange={() => {}} readOnly style={{ flex: 1, fontFamily: 'monospace' }}/>
+                <Button variant="outline" onClick={() => { try { navigator.clipboard.writeText(created.tempPassword || ''); showToast('복사했어요', 'success'); } catch (e) {} }}>복사</Button>
+              </div>
+            </FormField>
+            <Button variant="primary" full onClick={onClose}>완료</Button>
+          </div>
+        ) : (
+          <>
+            <FormField label="이름" required style={{ marginBottom: 14 }}><TextInput value={f.name} onChange={(v) => setF(s => ({ ...s, name: v }))} placeholder="예) 김민지"/></FormField>
+            <FormField label="이메일" required style={{ marginBottom: 14 }}><TextInput value={f.email} onChange={(v) => setF(s => ({ ...s, email: v }))} placeholder="email@example.com" type="email"/></FormField>
+            <FormField label="역할" style={{ marginBottom: 20 }}>
+              <Tabs items={[{id:'student',label:'학생'},{id:'teacher',label:'교사'},{id:'admin',label:'관리자'}]} activeId={f.role} onChange={(v) => setF(s => ({ ...s, role: v }))}/>
+            </FormField>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="secondary" full onClick={onClose}>취소</Button>
+              <Button variant="primary" full disabled={!can || busy} onClick={submit}>{busy ? '생성 중…' : '생성하기'}</Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function UserDetailDrawer({ user, onClose }) {
+function UserDetailDrawer({ user, onClose, onChanged }) {
   const [confirmDisable, setConfirmDisable] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [reason, setReason] = React.useState('');
   const trapRef = useFocusTrap(true, onClose);
+  const doAction = async (action) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await window.__apiFetch(`/admin/users/${user.id}/${action}`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() || undefined }) });
+      showToast(action === 'disable' ? '계정을 비활성화했어요' : '계정을 활성화했어요', 'success');
+      onChanged && onChanged();
+      onClose();
+    } catch (e) {
+      showToast((e && e.body && e.body.message) || '처리하지 못했어요', 'error');
+    } finally { setBusy(false); setConfirmDisable(false); }
+  };
   return (
     <div style={{
       position: 'absolute', inset: 0, zIndex: 50,
@@ -464,16 +568,17 @@ function UserDetailDrawer({ user, onClose }) {
             <KVRow k="학급" v={user.classroom || '—'}/>
             {user.grade != null && <KVRow k="학년" v={String(user.grade)}/>}
           </SectionCard>
-          <SectionCard title="위험 작업" padding={18}>
+          <SectionCard title="계정 상태 관리" padding={18}>
+            <FormField label="사유 (선택 · 감사 로그에 기록)" style={{ marginBottom: 12 }}>
+              <TextInput value={reason} onChange={setReason} placeholder="예) 약관 위반 신고 접수"/>
+            </FormField>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Button variant="outline" size="md" full onClick={() => showToast('비밀번호 재설정 기능은 준비 중이에요', 'info')}>비밀번호 재설정 메일 보내기</Button>
-              <Button variant="danger" size="md" full onClick={() => setConfirmDisable(true)} leading={<IcLock size={14}/>}>계정 비활성화</Button>
+              {user.status === 'disabled'
+                ? <Button variant="primary" size="md" full disabled={busy} onClick={() => doAction('enable')} leading={<IcRefresh size={14}/>}>{busy ? '처리 중…' : '계정 활성화'}</Button>
+                : <Button variant="danger" size="md" full disabled={busy} onClick={() => setConfirmDisable(true)} leading={<IcLock size={14}/>}>계정 비활성화</Button>}
             </div>
-            <div style={{
-              padding: 10, background: 'var(--warning-bg)', color: 'var(--warning)',
-              borderRadius: 8, fontSize: 12, marginTop: 10, lineHeight: 1.5,
-            }} className="kr-heading">
-              ⚠ 관리자 조치 백엔드는 준비 중이에요. 현재는 동작하지 않아요.
+            <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 10, lineHeight: 1.5 }} className="kr-heading">
+              조치는 즉시 적용되며 감사 로그에 기록돼요. 본인 계정은 비활성화할 수 없어요.
             </div>
           </SectionCard>
         </div>
@@ -481,11 +586,11 @@ function UserDetailDrawer({ user, onClose }) {
       <ConfirmDialog
         open={confirmDisable}
         title={`${user.name}님을 비활성화할까요?`}
-        body="계정 비활성화 백엔드는 준비 중이에요. 지금은 실제로 적용되지 않아요."
-        confirmLabel="확인"
+        body="비활성화하면 해당 사용자는 로그인할 수 없어요. 사유는 감사 로그에 기록됩니다."
+        confirmLabel={busy ? '처리 중…' : '비활성화'}
         cancelLabel="취소"
         danger
-        onConfirm={() => { setConfirmDisable(false); showToast('계정 비활성화 기능은 준비 중이에요', 'info'); }}
+        onConfirm={() => doAction('disable')}
         onCancel={() => setConfirmDisable(false)}
       />
     </div>
@@ -525,16 +630,40 @@ function AdminPayments() {
 // SCREEN: Audit logs
 // ────────────────────────────────────────────────────────
 function AdminAuditLogs() {
+  const [rows, setRows] = React.useState(null); // null=loading
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try { const res = await adminFetch('/admin/audit-logs?limit=100'); setRows((res && res.data) || []); }
+    catch (e) { setRows([]); }
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+
+  const loading = rows === null;
+  const list = rows || [];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <AdminTopbar title="감사 로그" subtitle="관리자 조치 감사 로그 준비 중"/>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-canvas)', padding: 24 }}>
-        <Card padding={32} style={{ width: 480, textAlign: 'center' }}>
-          <EmptyState
-            icon={<IcServer size={24}/>}
-            title="감사 로그 연동은 준비 중이에요"
-            body="관리자 조치를 사유와 함께 기록하는 감사 로그 백엔드는 아직 연동되지 않았어요."
-          />
+      <AdminTopbar title="감사 로그" subtitle={loading ? '불러오는 중…' : `최근 ${list.length}건의 관리자 조치`}
+        action={<Button variant="outline" size="sm" leading={<IcRefresh size={14}/>} onClick={load}>새로고침</Button>}/>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 24, background: 'var(--bg-canvas)' }}>
+        <Card padding={0} style={{ minWidth: 820 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '170px 120px 1.6fr 1.4fr', padding: '12px 20px', fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: 0.3, borderBottom: '1px solid var(--line-subtle)' }}>
+            <span>시각</span><span>조치</span><span>내용</span><span>수행자 · 사유</span>
+          </div>
+          {loading ? (
+            [0,1,2,3,4].map(i => <div key={i} style={{ padding: '14px 20px', borderBottom: '1px solid var(--line-subtle)' }}><Skeleton width="55%" height={14}/></div>)
+          ) : list.length === 0 ? (
+            <div style={{ padding: 24 }}><EmptyState icon={<IcDoc size={22}/>} title="기록된 감사 로그가 없어요" body="관리자가 계정을 비활성화·활성화·생성하면 사유와 함께 여기에 기록돼요."/></div>
+          ) : list.map((a, i) => {
+            const meta = auditActionMeta(a.action);
+            return (
+              <div key={a.id || i} style={{ display: 'grid', gridTemplateColumns: '170px 120px 1.6fr 1.4fr', padding: '14px 20px', alignItems: 'center', fontSize: 13, borderBottom: i < list.length-1 ? '1px solid var(--line-subtle)' : 'none' }}>
+                <span className="num" style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{fmtDateTime(a.createdAt)}</span>
+                <span><Chip tone={meta.tone} size="sm">{meta.label}</Chip></span>
+                <span style={{ color: 'var(--fg-strong)' }} className="kr-heading">{a.summary}</span>
+                <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{a.actor}{a.reason ? ` · ${a.reason}` : ''}</span>
+              </div>
+            );
+          })}
         </Card>
       </div>
     </div>

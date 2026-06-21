@@ -286,15 +286,45 @@ function AdminCounseling() {
 // Notification events (dedupeKey pipeline)
 // ────────────────────────────────────────────────────────
 function AdminNotifEvents() {
+  const [rows, setRows] = React.useState(null); // null=loading
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try { const res = await adminFetch('/admin/notifications?limit=100'); setRows((res && res.data) || []); }
+    catch (e) { setRows([]); }
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+
+  const loading = rows === null;
+  const list = rows || [];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <AdminTopbar title="알림 이벤트" subtitle="알림 이벤트 로그 준비 중"/>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-canvas)', padding: 24 }}>
-        <Card padding={32} style={{ width: 480, textAlign: 'center' }}>
-          <EmptyState icon={<IcBell size={24}/>} title="알림 이벤트 로그는 준비 중이에요" body="dedupeKey 기반 송수신 로그를 노출하는 관리자 API는 아직 연동되지 않았어요."/>
-        </Card>
-      </div>
-    </div>
+    <AdminListShell title="알림 이벤트" subtitle={loading ? '불러오는 중…' : `최근 ${list.length}건 · dedupeKey 기반 멱등 발송`}
+      action={<Button variant="outline" size="sm" leading={<IcRefresh size={14}/>} onClick={load}>새로고침</Button>}
+    >
+      <Card padding={0}>
+        <div style={{ display: 'grid', gridTemplateColumns: '150px 1.1fr 1.6fr 1fr 80px', padding: '12px 20px', fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--line-subtle)', minWidth: 820 }}>
+          <span>시각</span><span>수신자</span><span>내용</span><span>유형</span><span>상태</span>
+        </div>
+        {loading ? (
+          [0,1,2,3].map(i => <div key={i} style={{ padding: '14px 20px', borderBottom: '1px solid var(--line-subtle)' }}><Skeleton width="50%" height={14}/></div>)
+        ) : list.length === 0 ? (
+          <div style={{ padding: 24 }}><EmptyState icon={<IcBell size={22}/>} title="발송된 알림이 없어요" body="상담 단계 전환·캘린더 변경 등 이벤트가 발생하면 여기에 기록돼요."/></div>
+        ) : list.map((nft, i) => (
+          <div key={nft.id || i} style={{ display: 'grid', gridTemplateColumns: '150px 1.1fr 1.6fr 1fr 80px', padding: '14px 20px', alignItems: 'center', fontSize: 13, borderBottom: i < list.length-1 ? '1px solid var(--line-subtle)' : 'none', minWidth: 820 }}>
+            <span className="num" style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{fmtDateTime(nft.createdAt)}</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, color: 'var(--fg-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nft.user || '—'}</div>
+              <div style={{ fontSize: 11, color: 'var(--fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nft.email}</div>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: 'var(--fg-strong)' }} className="kr-heading">{nft.title}</div>
+              <div style={{ fontSize: 11, color: 'var(--fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">{nft.body}</div>
+            </div>
+            <span><Chip tone="neutral" size="sm">{nft.type}</Chip></span>
+            <span>{nft.read ? <Chip tone="neutral" size="sm">읽음</Chip> : <Chip tone="info" size="sm">미읽음</Chip>}</span>
+          </div>
+        ))}
+      </Card>
+    </AdminListShell>
   );
 }
 

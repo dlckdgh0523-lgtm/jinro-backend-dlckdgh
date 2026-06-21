@@ -153,7 +153,30 @@ function AdminCounseling() {
   })));
 }
 function AdminNotifEvents() {
-  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(AdminTopbar, { title: "\uC54C\uB9BC \uC774\uBCA4\uD2B8", subtitle: "\uC54C\uB9BC \uC774\uBCA4\uD2B8 \uB85C\uADF8 \uC900\uBE44 \uC911" }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-canvas)", padding: 24 } }, /* @__PURE__ */ React.createElement(Card, { padding: 32, style: { width: 480, textAlign: "center" } }, /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcBell, { size: 24 }), title: "\uC54C\uB9BC \uC774\uBCA4\uD2B8 \uB85C\uADF8\uB294 \uC900\uBE44 \uC911\uC774\uC5D0\uC694", body: "dedupeKey \uAE30\uBC18 \uC1A1\uC218\uC2E0 \uB85C\uADF8\uB97C \uB178\uCD9C\uD558\uB294 \uAD00\uB9AC\uC790 API\uB294 \uC544\uC9C1 \uC5F0\uB3D9\uB418\uC9C0 \uC54A\uC558\uC5B4\uC694." }))));
+  const [rows, setRows] = React.useState(null);
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try {
+      const res = await adminFetch("/admin/notifications?limit=100");
+      setRows(res && res.data || []);
+    } catch (e) {
+      setRows([]);
+    }
+  }, []);
+  React.useEffect(() => {
+    load();
+  }, [load]);
+  const loading = rows === null;
+  const list = rows || [];
+  return /* @__PURE__ */ React.createElement(
+    AdminListShell,
+    {
+      title: "\uC54C\uB9BC \uC774\uBCA4\uD2B8",
+      subtitle: loading ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : `\uCD5C\uADFC ${list.length}\uAC74 \xB7 dedupeKey \uAE30\uBC18 \uBA71\uB4F1 \uBC1C\uC1A1`,
+      action: /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", leading: /* @__PURE__ */ React.createElement(IcRefresh, { size: 14 }), onClick: load }, "\uC0C8\uB85C\uACE0\uCE68")
+    },
+    /* @__PURE__ */ React.createElement(Card, { padding: 0 }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "150px 1.1fr 1.6fr 1fr 80px", padding: "12px 20px", fontSize: 11, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase", borderBottom: "1px solid var(--line-subtle)", minWidth: 820 } }, /* @__PURE__ */ React.createElement("span", null, "\uC2DC\uAC01"), /* @__PURE__ */ React.createElement("span", null, "\uC218\uC2E0\uC790"), /* @__PURE__ */ React.createElement("span", null, "\uB0B4\uC6A9"), /* @__PURE__ */ React.createElement("span", null, "\uC720\uD615"), /* @__PURE__ */ React.createElement("span", null, "\uC0C1\uD0DC")), loading ? [0, 1, 2, 3].map((i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { padding: "14px 20px", borderBottom: "1px solid var(--line-subtle)" } }, /* @__PURE__ */ React.createElement(Skeleton, { width: "50%", height: 14 }))) : list.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 24 } }, /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcBell, { size: 22 }), title: "\uBC1C\uC1A1\uB41C \uC54C\uB9BC\uC774 \uC5C6\uC5B4\uC694", body: "\uC0C1\uB2F4 \uB2E8\uACC4 \uC804\uD658\xB7\uCE98\uB9B0\uB354 \uBCC0\uACBD \uB4F1 \uC774\uBCA4\uD2B8\uAC00 \uBC1C\uC0DD\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uAE30\uB85D\uB3FC\uC694." })) : list.map((nft, i) => /* @__PURE__ */ React.createElement("div", { key: nft.id || i, style: { display: "grid", gridTemplateColumns: "150px 1.1fr 1.6fr 1fr 80px", padding: "14px 20px", alignItems: "center", fontSize: 13, borderBottom: i < list.length - 1 ? "1px solid var(--line-subtle)" : "none", minWidth: 820 } }, /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontSize: 12, color: "var(--fg-muted)" } }, fmtDateTime(nft.createdAt)), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, color: "var(--fg-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, nft.user || "\u2014"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, nft.email)), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, color: "var(--fg-strong)" }, className: "kr-heading" }, nft.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, nft.body)), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, nft.type)), /* @__PURE__ */ React.createElement("span", null, nft.read ? /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, "\uC77D\uC74C") : /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "sm" }, "\uBBF8\uC77D\uC74C")))))
+  );
 }
 function AdminTeachers() {
   const [q, setQ] = React.useState("");
