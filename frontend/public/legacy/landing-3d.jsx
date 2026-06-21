@@ -85,8 +85,80 @@ function L3DStepCard({ step, index }) {
   );
 }
 
+// 밝은 나침반 테마 3D 배경 — 히어로 뒤에만 은은하게 (어두운 우주/별 아님).
+// 브랜드색 와이어 나침반 링 + 파스텔 입자가 천천히 떠다님. THREE 없으면 아무것도 안 그림.
+function L3DHeroBg() {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const THREE = typeof window !== 'undefined' ? window.THREE : null;
+    const canvas = ref.current;
+    const host = canvas && canvas.parentElement;
+    if (!THREE || !canvas || !host) return;
+    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let w = host.clientWidth || 1, h = host.clientHeight || 1;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(w, h, false);
+    const scene = new THREE.Scene();
+    const cam = new THREE.PerspectiveCamera(55, w / h, 0.1, 100);
+    cam.position.z = 12;
+    const group = new THREE.Group(); scene.add(group);
+
+    // 나침반 — 얇은 와이어 링 2개 + 와이어 이코사헤드론(밝은 배경 위 옅은 브랜드색 선)
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.3, 0.014, 8, 170), new THREE.MeshBasicMaterial({ color: 0x3182F6, transparent: true, opacity: 0.30 }));
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.012, 8, 150), new THREE.MeshBasicMaterial({ color: 0x7B61FF, transparent: true, opacity: 0.22 }));
+    ring2.rotation.x = Math.PI / 2.6;
+    const ico = new THREE.Mesh(new THREE.IcosahedronGeometry(2.0, 1), new THREE.MeshBasicMaterial({ color: 0x3182F6, wireframe: true, transparent: true, opacity: 0.16 }));
+    group.add(ring, ring2, ico);
+
+    // 부드러운 파스텔 입자 (별이 아니라 은은한 보케)
+    const COLORS = [0x3182F6, 0x7B61FF, 0x00B894, 0x1B64DA];
+    const dots = new THREE.Group();
+    for (let i = 0; i < 60; i++) {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.045 + Math.random() * 0.07, 10, 10),
+        new THREE.MeshBasicMaterial({ color: COLORS[i % 4], transparent: true, opacity: 0.42 }),
+      );
+      m.position.set((Math.random() - 0.5) * 17, (Math.random() - 0.5) * 11, (Math.random() - 0.5) * 6);
+      m.userData.sp = 0.15 + Math.random() * 0.5;
+      dots.add(m);
+    }
+    group.add(dots);
+
+    let mx = 0, my = 0, tmx = 0, tmy = 0;
+    const onMove = (e) => { tmx = e.clientX / window.innerWidth - 0.5; tmy = e.clientY / window.innerHeight - 0.5; };
+    window.addEventListener('pointermove', onMove);
+    const ro = new ResizeObserver(() => { w = host.clientWidth || 1; h = host.clientHeight || 1; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); });
+    ro.observe(host);
+
+    let raf = 0, tp = 0;
+    const loop = (t) => {
+      raf = requestAnimationFrame(loop);
+      const dt = Math.min((t - tp) / 1000 || 0, 0.05); tp = t;
+      if (!reduce) {
+        ring.rotation.z += dt * 0.14; ring.rotation.x += dt * 0.04;
+        ring2.rotation.z -= dt * 0.1; ico.rotation.y += dt * 0.18;
+        dots.children.forEach((m) => { m.position.y += dt * m.userData.sp * 0.35; if (m.position.y > 5.5) m.position.y = -5.5; });
+      }
+      mx += (tmx - mx) * 0.04; my += (tmy - my) * 0.04;
+      group.rotation.y = mx * 0.4; group.rotation.x = my * 0.22;
+      renderer.render(scene, cam);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf); window.removeEventListener('pointermove', onMove); ro.disconnect();
+      ring.geometry.dispose(); ring.material.dispose(); ring2.geometry.dispose(); ring2.material.dispose();
+      ico.geometry.dispose(); ico.material.dispose();
+      dots.children.forEach((m) => { m.geometry.dispose(); m.material.dispose(); });
+      renderer.dispose();
+    };
+  }, []);
+  return <canvas ref={ref} aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}/>;
+}
+
 function Landing3D({ onNav = () => {} }) {
   const heroRef = useL3DReveal();
+  const has3D = typeof window !== 'undefined' && !!window.THREE;
 
   const PrimaryBtns = ({ size }) => (
     <div className="l3d-cta-row">
@@ -113,6 +185,7 @@ function Landing3D({ onNav = () => {} }) {
 
       {/* HERO */}
       <section className="l3d-hero">
+        {has3D && <L3DHeroBg/>}
         <div ref={heroRef} className="l3d-reveal l3d-hero-inner">
           <span className="l3d-badge">AI 진로 상담 · 학생/교사 통합 플랫폼</span>
           <h1 className="l3d-hero-title">
@@ -193,13 +266,15 @@ function Landing3D({ onNav = () => {} }) {
 
         /* HERO */
         .l3d-hero {
+          position: relative; overflow: hidden;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           text-align: center; padding: clamp(56px, 10vw, 120px) clamp(20px, 6vw, 40px) clamp(40px, 8vw, 88px);
           background:
             radial-gradient(70% 60% at 50% -10%, #EBF4FF 0%, rgba(235,244,255,0) 60%),
             var(--bg-canvas, #F2F4F6);
         }
-        .l3d-hero-inner { max-width: 860px; }
+        .l3d-hero-inner { position: relative; z-index: 1; max-width: 860px; }
+        .l3d-scrollcue { position: relative; z-index: 1; }
         .l3d-badge {
           display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 999px;
           background: var(--brand-50, #EBF4FF); color: var(--brand-600, #1B64DA);
