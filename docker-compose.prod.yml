@@ -41,7 +41,8 @@ services:
       NODE_ENV: production
       TZ: Asia/Seoul
       PORT: "3000"
-      DATABASE_URL: postgresql://jinro:${POSTGRES_PASSWORD:?}@postgres:5432/jinro
+      # DATABASE_URL 미설정 시 내장 postgres 사용. RDS 등 외부 DB는 run-prod.sh에 export DATABASE_URL=... 로 덮어쓰기.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://jinro:${POSTGRES_PASSWORD:?}@postgres:5432/jinro}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?set a strong JWT_SECRET}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL e.g. https://yourdomain}
