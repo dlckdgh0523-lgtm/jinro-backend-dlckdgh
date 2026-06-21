@@ -59,7 +59,7 @@ function Landing3DCanvas({ scrollRef }) {
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const starMat = new THREE.PointsMaterial({ color: 0x9fc0ff, size: 0.07, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+    const starMat = new THREE.PointsMaterial({ color: 0x9bb8e8, size: 0.06, transparent: true, opacity: 0.4, depthWrite: false });
     const stars = new THREE.Points(starGeo, starMat);
     group.add(stars);
 
@@ -67,16 +67,16 @@ function Landing3DCanvas({ scrollRef }) {
     const compass = new THREE.Group();
     const bezel = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.12, 18, 128), new THREE.MeshBasicMaterial({ color: 0x5B9DFF, transparent: true, opacity: 0.9 }));
     const bezelInner = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.03, 10, 120), new THREE.MeshBasicMaterial({ color: 0x8B7CFF, transparent: true, opacity: 0.55 }));
-    const glow = new THREE.Mesh(new THREE.CircleGeometry(2.45, 48), new THREE.MeshBasicMaterial({ color: 0x10204a, transparent: true, opacity: 0.45 }));
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(2.55, 48), new THREE.MeshBasicMaterial({ color: 0xEAF1FF, transparent: true, opacity: 0.6 }));
     glow.position.z = -0.05;
-    // 방위 눈금(4개 작은 박스)
+    // 방위 눈금 (흰 배경용 진한 브랜드색)
     const ticks = new THREE.Group();
-    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; const big = i % 3 === 0; const tk = new THREE.Mesh(new THREE.BoxGeometry(big ? 0.08 : 0.04, big ? 0.34 : 0.18, 0.02), new THREE.MeshBasicMaterial({ color: big ? 0xCFE2FF : 0x5B9DFF, transparent: true, opacity: big ? 0.9 : 0.5 })); tk.position.set(Math.cos(a) * 2.75, Math.sin(a) * 2.75, 0); tk.rotation.z = a - Math.PI / 2; ticks.add(tk); }
-    // 바늘 (N=코랄, S=화이트)
+    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; const big = i % 3 === 0; const tk = new THREE.Mesh(new THREE.BoxGeometry(big ? 0.08 : 0.04, big ? 0.34 : 0.18, 0.02), new THREE.MeshBasicMaterial({ color: big ? 0x1B64DA : 0x93B4E8, transparent: true, opacity: big ? 0.95 : 0.6 })); tk.position.set(Math.cos(a) * 2.75, Math.sin(a) * 2.75, 0); tk.rotation.z = a - Math.PI / 2; ticks.add(tk); }
+    // 바늘 (N=코랄, S=슬레이트 — 흰 배경에서도 보이게)
     const needle = new THREE.Group();
-    const north = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.1, 4), new THREE.MeshBasicMaterial({ color: 0xFF6B6B })); north.position.y = 1.05;
-    const south = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.1, 4), new THREE.MeshBasicMaterial({ color: 0xE9EEF8 })); south.position.y = -1.05; south.rotation.z = Math.PI;
-    const hub = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
+    const north = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.1, 4), new THREE.MeshBasicMaterial({ color: 0xFF5A5F })); north.position.y = 1.05;
+    const south = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.1, 4), new THREE.MeshBasicMaterial({ color: 0x64748B })); south.position.y = -1.05; south.rotation.z = Math.PI;
+    const hub = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), new THREE.MeshBasicMaterial({ color: 0x1B64DA }));
     needle.add(north, south, hub);
     compass.add(glow, bezel, bezelInner, ticks, needle);
     group.add(compass);
@@ -215,54 +215,54 @@ function Landing3D({ onNav = () => {} }) {
 
       <style>{`
         .l3d-root { position: relative; flex: 1; min-height: 0; align-self: stretch; height: 100%; width: 100%; overflow: hidden;
-          background: radial-gradient(120% 120% at 50% 0%, #14224A 0%, #0B1020 55%, #070B16 100%);
-          color: #E2E8F0; font-family: var(--font-sans, system-ui, sans-serif); }
+          background: radial-gradient(120% 110% at 50% -5%, #EEF4FF 0%, #FFFFFF 55%);
+          color: #333D4B; font-family: var(--font-sans, system-ui, sans-serif); }
         .l3d-nav { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: clamp(14px,3vw,22px) clamp(16px,4vw,40px); }
-        .l3d-brand { display: flex; align-items: center; gap: 9px; color: #fff; font-weight: 800; font-size: 17px; }
-        .l3d-brand-mark { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#5B9DFF,#8B7CFF); }
+        .l3d-brand { display: flex; align-items: center; gap: 9px; color: #191F28; font-weight: 800; font-size: 17px; }
+        .l3d-brand-mark { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#5B9DFF,#8B7CFF); box-shadow: 0 4px 12px rgba(49,130,246,0.3); }
         .l3d-nav-actions { display: flex; gap: 8px; }
-        .l3d-nav-login { padding: 9px 16px; border-radius: 10px; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; font-size: 14px; font-weight: 700; }
-        .l3d-nav-start { padding: 9px 18px; border-radius: 10px; background: #fff; color: #16224A; border: none; cursor: pointer; font-size: 14px; font-weight: 800; }
+        .l3d-nav-login { padding: 9px 16px; border-radius: 10px; background: rgba(255,255,255,0.7); color: #333D4B; border: 1px solid #E5E8EB; cursor: pointer; font-size: 14px; font-weight: 700; }
+        .l3d-nav-start { padding: 9px 18px; border-radius: 10px; background: #3182F6; color: #fff; border: none; cursor: pointer; font-size: 14px; font-weight: 800; }
 
         .l3d-scroll { position: absolute; inset: 0; z-index: 2; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
 
         .l3d-hero { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: clamp(80px,12vw,120px) clamp(20px,6vw,40px) clamp(40px,8vw,80px); }
-        .l3d-badge { display: inline-flex; padding: 7px 14px; border-radius: 999px; background: rgba(91,157,255,0.15); border: 1px solid rgba(91,157,255,0.4); color: #9fc0ff; font-size: 13px; font-weight: 700; margin-bottom: 22px; }
-        .l3d-hero-title { margin: 0 0 18px; font-size: clamp(34px,7vw,66px); font-weight: 900; color: #fff; line-height: 1.13; letter-spacing: -0.03em; }
-        .l3d-grad { background: linear-gradient(135deg,#5B9DFF,#8B7CFF,#22D3EE); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .l3d-hero-sub { margin: 0 0 34px; font-size: clamp(16px,2.6vw,20px); line-height: 1.7; color: rgba(203,213,225,0.92); max-width: 620px; }
-        .l3d-note { margin: 20px 0 0; font-size: 13px; color: rgba(159,192,255,0.8); }
-        .l3d-cue { margin-top: 40px; font-size: 13px; color: rgba(159,192,255,0.8); animation: l3dbob 1.8s ease-in-out infinite; }
+        .l3d-badge { display: inline-flex; padding: 7px 14px; border-radius: 999px; background: #EBF4FF; border: 1px solid #D6E6FF; color: #1B64DA; font-size: 13px; font-weight: 700; margin-bottom: 22px; }
+        .l3d-hero-title { margin: 0 0 18px; font-size: clamp(34px,7vw,66px); font-weight: 900; color: #191F28; line-height: 1.13; letter-spacing: -0.03em; }
+        .l3d-grad { background: linear-gradient(135deg,#3182F6,#7B61FF,#22A7C2); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .l3d-hero-sub { margin: 0 0 34px; font-size: clamp(16px,2.6vw,20px); line-height: 1.7; color: #6B7684; max-width: 620px; }
+        .l3d-note { margin: 20px 0 0; font-size: 13px; color: #8B95A1; }
+        .l3d-cue { margin-top: 40px; font-size: 13px; color: #8B95A1; animation: l3dbob 1.8s ease-in-out infinite; }
 
         .l3d-cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
         .l3d-btn { padding: 16px 30px; border-radius: 14px; cursor: pointer; font-size: 17px; font-weight: 800; border: 1px solid transparent; transition: transform .12s ease, background .12s ease; }
-        .l3d-btn-primary { background: linear-gradient(135deg,#5B9DFF,#3B6FE0); color: #fff; box-shadow: 0 12px 30px rgba(59,111,224,0.45); }
+        .l3d-btn-primary { background: linear-gradient(135deg,#3182F6,#1B64DA); color: #fff; box-shadow: 0 12px 30px rgba(49,130,246,0.32); }
         .l3d-btn-primary:active { transform: scale(0.98); }
-        .l3d-btn-ghost { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.25); backdrop-filter: blur(10px); }
+        .l3d-btn-ghost { background: #fff; color: #191F28; border-color: #E5E8EB; }
 
         .l3d-flow { max-width: 760px; margin: 0 auto; padding: clamp(40px,8vw,90px) clamp(20px,5vw,40px); }
         .l3d-head { text-align: center; margin-bottom: clamp(32px,5vw,56px); }
-        .l3d-eyebrow { display: inline-block; font-size: 13px; font-weight: 800; color: #5B9DFF; margin-bottom: 10px; }
-        .l3d-flow-title { margin: 0 0 12px; font-size: clamp(26px,5vw,42px); font-weight: 900; color: #fff; letter-spacing: -0.02em; }
-        .l3d-flow-sub { margin: 0; font-size: clamp(14px,2.2vw,17px); color: rgba(203,213,225,0.8); }
+        .l3d-eyebrow { display: inline-block; font-size: 13px; font-weight: 800; color: #3182F6; margin-bottom: 10px; }
+        .l3d-flow-title { margin: 0 0 12px; font-size: clamp(26px,5vw,42px); font-weight: 900; color: #191F28; letter-spacing: -0.02em; }
+        .l3d-flow-sub { margin: 0; font-size: clamp(14px,2.2vw,17px); color: #6B7684; }
 
         .l3d-pipeline { display: flex; flex-direction: column; }
         .l3d-row { display: flex; gap: 18px; opacity: 0; transform: translateY(26px); transition: opacity .55s ease, transform .55s ease; }
         .l3d-row.l3d-in { opacity: 1; transform: none; }
         .l3d-rail { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
         .l3d-node { width: 46px; height: 46px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .l3d-line { flex: 1; width: 2px; min-height: 28px; margin: 8px 0; background: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0.08)); }
-        .l3d-pcard { flex: 1; margin-bottom: 22px; background: rgba(13,19,38,0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; padding: clamp(18px,3vw,26px); box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
+        .l3d-line { flex: 1; width: 2px; min-height: 28px; margin: 8px 0; background: linear-gradient(180deg, #C9D6EA, #EAEEF3); }
+        .l3d-pcard { flex: 1; margin-bottom: 22px; background: #fff; border: 1px solid #E5E8EB; border-radius: 18px; padding: clamp(18px,3vw,26px); box-shadow: 0 10px 28px rgba(17,24,39,0.06); }
         .l3d-pcard-tag { font-size: 12px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 8px; }
-        .l3d-pcard-title { margin: 0 0 10px; font-size: clamp(19px,3.4vw,24px); font-weight: 800; color: #fff; }
-        .l3d-pcard-desc { margin: 0 0 14px; font-size: clamp(14px,2.2vw,16px); line-height: 1.7; color: rgba(226,232,240,0.9); }
-        .l3d-pcard-how { font-size: 13px; line-height: 1.6; color: rgba(203,213,225,0.85); padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .l3d-pcard-title { margin: 0 0 10px; font-size: clamp(19px,3.4vw,24px); font-weight: 800; color: #191F28; }
+        .l3d-pcard-desc { margin: 0 0 14px; font-size: clamp(14px,2.2vw,16px); line-height: 1.7; color: #6B7684; }
+        .l3d-pcard-how { font-size: 13px; line-height: 1.6; color: #4E5968; padding-top: 12px; border-top: 1px solid #EEF0F2; }
         .l3d-pcard-how span { font-weight: 800; margin-right: 6px; }
 
         .l3d-final { text-align: center; padding: clamp(40px,7vw,90px) clamp(20px,5vw,40px) clamp(40px,6vw,64px); }
-        .l3d-final-title { margin: 0 0 14px; font-size: clamp(28px,5.5vw,46px); font-weight: 900; color: #fff; letter-spacing: -0.02em; }
-        .l3d-final-sub { margin: 0 auto 30px; max-width: 480px; font-size: clamp(15px,2.4vw,18px); color: rgba(203,213,225,0.9); }
-        .l3d-footer { margin-top: 40px; font-size: 12px; color: rgba(148,163,184,0.6); }
+        .l3d-final-title { margin: 0 0 14px; font-size: clamp(28px,5.5vw,46px); font-weight: 900; color: #191F28; letter-spacing: -0.02em; }
+        .l3d-final-sub { margin: 0 auto 30px; max-width: 480px; font-size: clamp(15px,2.4vw,18px); color: #6B7684; }
+        .l3d-footer { margin-top: 40px; font-size: 12px; color: #8B95A1; }
 
         @keyframes l3dbob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
         @media (prefers-reduced-motion: reduce) { .l3d-row { opacity: 1; transform: none; transition: none; } .l3d-cue { animation: none; } .l3d-scroll { scroll-behavior: auto; } }
