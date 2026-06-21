@@ -24,7 +24,7 @@ export interface ScholarshipRow {
 
 export class ScholarshipClient {
   get enabled(): boolean {
-    return env().KOSAF_SCHOLARSHIP_API_URL !== '' && env().DATA_GO_KR_API_KEY !== '';
+    return env().KOSAF_SCHOLARSHIP_API_URL !== '';
   }
 
   async fetchAll(maxPages = 30, perPage = 500): Promise<ScholarshipRow[]> {
@@ -34,7 +34,10 @@ export class ScholarshipClient {
       const url = new URL(env().KOSAF_SCHOLARSHIP_API_URL);
       url.searchParams.set('page', String(page));
       url.searchParams.set('perPage', String(perPage));
-      url.searchParams.set('serviceKey', env().DATA_GO_KR_API_KEY);
+      // serviceKey가 URL에 이미 박혀 있으면 그대로 사용, 없을 때만 공용 키로 보강.
+      if (!url.searchParams.has('serviceKey') && env().DATA_GO_KR_API_KEY) {
+        url.searchParams.set('serviceKey', env().DATA_GO_KR_API_KEY);
+      }
       try {
         const res = await fetch(url);
         if (res.status >= 400) {
