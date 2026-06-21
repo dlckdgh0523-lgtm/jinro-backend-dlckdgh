@@ -29,6 +29,9 @@ const EnvSchema = z.object({
   ALIMI_BASE_URL: z.string().url().default('https://apis.data.go.kr/B340014/BasicInformationService_2'),
   DATA_GO_KR_API_KEY: z.string().default(''),
   ALIMI_TIMEOUT_MS: z.coerce.number().default(8000),
+  // 한국장학재단 학자금지원정보(odcloud 파일데이터) — 요청 URL(uddi 포함)을 주입. 비면 장학금 적재 skip.
+  // serviceKey는 DATA_GO_KR_API_KEY 재사용. 데이터셋: data.go.kr/data/15028252
+  KOSAF_SCHOLARSHIP_API_URL: z.string().default(''),
 
   // 경기데이터드림 대학별 학과정보 (openapi.gg.go.kr/Univmjrm) — 키 없으면 CSV importer만 사용.
   // 주의: gg.go.kr은 한국 IP만 허용 — 해외 리전 배포 시 차단될 수 있음.

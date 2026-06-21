@@ -20,6 +20,7 @@ import { ExchangeClient } from '../admissions/exchange.client';
 import { CoseClient } from '../career/cose.client';
 import { Work24Client } from '../career/work24.client';
 import { VmsClient } from '../volunteers/vms.client';
+import { ScholarshipClient } from '../admissions/scholarship.client';
 import { createBullRedis } from '../common/redis';
 import { logger } from '../common/logger';
 import { sentry } from '../common/sentry';
@@ -385,6 +386,39 @@ export function startIngestWorker(prisma: PrismaClient): Worker {
         }
       } else {
         results['volunteers'] = 'skipped (no DATA_GO_KR_API_KEY)';
+      }
+
+      // ── 장학금 (한국장학재단 학자금지원정보, odcloud) — 전체 교체(deleteMany + createMany)
+      const scholarshipClient = new ScholarshipClient();
+      if (scholarshipClient.enabled) {
+        try {
+          results['scholarships'] = await run('scholarships', async () => {
+            const rows = await scholarshipClient.fetchAll();
+            if (!rows.length) return 0;
+            await prisma.$transaction([
+              prisma.scholarship.deleteMany({}),
+              prisma.scholarship.createMany({
+                data: rows.map((s) => ({
+                  source: '한국장학재단',
+                  organization: s.organization,
+                  productName: s.productName,
+                  productType: s.productType,
+                  supportType: s.supportType,
+                  target: s.target,
+                  applyPeriod: s.applyPeriod,
+                  amount: s.amount,
+                  selectCount: s.selectCount,
+                  rawData: s.raw as Prisma.InputJsonValue,
+                })),
+              }),
+            ]);
+            return rows.length;
+          });
+        } catch (e) {
+          results['scholarships'] = `failed: ${(e as Error).message}`;
+        }
+      } else {
+        results['scholarships'] = 'skipped (no KOSAF_SCHOLARSHIP_API_URL)';
       }
 
       // ── 산학협력(현장실습/캡스톤 등) + 경기 신입생충원 — School.raw에 병합 ──

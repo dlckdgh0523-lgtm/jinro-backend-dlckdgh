@@ -54,6 +54,7 @@ services:
       CAREERNET_API_KEY: ${CAREERNET_API_KEY:-}
       ALIMI_BASE_URL: ${ALIMI_BASE_URL:-https://apis.data.go.kr/B340014/BasicInformationService_2}
       DATA_GO_KR_API_KEY: ${DATA_GO_KR_API_KEY:-}
+      KOSAF_SCHOLARSHIP_API_URL: ${KOSAF_SCHOLARSHIP_API_URL:-}
       GG_DATA_API_KEY: ${GG_DATA_API_KEY:-}
       SCORECARD_API_KEY: ${SCORECARD_API_KEY:-}
       # 소셜 로그인. 운영은 OAUTH_REDIRECT_BASE=https://도메인 권장(ALB TLS 종단 시 proto 자동감지 불확실).
