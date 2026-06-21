@@ -6,7 +6,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 # pnpm 10: 최신 패키지(minimumReleaseAge)·빌드 스크립트(esbuild) 정책을 빌드에서 허용
 RUN pnpm install --frozen-lockfile --config.minimumReleaseAge=0 --config.dangerouslyAllowAllBuilds=true
-COPY vite.config.ts index.html ./
+COPY vite.config.ts index.html build-legacy.mjs ./
 COPY public ./public
 RUN pnpm build
 
