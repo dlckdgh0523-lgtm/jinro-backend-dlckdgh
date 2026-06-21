@@ -492,52 +492,56 @@ function isTableSeparator(line) {
 function FormattedText({ text }) {
   const raw = text || "";
   if (!raw) return null;
-  const lines = raw.replace(/\r\n/g, "\n").split("\n");
-  const out = [];
-  let key = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    if (/\|/.test(trimmed) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
-      const header = splitTableRow(trimmed);
-      const rows = [];
-      let j = i + 2;
-      while (j < lines.length && /\|/.test(lines[j]) && lines[j].trim() !== "") {
-        rows.push(splitTableRow(lines[j]));
-        j++;
+  try {
+    const lines = raw.replace(/\r\n/g, "\n").split("\n");
+    const out = [];
+    let key = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (/\|/.test(trimmed) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+        const header = splitTableRow(trimmed);
+        const rows = [];
+        let j = i + 2;
+        while (j < lines.length && /\|/.test(lines[j]) && lines[j].trim() !== "") {
+          rows.push(splitTableRow(lines[j]));
+          j++;
+        }
+        out.push(
+          /* @__PURE__ */ React.createElement("div", { key: key++, style: { overflowX: "auto", margin: "6px 0" } }, /* @__PURE__ */ React.createElement("table", { style: { borderCollapse: "collapse", width: "100%", fontSize: 13 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, header.map((h, ci) => /* @__PURE__ */ React.createElement("th", { key: ci, style: { border: "1px solid var(--border, rgba(0,0,0,0.12))", padding: "6px 10px", textAlign: "left", fontWeight: 700, background: "var(--bg-subtle, rgba(0,0,0,0.04))" } }, renderInline(h, "th" + ci))))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((r, ri) => /* @__PURE__ */ React.createElement("tr", { key: ri }, header.map((_, ci) => /* @__PURE__ */ React.createElement("td", { key: ci, style: { border: "1px solid var(--border, rgba(0,0,0,0.12))", padding: "6px 10px", verticalAlign: "top" } }, renderInline(r[ci] == null ? "" : r[ci], "td" + ri + "-" + ci))))))))
+        );
+        i = j - 1;
+        continue;
       }
-      out.push(
-        /* @__PURE__ */ React.createElement("div", { key: key++, style: { overflowX: "auto", margin: "6px 0" } }, /* @__PURE__ */ React.createElement("table", { style: { borderCollapse: "collapse", width: "100%", fontSize: 13 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, header.map((h, ci) => /* @__PURE__ */ React.createElement("th", { key: ci, style: { border: "1px solid var(--border, rgba(0,0,0,0.12))", padding: "6px 10px", textAlign: "left", fontWeight: 700, background: "var(--bg-subtle, rgba(0,0,0,0.04))" } }, renderInline(h, "th" + ci))))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((r, ri) => /* @__PURE__ */ React.createElement("tr", { key: ri }, header.map((_, ci) => /* @__PURE__ */ React.createElement("td", { key: ci, style: { border: "1px solid var(--border, rgba(0,0,0,0.12))", padding: "6px 10px", verticalAlign: "top" } }, renderInline(r[ci] == null ? "" : r[ci], "td" + ri + "-" + ci))))))))
-      );
-      i = j - 1;
-      continue;
+      if (trimmed === "") {
+        out.push(/* @__PURE__ */ React.createElement("div", { key: key++, style: { height: 6 } }));
+        continue;
+      }
+      const heading = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      const bullet = trimmed.match(/^[-*•]\s+(.*)$/);
+      const numbered = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
+      if (heading) {
+        const level = heading[1].length;
+        const size = level <= 1 ? 17 : level === 2 ? 15.5 : 14.5;
+        out.push(
+          /* @__PURE__ */ React.createElement("div", { key: key++, style: { fontWeight: 700, fontSize: size, margin: "6px 0 2px", lineHeight: 1.4 } }, renderInline(heading[2], "h" + key))
+        );
+      } else if (bullet) {
+        out.push(
+          /* @__PURE__ */ React.createElement("div", { key: key++, style: { display: "flex", gap: 6, alignItems: "flex-start", margin: "1px 0" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--brand-500)", lineHeight: 1.6 } }, "\u2022"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }, renderInline(bullet[1], "bl" + key)))
+        );
+      } else if (numbered) {
+        out.push(
+          /* @__PURE__ */ React.createElement("div", { key: key++, style: { display: "flex", gap: 6, alignItems: "flex-start", margin: "1px 0" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--brand-500)", fontWeight: 700, minWidth: 16 } }, numbered[1], "."), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }, renderInline(numbered[2], "nm" + key)))
+        );
+      } else {
+        out.push(/* @__PURE__ */ React.createElement("div", { key: key++ }, renderInline(line, "p" + key)));
+      }
     }
-    if (trimmed === "") {
-      out.push(/* @__PURE__ */ React.createElement("div", { key: key++, style: { height: 6 } }));
-      continue;
-    }
-    const heading = trimmed.match(/^(#{1,6})\s+(.*)$/);
-    const bullet = trimmed.match(/^[-*•]\s+(.*)$/);
-    const numbered = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
-    if (heading) {
-      const level = heading[1].length;
-      const size = level <= 1 ? 17 : level === 2 ? 15.5 : 14.5;
-      out.push(
-        /* @__PURE__ */ React.createElement("div", { key: key++, style: { fontWeight: 700, fontSize: size, margin: "6px 0 2px", lineHeight: 1.4 } }, renderInline(heading[2], "h" + key))
-      );
-    } else if (bullet) {
-      out.push(
-        /* @__PURE__ */ React.createElement("div", { key: key++, style: { display: "flex", gap: 6, alignItems: "flex-start", margin: "1px 0" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--brand-500)", lineHeight: 1.6 } }, "\u2022"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }, renderInline(bullet[1], "bl" + key)))
-      );
-    } else if (numbered) {
-      out.push(
-        /* @__PURE__ */ React.createElement("div", { key: key++, style: { display: "flex", gap: 6, alignItems: "flex-start", margin: "1px 0" } }, /* @__PURE__ */ React.createElement("span", { style: { color: "var(--brand-500)", fontWeight: 700, minWidth: 16 } }, numbered[1], "."), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }, renderInline(numbered[2], "nm" + key)))
-      );
-    } else {
-      out.push(/* @__PURE__ */ React.createElement("div", { key: key++ }, renderInline(line, "p" + key)));
-    }
+    return /* @__PURE__ */ React.createElement("div", { style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }, out);
+  } catch (e) {
+    return /* @__PURE__ */ React.createElement("div", { style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }, raw);
   }
-  return /* @__PURE__ */ React.createElement("div", { style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }, out);
 }
 function ChatThinking() {
   return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: {

@@ -713,6 +713,7 @@ function isTableSeparator(line) {
 function FormattedText({ text }) {
   const raw = text || '';
   if (!raw) return null;
+  try {
   const lines = raw.replace(/\r\n/g, '\n').split('\n');
   const out = [];
   let key = 0;
@@ -792,6 +793,10 @@ function FormattedText({ text }) {
     }
   }
   return <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{out}</div>;
+  } catch (e) {
+    // 어떤 형식 오류에도 채팅이 깨지지 않도록 일반 텍스트로 안전 폴백
+    return <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{raw}</div>;
+  }
 }
 
 function ChatThinking() {

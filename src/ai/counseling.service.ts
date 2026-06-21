@@ -9,6 +9,20 @@ import { AppError, ErrorCode } from '../common/errors';
 import { env } from '../common/env';
 import { logger } from '../common/logger';
 import { getQueues } from '../jobs/queues';
+import { z } from 'zod';
+
+// 리포트 JSON 검증 스키마 — 모델 출력이 일부 깨져도 필드별 .catch 기본값으로 안전 정규화(절대 throw 안 함).
+const ReportSchema = z.object({
+  headline: z.string().catch(''),
+  summary: z.string().catch(''),
+  careers: z.array(
+    z.object({ title: z.string().catch(''), score: z.coerce.number().catch(0), why: z.string().catch('') }).catch({ title: '', score: 0, why: '' }),
+  ).catch([]),
+  majors: z.array(z.string()).catch([]),
+  strengths: z.array(z.string()).catch([]),
+  risks: z.array(z.string()).catch([]),
+  nextActions: z.array(z.string()).catch([]),
+});
 
 // AI 진로상담 오케스트레이션 — 세션/메시지/시그널/진행도/리포트.
 // completeness는 고정 step이 아니라 evidence(시그널) 기반 (FRONTEND_CONTRACT §2.4).
@@ -628,9 +642,15 @@ export class CounselingService {
       maxTokens: 2500, // 한국어 리포트 JSON이 1500토큰에서 잘려 파싱 실패하던 문제 (실키 검증으로 발견)
     });
     const parsed = parseReportJson(text);
-    if (parsed) return { ...base, ...parsed };
-    logger.warn('report JSON parse failed — wrapping raw text');
-    return { ...base, headline: '진로 탐색 리포트', summary: stripFence(text).slice(0, 500), careers: [], majors: [], strengths: [], risks: [], nextActions: [] };
+    // zod로 필드 검증·정규화 — 모델이 일부 필드를 깨먹어도 .catch 기본값으로 안전 복구(throw 안 함)
+    const fields = ReportSchema.parse(parsed ?? {});
+    fields.careers = fields.careers.filter((c) => c.title);
+    if (!parsed || (!fields.summary && fields.careers.length === 0)) {
+      if (!fields.headline) fields.headline = '진로 탐색 리포트';
+      if (!fields.summary) fields.summary = stripFence(text).slice(0, 500);
+      logger.warn('report JSON parse weak — zod fallback applied');
+    }
+    return { ...base, ...fields };
   }
 
   private sessionDto(s: { id: string; status: string; startedAt: Date; endedAt: Date | null }) {
