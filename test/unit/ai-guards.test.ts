@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AiClient } from '../../src/ai/ai-client';
 import { extractSignalsByRule } from '../../src/ai/signals';
-import { embed, EMBEDDING_DIM, toVectorLiteral } from '../../src/ai/embedding';
+import { hashEmbed, EMBEDDING_DIM, toVectorLiteral } from '../../src/ai/embedding';
 import { AppError, ErrorCode } from '../../src/common/errors';
 import { loadEnv, resetEnvForTest } from '../../src/common/env';
 
@@ -58,9 +58,9 @@ describe('AI 가드/시그널/임베딩 (mock provider)', () => {
     expect(extractSignalsByRule('음 그냥 그래요')).toEqual([]);
   });
 
-  it('임베딩 — 결정적, 정규화, 차원 고정', () => {
-    const a = embed('영상 편집');
-    const b = embed('영상 편집');
+  it('해시 임베딩(폴백) — 결정적, 정규화, 차원 고정', () => {
+    const a = hashEmbed('영상 편집');
+    const b = hashEmbed('영상 편집');
     expect(a).toEqual(b);
     expect(a).toHaveLength(EMBEDDING_DIM);
     const norm = Math.sqrt(a.reduce((acc, v) => acc + v * v, 0));
@@ -68,6 +68,6 @@ describe('AI 가드/시그널/임베딩 (mock provider)', () => {
     expect(toVectorLiteral([0.5, -0.25])).toBe('[0.500000,-0.250000]');
     // 의미적으로 비슷한 텍스트가 다른 텍스트보다 가깝다 (n-gram 공유)
     const cos = (x: number[], y: number[]) => x.reduce((s, v, i) => s + v * y[i]!, 0);
-    expect(cos(embed('영상 편집자'), embed('영상 편집'))).toBeGreaterThan(cos(embed('영상 편집자'), embed('회계 사무원')));
+    expect(cos(hashEmbed('영상 편집자'), hashEmbed('영상 편집'))).toBeGreaterThan(cos(hashEmbed('영상 편집자'), hashEmbed('회계 사무원')));
   });
 });

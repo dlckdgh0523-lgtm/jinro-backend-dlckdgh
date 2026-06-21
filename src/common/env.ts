@@ -68,6 +68,13 @@ const EnvSchema = z.object({
   AI_MAX_INPUT_CHARS: z.coerce.number().default(24_000),
   AI_MAX_CONCURRENT_STREAMS: z.coerce.number().default(50),
 
+  // 임베딩 — 기본 hash(256d, 로컬). voyage + VOYAGE_API_KEY 설정 시 Voyage 의미 임베딩으로 전환.
+  // 전환 후 scripts/reembed.ts 1회 실행(벡터 컬럼 차원 변경 + 전체 재임베딩) 필요.
+  EMBEDDING_PROVIDER: z.enum(['hash', 'voyage']).default('hash'),
+  VOYAGE_API_KEY: z.string().default(''),
+  VOYAGE_MODEL: z.string().default('voyage-3.5'),
+  VOYAGE_DIM: z.coerce.number().default(1024),
+
   // 소셜 로그인 (OAuth) — 키 없으면 해당 버튼 비활성. redirect_uri는 요청 Host 기반(또는 OAUTH_REDIRECT_BASE).
   GOOGLE_CLIENT_ID: z.string().default(''),
   GOOGLE_CLIENT_SECRET: z.string().default(''),

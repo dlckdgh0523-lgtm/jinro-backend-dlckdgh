@@ -54,7 +54,7 @@ export class Retriever {
   }
 
   private async hybrid(kind: 'job' | 'major' | 'counsel', query: string, topK: number): Promise<RetrievedDoc[]> {
-    const vecLit = toVectorLiteral(embed(query));
+    const vecLit = toVectorLiteral(await embed(query, 'query'));
     const { select, tsExpr, titleCol } = this.parts(kind);
     const limit = Math.max(1, Math.min(topK, 20));
 
