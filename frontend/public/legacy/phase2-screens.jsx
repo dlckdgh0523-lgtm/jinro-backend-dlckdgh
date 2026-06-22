@@ -855,7 +855,7 @@ function AIChatRAG({ go, coach = false }) {
     await window.__apiStream('/ai-counseling/sessions/' + sid + '/messages', { text }, {
       onToken: (delta) => { setThinking(false); setMsgs(m => { const c = [...m]; c[c.length - 1] = { role: 'ai', text: (c[c.length - 1].text || '') + delta }; return c; }); },
       onDone: () => { setThinking(false); },
-      onError: (code, message) => { setThinking(false); setMsgs(m => { const c = [...m]; c[c.length - 1] = { role: 'ai', text: message || '오류가 발생했어요.' }; return c; }); },
+      onError: (code, message) => { setThinking(false); setMsgs(m => { const c = [...m]; const last = c[c.length - 1]; const partial = (last && last.text) ? last.text : ''; c[c.length - 1] = { role: 'ai', text: partial || message || '오류가 발생했어요.' }; return c; }); },
     });
     setThinking(false);
   };
@@ -939,8 +939,8 @@ function RagBubble({ msg }) {
           borderRadius: isUser ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
           fontSize: 14, lineHeight: 1.55,
           boxShadow: isUser ? 'none' : '0 1px 2px rgba(0,0,0,0.04)',
-          whiteSpace: 'pre-line',
-        }} className="kr-heading">{msg.text}</div>
+          whiteSpace: isUser ? 'pre-line' : 'normal',
+        }} className="kr-heading">{isUser ? msg.text : (typeof FormattedText === 'function' ? <FormattedText text={msg.text}/> : msg.text)}</div>
         {msg.sources && (
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-subtle)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>

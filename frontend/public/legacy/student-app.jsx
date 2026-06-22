@@ -423,7 +423,9 @@ function AICounseling({ go, openSignals }) {
       onDone: () => { setThinking(false); refreshProgress(sid); },
       onError: (code, message) => {
         setThinking(false);
-        setMsgs(m => { const c = [...m]; c[c.length - 1] = { role: 'ai', text: message || '오류가 발생했어요.' }; return c; });
+        // 부분응답이 있으면 지우지 않고 유지(스크롤/끊김으로 보이던 응답이 사라지던 문제 방지).
+        setMsgs(m => { const c = [...m]; const last = c[c.length - 1]; const partial = (last && last.text) ? last.text : ''; c[c.length - 1] = { role: 'ai', text: partial || message || '오류가 발생했어요.' }; return c; });
+        refreshProgress(sid);
       },
     });
     setThinking(false);

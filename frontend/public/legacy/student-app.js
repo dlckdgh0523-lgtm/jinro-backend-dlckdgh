@@ -266,9 +266,12 @@ function AICounseling({ go, openSignals }) {
         setThinking(false);
         setMsgs((m) => {
           const c = [...m];
-          c[c.length - 1] = { role: "ai", text: message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694." };
+          const last = c[c.length - 1];
+          const partial = last && last.text ? last.text : "";
+          c[c.length - 1] = { role: "ai", text: partial || message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694." };
           return c;
         });
+        refreshProgress(sid);
       }
     });
     setThinking(false);

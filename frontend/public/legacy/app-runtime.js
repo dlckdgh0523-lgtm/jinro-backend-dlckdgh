@@ -319,31 +319,44 @@ const dataApi = new Proxy({}, {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buf.indexOf("\n\n")) >= 0) {
-        const frame = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        if (frame.startsWith(":")) continue;
-        let event = "message";
-        const dataLines = [];
-        for (const line of frame.split("\n")) {
-          if (line.startsWith("event: ")) event = line.slice(7);
-          else if (line.startsWith("data: ")) dataLines.push(line.slice(6));
+    let gotToken = false, doneSeen = false;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const frame = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          if (frame.startsWith(":")) continue;
+          let event = "message";
+          const dataLines = [];
+          for (const line of frame.split("\n")) {
+            if (line.startsWith("event: ")) event = line.slice(7);
+            else if (line.startsWith("data: ")) dataLines.push(line.slice(6));
+          }
+          let data = null;
+          try {
+            data = JSON.parse(dataLines.join("\n"));
+          } catch (e) {
+          }
+          if (event === "token") {
+            gotToken = true;
+            cb.onToken && cb.onToken(data && data.delta || "");
+          } else if (event === "done") {
+            doneSeen = true;
+            cb.onDone && cb.onDone(data);
+          } else if (event === "error") cb.onError && cb.onError(data && data.code || "ERR", data && data.message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694");
         }
-        let data = null;
-        try {
-          data = JSON.parse(dataLines.join("\n"));
-        } catch (e) {
-        }
-        if (event === "token") cb.onToken && cb.onToken(data && data.delta || "");
-        else if (event === "done") cb.onDone && cb.onDone(data);
-        else if (event === "error") cb.onError && cb.onError(data && data.code || "ERR", data && data.message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694");
+      }
+    } catch (e) {
+      if (!gotToken && !doneSeen) {
+        cb.onError && cb.onError("STREAM_INTERRUPTED", "\uC751\uB2F5\uC774 \uC7A0\uC2DC \uB04A\uACBC\uC5B4\uC694. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.");
+        return;
       }
     }
+    if (gotToken && !doneSeen) cb.onDone && cb.onDone(null);
   };
   window.__isLoggedIn = () => !!getTok();
 })();

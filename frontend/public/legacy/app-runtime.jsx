@@ -280,25 +280,33 @@ const dataApi = new Proxy({}, {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buf.indexOf('\n\n')) >= 0) {
-        const frame = buf.slice(0, idx); buf = buf.slice(idx + 2);
-        if (frame.startsWith(':')) continue;
-        let event = 'message'; const dataLines = [];
-        for (const line of frame.split('\n')) {
-          if (line.startsWith('event: ')) event = line.slice(7);
-          else if (line.startsWith('data: ')) dataLines.push(line.slice(6));
+    let gotToken = false, doneSeen = false;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf('\n\n')) >= 0) {
+          const frame = buf.slice(0, idx); buf = buf.slice(idx + 2);
+          if (frame.startsWith(':')) continue;
+          let event = 'message'; const dataLines = [];
+          for (const line of frame.split('\n')) {
+            if (line.startsWith('event: ')) event = line.slice(7);
+            else if (line.startsWith('data: ')) dataLines.push(line.slice(6));
+          }
+          let data = null; try { data = JSON.parse(dataLines.join('\n')); } catch (e) {}
+          if (event === 'token') { gotToken = true; cb.onToken && cb.onToken((data && data.delta) || ''); }
+          else if (event === 'done') { doneSeen = true; cb.onDone && cb.onDone(data); }
+          else if (event === 'error') cb.onError && cb.onError((data && data.code) || 'ERR', (data && data.message) || '오류가 발생했어요');
         }
-        let data = null; try { data = JSON.parse(dataLines.join('\n')); } catch (e) {}
-        if (event === 'token') cb.onToken && cb.onToken((data && data.delta) || '');
-        else if (event === 'done') cb.onDone && cb.onDone(data);
-        else if (event === 'error') cb.onError && cb.onError((data && data.code) || 'ERR', (data && data.message) || '오류가 발생했어요');
       }
+    } catch (e) {
+      // 스트림 중간 끊김(모바일 스크롤/주소창 토글/네트워크 일시 끊김 등). 토큰을 이미 받았다면
+      // 서버에 답변이 저장돼 있으므로 에러로 지우지 말고 정상 종료로 처리(부분응답 보존 + progress 갱신).
+      if (!gotToken && !doneSeen) { cb.onError && cb.onError('STREAM_INTERRUPTED', '응답이 잠시 끊겼어요. 다시 시도해주세요.'); return; }
     }
+    if (gotToken && !doneSeen) cb.onDone && cb.onDone(null);
   };
 
   window.__isLoggedIn = () => !!getTok();

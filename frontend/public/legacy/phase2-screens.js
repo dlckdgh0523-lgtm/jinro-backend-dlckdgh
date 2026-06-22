@@ -549,7 +549,9 @@ function AIChatRAG({ go, coach = false }) {
         setThinking(false);
         setMsgs((m) => {
           const c = [...m];
-          c[c.length - 1] = { role: "ai", text: message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694." };
+          const last = c[c.length - 1];
+          const partial = last && last.text ? last.text : "";
+          c[c.length - 1] = { role: "ai", text: partial || message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694." };
           return c;
         });
       }
@@ -593,8 +595,8 @@ function RagBubble({ msg }) {
     fontSize: 14,
     lineHeight: 1.55,
     boxShadow: isUser ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
-    whiteSpace: "pre-line"
-  }, className: "kr-heading" }, msg.text), msg.sources && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "var(--fg-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcDoc, { size: 10 }), " \uCD9C\uCC98 ", msg.sources.length, "\uAC74"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, msg.sources.map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { padding: "10px 12px", background: "var(--bg-muted)", borderRadius: 10, border: "1px solid var(--line-subtle)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "var(--fg-strong)", flex: 1 }, className: "kr-heading" }, s.title), /* @__PURE__ */ React.createElement(Chip, { tone: s.confidence === "confirmed" ? "success" : "warning", size: "sm", style: { height: 16, padding: "0 5px", fontSize: 9 } }, s.confidence === "confirmed" ? "\uD655\uC815" : "\uCD94\uC815")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-muted)", display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "monospace" } }, s.url), /* @__PURE__ */ React.createElement("span", { className: "num" }, "\uAC31\uC2E0 ", s.updated))))))));
+    whiteSpace: isUser ? "pre-line" : "normal"
+  }, className: "kr-heading" }, isUser ? msg.text : typeof FormattedText === "function" ? /* @__PURE__ */ React.createElement(FormattedText, { text: msg.text }) : msg.text), msg.sources && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "var(--fg-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcDoc, { size: 10 }), " \uCD9C\uCC98 ", msg.sources.length, "\uAC74"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, msg.sources.map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { padding: "10px 12px", background: "var(--bg-muted)", borderRadius: 10, border: "1px solid var(--line-subtle)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "var(--fg-strong)", flex: 1 }, className: "kr-heading" }, s.title), /* @__PURE__ */ React.createElement(Chip, { tone: s.confidence === "confirmed" ? "success" : "warning", size: "sm", style: { height: 16, padding: "0 5px", fontSize: 9 } }, s.confidence === "confirmed" ? "\uD655\uC815" : "\uCD94\uC815")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-muted)", display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "monospace" } }, s.url), /* @__PURE__ */ React.createElement("span", { className: "num" }, "\uAC31\uC2E0 ", s.updated))))))));
 }
 Object.assign(window, {
   ConsentManagement,

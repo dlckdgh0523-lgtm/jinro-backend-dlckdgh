@@ -230,7 +230,7 @@ function Landing3D({ onNav = () => {
         .l3d-badge { display: inline-flex; padding: 7px 14px; border-radius: 999px; background: #EBF4FF; border: 1px solid #D6E6FF; color: #1B64DA; font-size: 13px; font-weight: 700; margin-bottom: 22px; }
         .l3d-hero-title { margin: 0 0 18px; font-size: clamp(34px,7vw,66px); font-weight: 900; color: #191F28; line-height: 1.13; letter-spacing: -0.03em; }
         .l3d-grad { background: linear-gradient(135deg,#3182F6,#7B61FF,#22A7C2); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .l3d-hero-sub { margin: 0 0 34px; font-size: clamp(16px,2.6vw,20px); line-height: 1.7; color: #6B7684; max-width: 620px; }
+        .l3d-hero-sub { margin: 0 0 34px; font-size: clamp(16px,2.6vw,20px); line-height: 1.7; color: #2B3138; font-weight: 600; max-width: 620px; text-shadow: 0 1px 2px rgba(255,255,255,0.7); }
         .l3d-note { margin: 20px 0 0; font-size: 13px; color: #8B95A1; }
         .l3d-cue { margin-top: 40px; font-size: 13px; color: #8B95A1; animation: l3dbob 1.8s ease-in-out infinite; }
 
