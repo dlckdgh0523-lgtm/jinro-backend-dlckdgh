@@ -1089,18 +1089,6 @@ function FreeLaunchBilling({ go, role = 'student' }) {
   const futureFeatures = isStudent
     ? ['AI 진로 상담 무제한', '진로 리포트 + 입시 분석', '맞춤 AI 학습 계획', '관심 학과 입시 추적']
     : ['학급 최대 30명 관리', '학생별 AI 리포트 열람', '상담 일정 · 메모 관리', '실시간 SSE 알림'];
-  const usage = isStudent
-    ? [
-        { label: 'AI 진로 상담', value: '12회', sub: '이번 달', icon: <IcSparkles size={15}/>, tone: 'purple' },
-        { label: '진로 리포트', value: '1개', sub: '생성됨', icon: <IcCompass size={15}/>, tone: 'brand' },
-        { label: '자습 누적', value: '14h', sub: '이번 달', icon: <IcZap size={15}/>, tone: 'mint' },
-      ]
-    : [
-        { label: '관리 중 학생', value: '18명', sub: '제한 없음', icon: <IcUsers size={15}/>, tone: 'brand' },
-        { label: 'AI 리포트 열람', value: '11건', sub: '이번 달', icon: <IcSparkles size={15}/>, tone: 'purple' },
-        { label: '상담 진행', value: '9건', sub: '이번 달', icon: <IcMessage size={15}/>, tone: 'mint' },
-      ];
-
   return (
     <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
       <ScreenHeader help="billing" title="구독 및 결제" leading={<BackButton onClick={() => go('profile')}/>}/>
@@ -1141,25 +1129,6 @@ function FreeLaunchBilling({ go, role = 'student' }) {
             </span>
           </div>
         </Card>
-
-        {/* Current usage */}
-        <SectionCard title="이번 달 사용 현황" subtitle="무료로 이만큼 활용하고 있어요" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {usage.map((u, i) => (
-              <div key={i} style={{ padding: 14, background: 'var(--bg-muted)', borderRadius: 12, textAlign: 'center' }}>
-                <div style={{
-                  width: 30, height: 30, borderRadius: 9, margin: '0 auto 8px',
-                  background: `var(--${u.tone === 'mint' ? 'accent-mint-bg' : u.tone === 'purple' ? 'accent-purple-bg' : 'brand-50'})`,
-                  color: `var(--${u.tone === 'mint' ? 'accent-mint' : u.tone === 'purple' ? 'accent-purple' : 'brand-600'})`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{u.icon}</div>
-                <div className="num" style={{ fontSize: 18, fontWeight: 800, color: 'var(--fg-strong)' }}>{u.value}</div>
-                <div style={{ fontSize: 11, color: 'var(--fg-strong)', fontWeight: 600, marginTop: 2 }} className="kr-heading">{u.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--fg-subtle)' }}>{u.sub}</div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
 
         {/* Upcoming pricing preview */}
         <SectionCard title="앞으로의 요금 안내" subtitle="유료 전환 시 적용될 예정 가격이에요" style={{ marginBottom: 12 }}>

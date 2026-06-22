@@ -585,8 +585,8 @@ function TeacherMobileDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Chip tone="info" size="sm">교사 플랜 · 무료 체험</Chip>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg-strong)', marginTop: 6 }}>무료 체험 18일 남음</div>
-            <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>5월 31일까지</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg-strong)', marginTop: 6 }}>무료 체험 중</div>
+            <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>결제 연동 준비 중 (현재 전 기능 무료)</div>
           </div>
           <IcChevronRight size={20} color="var(--fg-subtle)"/>
         </div>

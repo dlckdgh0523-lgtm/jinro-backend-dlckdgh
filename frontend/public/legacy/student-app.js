@@ -712,15 +712,6 @@ function FreeLaunchBilling({ go, role = "student" }) {
   const isStudent2 = role === "student";
   const planPrice = isStudent2 ? "3,000" : "30,000";
   const futureFeatures = isStudent2 ? ["AI \uC9C4\uB85C \uC0C1\uB2F4 \uBB34\uC81C\uD55C", "\uC9C4\uB85C \uB9AC\uD3EC\uD2B8 + \uC785\uC2DC \uBD84\uC11D", "\uB9DE\uCDA4 AI \uD559\uC2B5 \uACC4\uD68D", "\uAD00\uC2EC \uD559\uACFC \uC785\uC2DC \uCD94\uC801"] : ["\uD559\uAE09 \uCD5C\uB300 30\uBA85 \uAD00\uB9AC", "\uD559\uC0DD\uBCC4 AI \uB9AC\uD3EC\uD2B8 \uC5F4\uB78C", "\uC0C1\uB2F4 \uC77C\uC815 \xB7 \uBA54\uBAA8 \uAD00\uB9AC", "\uC2E4\uC2DC\uAC04 SSE \uC54C\uB9BC"];
-  const usage = isStudent2 ? [
-    { label: "AI \uC9C4\uB85C \uC0C1\uB2F4", value: "12\uD68C", sub: "\uC774\uBC88 \uB2EC", icon: /* @__PURE__ */ React.createElement(IcSparkles, { size: 15 }), tone: "purple" },
-    { label: "\uC9C4\uB85C \uB9AC\uD3EC\uD2B8", value: "1\uAC1C", sub: "\uC0DD\uC131\uB428", icon: /* @__PURE__ */ React.createElement(IcCompass, { size: 15 }), tone: "brand" },
-    { label: "\uC790\uC2B5 \uB204\uC801", value: "14h", sub: "\uC774\uBC88 \uB2EC", icon: /* @__PURE__ */ React.createElement(IcZap, { size: 15 }), tone: "mint" }
-  ] : [
-    { label: "\uAD00\uB9AC \uC911 \uD559\uC0DD", value: "18\uBA85", sub: "\uC81C\uD55C \uC5C6\uC74C", icon: /* @__PURE__ */ React.createElement(IcUsers, { size: 15 }), tone: "brand" },
-    { label: "AI \uB9AC\uD3EC\uD2B8 \uC5F4\uB78C", value: "11\uAC74", sub: "\uC774\uBC88 \uB2EC", icon: /* @__PURE__ */ React.createElement(IcSparkles, { size: 15 }), tone: "purple" },
-    { label: "\uC0C1\uB2F4 \uC9C4\uD589", value: "9\uAC74", sub: "\uC774\uBC88 \uB2EC", icon: /* @__PURE__ */ React.createElement(IcMessage, { size: 15 }), tone: "mint" }
-  ];
   return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg-canvas)", minHeight: "100%" } }, /* @__PURE__ */ React.createElement(ScreenHeader, { help: "billing", title: "\uAD6C\uB3C5 \uBC0F \uACB0\uC81C", leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go("profile") }) }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px" } }, /* @__PURE__ */ React.createElement(Card, { padding: 24, style: {
     marginBottom: 12,
     background: "linear-gradient(135deg, #15803D 0%, #0E5C2C 100%)",
@@ -743,17 +734,7 @@ function FreeLaunchBilling({ go, role = "student" }) {
     display: "flex",
     alignItems: "center",
     gap: 10
-  } }, /* @__PURE__ */ React.createElement(IcInfo, { size: 16, color: "#fff", style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, lineHeight: 1.5 }, className: "kr-heading" }, "\uC720\uB8CC \uC804\uD658\uC740 ", /* @__PURE__ */ React.createElement("strong", null, "\uCD5C\uC18C 30\uC77C \uC804"), "\uC5D0 \uBBF8\uB9AC \uC54C\uB824\uB4DC\uB9B4\uAC8C\uC694. \uAC11\uC790\uAE30 \uACB0\uC81C\uB418\uB294 \uC77C\uC740 \uC5C6\uC5B4\uC694."))), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC774\uBC88 \uB2EC \uC0AC\uC6A9 \uD604\uD669", subtitle: "\uBB34\uB8CC\uB85C \uC774\uB9CC\uD07C \uD65C\uC6A9\uD558\uACE0 \uC788\uC5B4\uC694", style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 } }, usage.map((u, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { padding: 14, background: "var(--bg-muted)", borderRadius: 12, textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    margin: "0 auto 8px",
-    background: `var(--${u.tone === "mint" ? "accent-mint-bg" : u.tone === "purple" ? "accent-purple-bg" : "brand-50"})`,
-    color: `var(--${u.tone === "mint" ? "accent-mint" : u.tone === "purple" ? "accent-purple" : "brand-600"})`,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
-  } }, u.icon), /* @__PURE__ */ React.createElement("div", { className: "num", style: { fontSize: 18, fontWeight: 800, color: "var(--fg-strong)" } }, u.value), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-strong)", fontWeight: 600, marginTop: 2 }, className: "kr-heading" }, u.label), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-subtle)" } }, u.sub))))), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC55E\uC73C\uB85C\uC758 \uC694\uAE08 \uC548\uB0B4", subtitle: "\uC720\uB8CC \uC804\uD658 \uC2DC \uC801\uC6A9\uB420 \uC608\uC815 \uAC00\uACA9\uC774\uC5D0\uC694", style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(IcInfo, { size: 16, color: "#fff", style: { flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, lineHeight: 1.5 }, className: "kr-heading" }, "\uC720\uB8CC \uC804\uD658\uC740 ", /* @__PURE__ */ React.createElement("strong", null, "\uCD5C\uC18C 30\uC77C \uC804"), "\uC5D0 \uBBF8\uB9AC \uC54C\uB824\uB4DC\uB9B4\uAC8C\uC694. \uAC11\uC790\uAE30 \uACB0\uC81C\uB418\uB294 \uC77C\uC740 \uC5C6\uC5B4\uC694."))), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC55E\uC73C\uB85C\uC758 \uC694\uAE08 \uC548\uB0B4", subtitle: "\uC720\uB8CC \uC804\uD658 \uC2DC \uC801\uC6A9\uB420 \uC608\uC815 \uAC00\uACA9\uC774\uC5D0\uC694", style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: {
     padding: 16,
     borderRadius: 12,
     background: "linear-gradient(135deg, #EBF4FF 0%, #FFFFFF 100%)",
