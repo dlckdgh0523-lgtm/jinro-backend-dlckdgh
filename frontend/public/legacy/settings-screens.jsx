@@ -191,4 +191,44 @@ function SettingsTerms({ back }) {
   );
 }
 
-Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, Toggle });
+// ────────────────────────────────────────────────────────
+// 건의하기 (사용자 → 운영팀, 실 API POST /suggestions)
+// ────────────────────────────────────────────────────────
+function SettingsSuggestion({ back }) {
+  const [category, setCategory] = React.useState('기타');
+  const [body, setBody] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const submit = async () => {
+    if (!body.trim() || busy) return;
+    setBusy(true);
+    try {
+      await window.__apiFetch('/suggestions', { method: 'POST', body: JSON.stringify({ category, body: body.trim() }) });
+      showToast('소중한 의견 감사해요! 잘 전달했어요', 'success');
+      back();
+    } catch (e) {
+      showToast((e && e.body && e.body.message) || '전송하지 못했어요', 'error');
+      setBusy(false);
+    }
+  };
+  return (
+    <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
+      <ScreenHeader title="건의하기" leading={<BackButton onClick={back}/>}/>
+      <div style={{ padding: '0 16px 24px', maxWidth: 520, margin: '0 auto' }}>
+        <SectionCard style={{ marginBottom: 12 }}>
+          <FormField label="분류" style={{ marginBottom: 14 }}>
+            <Tabs items={[{id:'기능',label:'기능 제안'},{id:'버그',label:'버그 신고'},{id:'기타',label:'기타'}]} activeId={category} onChange={setCategory}/>
+          </FormField>
+          <FormField label="내용" required>
+            <Textarea value={body} onChange={setBody} rows={6} placeholder="개선했으면 하는 점, 불편한 점, 새 기능 제안 등을 자유롭게 적어주세요."/>
+          </FormField>
+        </SectionCard>
+        <Button variant="primary" size="lg" full disabled={!body.trim() || busy} onClick={submit}>{busy ? '보내는 중…' : '의견 보내기'}</Button>
+        <div style={{ fontSize: 12, color: 'var(--fg-subtle)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }} className="kr-heading">
+          보내주신 의견은 운영팀이 확인해요. 답변이 필요하면 메시지로 연락드릴 수 있어요.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, SettingsSuggestion, Toggle });

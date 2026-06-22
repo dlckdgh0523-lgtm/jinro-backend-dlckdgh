@@ -1371,6 +1371,7 @@ function TeacherApp({ initialScreen = 'dashboard' }) {
         {screen === 'teacher-info' && <TeacherInfoScreen go={setScreen}/>}
         {screen === 'settings-password' && <SettingsPassword back={() => setScreen('profile')}/>}
         {screen === 'settings-notifications' && <SettingsNotifications back={() => setScreen('profile')} role="teacher"/>}
+        {screen === 'settings-suggest' && <SettingsSuggestion back={() => setScreen('profile')}/>}
         {screen === 'settings-terms' && <SettingsTerms back={() => setScreen('profile')}/>}
       </main>
       {notifOpen && <TeacherNotifPopover items={notifItems} onClose={() => setNotifOpen(false)} onAll={() => { setNotifOpen(false); setScreen('notifications'); }}/>}

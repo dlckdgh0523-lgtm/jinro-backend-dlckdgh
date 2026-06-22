@@ -111,4 +111,22 @@ function SettingsTerms({ back }) {
   const d = docs[tab];
   return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg-canvas)", minHeight: "100%" } }, /* @__PURE__ */ React.createElement(ScreenHeader, { title: "\uC57D\uAD00 \uBC0F \uC815\uCC45", leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: back }) }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px", maxWidth: 640, margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "terms", label: "\uC774\uC6A9\uC57D\uAD00" }, { id: "privacy", label: "\uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC\uBC29\uCE68" }], activeId: tab, onChange: setTab })), /* @__PURE__ */ React.createElement(Card, { padding: 24 }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--fg-strong)" } }, d.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-subtle)", marginTop: 4, marginBottom: 20 } }, d.updated), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 18 } }, d.sections.map(([h, body], i) => /* @__PURE__ */ React.createElement("div", { key: i }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)", marginBottom: 6 }, className: "kr-heading" }, h), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", lineHeight: 1.7 }, className: "kr-heading" }, body))))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-subtle)", textAlign: "center", marginTop: 16, lineHeight: 1.5 }, className: "kr-heading" }, "(\uC8FC) \uC9C4\uB85C\uB098\uCE68\uBC18 \xB7 \uACE0\uAC1D\uC13C\uD130 1599-0000 \xB7 help@jinronavi.kr")));
 }
-Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, Toggle });
+function SettingsSuggestion({ back }) {
+  const [category, setCategory] = React.useState("\uAE30\uD0C0");
+  const [body, setBody] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const submit = async () => {
+    if (!body.trim() || busy) return;
+    setBusy(true);
+    try {
+      await window.__apiFetch("/suggestions", { method: "POST", body: JSON.stringify({ category, body: body.trim() }) });
+      showToast("\uC18C\uC911\uD55C \uC758\uACAC \uAC10\uC0AC\uD574\uC694! \uC798 \uC804\uB2EC\uD588\uC5B4\uC694", "success");
+      back();
+    } catch (e) {
+      showToast(e && e.body && e.body.message || "\uC804\uC1A1\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694", "error");
+      setBusy(false);
+    }
+  };
+  return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg-canvas)", minHeight: "100%" } }, /* @__PURE__ */ React.createElement(ScreenHeader, { title: "\uAC74\uC758\uD558\uAE30", leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: back }) }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px", maxWidth: 520, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(SectionCard, { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement(FormField, { label: "\uBD84\uB958", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "\uAE30\uB2A5", label: "\uAE30\uB2A5 \uC81C\uC548" }, { id: "\uBC84\uADF8", label: "\uBC84\uADF8 \uC2E0\uACE0" }, { id: "\uAE30\uD0C0", label: "\uAE30\uD0C0" }], activeId: category, onChange: setCategory })), /* @__PURE__ */ React.createElement(FormField, { label: "\uB0B4\uC6A9", required: true }, /* @__PURE__ */ React.createElement(Textarea, { value: body, onChange: setBody, rows: 6, placeholder: "\uAC1C\uC120\uD588\uC73C\uBA74 \uD558\uB294 \uC810, \uBD88\uD3B8\uD55C \uC810, \uC0C8 \uAE30\uB2A5 \uC81C\uC548 \uB4F1\uC744 \uC790\uC720\uB86D\uAC8C \uC801\uC5B4\uC8FC\uC138\uC694." }))), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, disabled: !body.trim() || busy, onClick: submit }, busy ? "\uBCF4\uB0B4\uB294 \uC911\u2026" : "\uC758\uACAC \uBCF4\uB0B4\uAE30"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-subtle)", textAlign: "center", marginTop: 12, lineHeight: 1.5 }, className: "kr-heading" }, "\uBCF4\uB0B4\uC8FC\uC2E0 \uC758\uACAC\uC740 \uC6B4\uC601\uD300\uC774 \uD655\uC778\uD574\uC694. \uB2F5\uBCC0\uC774 \uD544\uC694\uD558\uBA74 \uBA54\uC2DC\uC9C0\uB85C \uC5F0\uB77D\uB4DC\uB9B4 \uC218 \uC788\uC5B4\uC694.")));
+}
+Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, SettingsSuggestion, Toggle });
