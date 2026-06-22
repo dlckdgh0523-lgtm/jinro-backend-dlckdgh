@@ -231,4 +231,47 @@ function SettingsSuggestion({ back }) {
   );
 }
 
-Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, SettingsSuggestion, Toggle });
+// ────────────────────────────────────────────────────────
+// 공지사항 보기 (관리자 작성분 → 학생/교사 열람, 실 API GET /announcements)
+// ────────────────────────────────────────────────────────
+function SettingsAnnouncements({ back }) {
+  const [rows, setRows] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try { const r = await window.__apiFetch('/announcements?limit=50', { method: 'GET' }); if (alive) setRows((r && r.data) || []); }
+      catch (e) { if (alive) setRows([]); }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const loading = rows === null;
+  const list = rows || [];
+  const fmt = (d) => { try { const t = new Date(d); return isNaN(t) ? '' : t.toISOString().slice(0, 10); } catch (e) { return ''; } };
+  return (
+    <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
+      <ScreenHeader title="공지사항" leading={<BackButton onClick={back}/>}/>
+      <div style={{ padding: '0 16px 24px', maxWidth: 560, margin: '0 auto' }}>
+        {loading ? (
+          <SectionCard><div style={{ fontSize: 13, color: 'var(--fg-muted)', padding: 8 }}>불러오는 중…</div></SectionCard>
+        ) : list.length === 0 ? (
+          <SectionCard><div style={{ padding: 16, textAlign: 'center', fontSize: 13, color: 'var(--fg-muted)' }} className="kr-heading">등록된 공지가 없어요.</div></SectionCard>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {list.map(a => (
+              <SectionCard key={a.id} style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  {a.pinned && <Chip tone="warning" size="sm">고정</Chip>}
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">{a.title}</span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--fg-default)', whiteSpace: 'pre-line', lineHeight: 1.6 }} className="kr-heading">{a.body}</div>
+                <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginTop: 8 }}>{a.author || '운영팀'} · {fmt(a.createdAt)}</div>
+              </SectionCard>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, SettingsSuggestion, SettingsAnnouncements, Toggle });

@@ -129,4 +129,32 @@ function SettingsSuggestion({ back }) {
   };
   return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg-canvas)", minHeight: "100%" } }, /* @__PURE__ */ React.createElement(ScreenHeader, { title: "\uAC74\uC758\uD558\uAE30", leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: back }) }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px", maxWidth: 520, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(SectionCard, { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement(FormField, { label: "\uBD84\uB958", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "\uAE30\uB2A5", label: "\uAE30\uB2A5 \uC81C\uC548" }, { id: "\uBC84\uADF8", label: "\uBC84\uADF8 \uC2E0\uACE0" }, { id: "\uAE30\uD0C0", label: "\uAE30\uD0C0" }], activeId: category, onChange: setCategory })), /* @__PURE__ */ React.createElement(FormField, { label: "\uB0B4\uC6A9", required: true }, /* @__PURE__ */ React.createElement(Textarea, { value: body, onChange: setBody, rows: 6, placeholder: "\uAC1C\uC120\uD588\uC73C\uBA74 \uD558\uB294 \uC810, \uBD88\uD3B8\uD55C \uC810, \uC0C8 \uAE30\uB2A5 \uC81C\uC548 \uB4F1\uC744 \uC790\uC720\uB86D\uAC8C \uC801\uC5B4\uC8FC\uC138\uC694." }))), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, disabled: !body.trim() || busy, onClick: submit }, busy ? "\uBCF4\uB0B4\uB294 \uC911\u2026" : "\uC758\uACAC \uBCF4\uB0B4\uAE30"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-subtle)", textAlign: "center", marginTop: 12, lineHeight: 1.5 }, className: "kr-heading" }, "\uBCF4\uB0B4\uC8FC\uC2E0 \uC758\uACAC\uC740 \uC6B4\uC601\uD300\uC774 \uD655\uC778\uD574\uC694. \uB2F5\uBCC0\uC774 \uD544\uC694\uD558\uBA74 \uBA54\uC2DC\uC9C0\uB85C \uC5F0\uB77D\uB4DC\uB9B4 \uC218 \uC788\uC5B4\uC694.")));
 }
-Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, SettingsSuggestion, Toggle });
+function SettingsAnnouncements({ back }) {
+  const [rows, setRows] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await window.__apiFetch("/announcements?limit=50", { method: "GET" });
+        if (alive) setRows(r && r.data || []);
+      } catch (e) {
+        if (alive) setRows([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const loading = rows === null;
+  const list = rows || [];
+  const fmt = (d) => {
+    try {
+      const t = new Date(d);
+      return isNaN(t) ? "" : t.toISOString().slice(0, 10);
+    } catch (e) {
+      return "";
+    }
+  };
+  return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg-canvas)", minHeight: "100%" } }, /* @__PURE__ */ React.createElement(ScreenHeader, { title: "\uACF5\uC9C0\uC0AC\uD56D", leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: back }) }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px", maxWidth: 560, margin: "0 auto" } }, loading ? /* @__PURE__ */ React.createElement(SectionCard, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", padding: 8 } }, "\uBD88\uB7EC\uC624\uB294 \uC911\u2026")) : list.length === 0 ? /* @__PURE__ */ React.createElement(SectionCard, null, /* @__PURE__ */ React.createElement("div", { style: { padding: 16, textAlign: "center", fontSize: 13, color: "var(--fg-muted)" }, className: "kr-heading" }, "\uB4F1\uB85D\uB41C \uACF5\uC9C0\uAC00 \uC5C6\uC5B4\uC694.")) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, list.map((a) => /* @__PURE__ */ React.createElement(SectionCard, { key: a.id, style: { marginBottom: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 } }, a.pinned && /* @__PURE__ */ React.createElement(Chip, { tone: "warning", size: "sm" }, "\uACE0\uC815"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, a.title)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-default)", whiteSpace: "pre-line", lineHeight: 1.6 }, className: "kr-heading" }, a.body), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-subtle)", marginTop: 8 } }, a.author || "\uC6B4\uC601\uD300", " \xB7 ", fmt(a.createdAt)))))));
+}
+Object.assign(window, { SettingsPassword, SettingsNotifications, SettingsTerms, SettingsSuggestion, SettingsAnnouncements, Toggle });

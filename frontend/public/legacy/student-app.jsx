@@ -1706,6 +1706,7 @@ function StudentApp({ initialScreen = 'dashboard', heroVariant = 'A' }) {
         {screen === 'settings-password' && <SettingsPassword back={() => setScreen('profile')}/>}
         {screen === 'settings-notifications' && <SettingsNotifications back={() => setScreen('profile')} role="student"/>}
         {screen === 'settings-suggest' && <SettingsSuggestion back={() => setScreen('profile')}/>}
+        {screen === 'settings-announcements' && <SettingsAnnouncements back={() => setScreen('profile')}/>}
         {screen === 'settings-terms' && <SettingsTerms back={() => setScreen('profile')}/>}
         {screen === 'counseling-request' && <CounselingRequest go={setScreen}/>}
         {screen === 'admissions-hub' && <AdmissionsHub go={setScreen}/>}
