@@ -209,7 +209,13 @@ function Landing3D({ onNav = () => {} }) {
           <h2 className="l3d-final-title">지금, 진로의 첫 걸음을</h2>
           <p className="l3d-final-sub">첫 달 무료 체험으로 AI 상담부터 시작해보세요.</p>
           <Btns/>
-          <footer className="l3d-footer">© 2026 진로나침반 · AI 진로 상담 플랫폼</footer>
+          <footer className="l3d-footer">
+            <div className="l3d-contact">
+              <span className="l3d-contact-label">협업 · 문의</span>
+              <a href="mailto:dlckdgh135@naver.com">dlckdgh135@naver.com</a>
+            </div>
+            <div className="l3d-copy">© 2026 진로나침반 · AI 진로 상담 플랫폼 · 만든 사람 이창호</div>
+          </footer>
         </section>
       </div>
 
@@ -262,7 +268,12 @@ function Landing3D({ onNav = () => {} }) {
         .l3d-final { text-align: center; padding: clamp(40px,7vw,90px) clamp(20px,5vw,40px) clamp(40px,6vw,64px); }
         .l3d-final-title { margin: 0 0 14px; font-size: clamp(28px,5.5vw,46px); font-weight: 900; color: #191F28; letter-spacing: -0.02em; }
         .l3d-final-sub { margin: 0 auto 30px; max-width: 480px; font-size: clamp(15px,2.4vw,18px); color: #6B7684; }
-        .l3d-footer { margin-top: 40px; font-size: 12px; color: #8B95A1; }
+        .l3d-footer { margin-top: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .l3d-contact { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 999px; background: rgba(49,130,246,0.06); border: 1px solid rgba(49,130,246,0.18); font-size: 13px; }
+        .l3d-contact-label { color: #4E5968; font-weight: 700; letter-spacing: -0.01em; }
+        .l3d-contact a { color: #3182F6; font-weight: 800; text-decoration: none; }
+        .l3d-contact a:hover { text-decoration: underline; }
+        .l3d-copy { font-size: 12px; color: #8B95A1; }
 
         @keyframes l3dbob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
         @media (prefers-reduced-motion: reduce) { .l3d-row { opacity: 1; transform: none; transition: none; } .l3d-cue { animation: none; } .l3d-scroll { scroll-behavior: auto; } }
