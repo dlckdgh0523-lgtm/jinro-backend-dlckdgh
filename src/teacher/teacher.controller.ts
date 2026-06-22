@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { randomInt } from 'node:crypto';
 import { JwtAuthGuard, type AuthUser } from '../auth/jwt.guard';
@@ -63,6 +63,22 @@ export class TeacherController {
       }
     }
     throw new AppError(ErrorCode.INTERNAL, '초대코드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.');
+  }
+
+  // 초대코드 재발급 — 기존 코드를 새 유니크 코드로 교체. 이미 가입한 학생은 영향 없음.
+  @Post('invite-code/regenerate')
+  async regenerateInviteCode(@Req() req: Request) {
+    const me = requireTeacher(req);
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const code = genInviteCode();
+      try {
+        const updated = await this.prisma.user.update({ where: { id: me.id }, data: { inviteCode: code } });
+        return { data: { inviteCode: updated.inviteCode } };
+      } catch (e) {
+        if ((e as { code?: string })?.code !== 'P2002') throw e; // 코드 충돌만 재시도
+      }
+    }
+    throw new AppError(ErrorCode.INTERNAL, '초대코드를 재발급하지 못했어요. 잠시 후 다시 시도해주세요.');
   }
 
   // 내 학급 학생 — 같은 학교+반. 각 학생의 핵심 지표 집계.

@@ -58,7 +58,20 @@ function useInviteCode() {
       alive = false;
     };
   }, []);
-  return { code, display: code || "", loading: code === null };
+  const regenerate = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch("/teacher/invite-code/regenerate", { method: "POST" });
+      const c = r && r.data && r.data.inviteCode || r && r.inviteCode || "";
+      if (c) {
+        setCode(c);
+        return c;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }, []);
+  return { code, display: code || "", loading: code === null, regenerate };
 }
 const aiProgressBadge = (p) => {
   if (p >= 60) return /* @__PURE__ */ React.createElement(Chip, { tone: "success", size: "sm" }, "\uC9C4\uD589 \uD65C\uBC1C");
@@ -287,7 +300,11 @@ function TeacherClassroom({ go, openNotif }) {
       title: "\uCD08\uB300\uCF54\uB4DC\uB97C \uC7AC\uBC1C\uAE09\uD560\uAE4C\uC694?",
       body: "\uAE30\uC874 \uCF54\uB4DC\uB294 \uC989\uC2DC \uBE44\uD65C\uC131\uD654\uB3FC\uC694. \uC774\uBBF8 \uAC00\uC785\uD55C \uD559\uC0DD\uC740 \uC601\uD5A5\uC774 \uC5C6\uC5B4\uC694.",
       confirmLabel: "\uC7AC\uBC1C\uAE09",
-      onConfirm: () => setConfirmOpen(false),
+      onConfirm: async () => {
+        const c = await invite.regenerate();
+        setConfirmOpen(false);
+        showToast(c ? "\uCD08\uB300\uCF54\uB4DC\uB97C \uC7AC\uBC1C\uAE09\uD588\uC5B4\uC694" : "\uC7AC\uBC1C\uAE09\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694", c ? "success" : "error");
+      },
       onCancel: () => setConfirmOpen(false)
     }
   ));

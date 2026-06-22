@@ -63,8 +63,17 @@ function useInviteCode() {
     })();
     return () => { alive = false; };
   }, []);
+  // 초대코드 재발급 — 백엔드에서 새 유니크 코드를 받아 상태 갱신.
+  const regenerate = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch('/teacher/invite-code/regenerate', { method: 'POST' });
+      const c = (r && r.data && r.data.inviteCode) || (r && r.inviteCode) || '';
+      if (c) { setCode(c); return c; }
+      return null;
+    } catch (e) { return null; }
+  }, []);
   // 표시용: 3글자 단위 공백(예: H8K4 9P → 'H8K 49P'은 피하고 코드 그대로 + 간격은 letterSpacing로).
-  return { code, display: code || '', loading: code === null };
+  return { code, display: code || '', loading: code === null, regenerate };
 }
 
 // AI progress (0-100) → status badge, honestly derived from real signal data.
@@ -498,7 +507,7 @@ function TeacherClassroom({ go, openNotif }) {
         title="초대코드를 재발급할까요?"
         body="기존 코드는 즉시 비활성화돼요. 이미 가입한 학생은 영향이 없어요."
         confirmLabel="재발급"
-        onConfirm={() => setConfirmOpen(false)}
+        onConfirm={async () => { const c = await invite.regenerate(); setConfirmOpen(false); showToast(c ? '초대코드를 재발급했어요' : '재발급하지 못했어요', c ? 'success' : 'error'); }}
         onCancel={() => setConfirmOpen(false)}
       />
     </div>
