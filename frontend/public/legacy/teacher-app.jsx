@@ -1347,7 +1347,7 @@ function TeacherApp({ initialScreen = 'dashboard' }) {
       {isMobile
         ? <SidebarDrawer open={navOpen} onClose={() => setNavOpen(false)}><TeacherSidebar activeId={teacherNavId} onChange={wrapNav}/></SidebarDrawer>
         : <TeacherSidebar activeId={teacherNavId} onChange={setScreen}/>}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%', minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         {screen === 'dashboard' && <TeacherDashboard go={setScreen} openNotif={openNotif}/>}
         {screen === 'classroom' && <TeacherClassroom go={setScreen} openNotif={openNotif}/>}
         {screen === 'students' && <TeacherStudents go={setScreen} openNotif={openNotif}/>}
