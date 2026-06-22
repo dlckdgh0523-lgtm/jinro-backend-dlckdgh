@@ -345,7 +345,7 @@ function TeacherMessages({ openNotif, go }) {
         </div>
         )}
       </div>
-      {composing && <ComposeOverlay onClose={() => setComposing(false)}/>}
+      {composing && <ComposeOverlay onClose={() => setComposing(false)} onSent={loadThreads}/>}
       {booking && <CounselingBookingDialog student={selected} onClose={() => setBooking(false)} onBook={book}/>}
     </div>
   );
@@ -402,14 +402,34 @@ function CounselingBookingDialog({ student, onClose, onBook }) {
   );
 }
 
-function ComposeOverlay({ onClose }) {
+function ComposeOverlay({ onClose, onSent }) {
   const [target, setTarget] = React.useState('individual');
   const [picked, setPicked] = React.useState(null);
   const [q, setQ] = React.useState('');
   const [body, setBody] = React.useState('');
+  const [contacts, setContacts] = React.useState([]);
+  const [busy, setBusy] = React.useState(false);
   const trapRef = useFocusTrap(true, onClose);
-  const roster = (typeof TEACHER_STUDENTS !== 'undefined' ? TEACHER_STUDENTS : []).filter(s => s.name.includes(q));
-  const canSend = body.trim() && (target === 'all' || picked);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => { try { const r = await window.__apiFetch('/messages/contacts', { method: 'GET' }); if (alive) setContacts((r && r.data) || []); } catch (e) {} })();
+    return () => { alive = false; };
+  }, []);
+  const students = contacts.filter(c => c.role === 'student');
+  const roster = students.filter(s => (s.name || '').includes(q));
+  const canSend = body.trim() && (target === 'all' ? students.length > 0 : !!picked) && !busy;
+  const doSend = async () => {
+    if (!canSend) return; setBusy(true);
+    try {
+      const targets = target === 'all' ? students : [picked];
+      for (const t of targets) {
+        await window.__apiFetch('/messages', { method: 'POST', body: JSON.stringify({ recipientId: t.id, body: body.trim() }) });
+      }
+      showToast(target === 'all' ? `학급 전체(${students.length}명)에게 보냈어요` : `${picked.name} 학생에게 보냈어요`, 'success');
+      onSent && onSent(); onClose();
+    } catch (e) { showToast((e && e.body && e.body.message) || '전송하지 못했어요', 'error'); }
+    finally { setBusy(false); }
+  };
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.45)' }}/>
@@ -419,7 +439,7 @@ function ComposeOverlay({ onClose }) {
           <IconButton icon={<IcX size={20}/>} onClick={onClose}/>
         </div>
         <FormField label="받는 사람" style={{ marginBottom: 14 }}>
-          <Tabs items={[{id:'all',label:'학급 전체 (18명)'},{id:'individual',label:'학생 1명'}]} activeId={target} onChange={(v) => { setTarget(v); setPicked(null); }}/>
+          <Tabs items={[{id:'all',label:`학급 전체 (${students.length}명)`},{id:'individual',label:'학생 1명'}]} activeId={target} onChange={(v) => { setTarget(v); setPicked(null); }}/>
         </FormField>
         {target === 'individual' && (
           <FormField label="학생 선택" style={{ marginBottom: 14 }}>
@@ -437,7 +457,7 @@ function ComposeOverlay({ onClose }) {
                   <Avatar name={s.name[0]} size={32}/>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)' }}>{s.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{s.grade}</div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{s.classroom || s.school || '학생'}</div>
                   </div>
                   {picked && picked.id === s.id && <IcCheckCircle size={18} color="var(--brand-500)"/>}
                 </button>
@@ -459,8 +479,7 @@ function ComposeOverlay({ onClose }) {
         </FormField>
         <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
           <Button variant="secondary" full onClick={onClose}>취소</Button>
-          <Button variant="primary" full trailing={<IcSend size={14}/>} disabled={!canSend}
-            onClick={() => { showToast(target === 'all' ? '학급 전체에게 메시지를 보냈어요' : `${picked.name} 학생에게 메시지를 보냈어요`, 'success'); onClose(); }}>보내기</Button>
+          <Button variant="primary" full trailing={<IcSend size={14}/>} disabled={!canSend} onClick={doSend}>{busy ? '보내는 중…' : '보내기'}</Button>
         </div>
       </div>
     </div>

@@ -247,7 +247,7 @@ function TeacherMessages({ openNotif, go }) {
       placeholder: `${selected.otherName} \uD559\uC0DD\uC5D0\uAC8C ${cat === "memo" ? "\uBA54\uBAA8\uB97C" : "\uBA54\uC2DC\uC9C0\uB97C"} \uC785\uB825\uD558\uC138\uC694`,
       style: { flex: 1, border: "none", background: "transparent", outline: "none", resize: "none", fontSize: 14, fontFamily: "inherit", lineHeight: 1.5, color: "var(--fg-strong)", maxHeight: 80, paddingTop: 7 }
     }
-  ), /* @__PURE__ */ React.createElement("button", { onClick: send, disabled: !input.trim(), style: { width: 36, height: 36, borderRadius: "50%", border: "none", background: input.trim() ? "var(--brand-500)" : "var(--line-strong)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() ? "pointer" : "not-allowed", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(IcSend, { size: 16 }))), cat === "memo" && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12.5, color: "var(--fg-default)", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: memoPublic, onChange: (e) => setMemoPublic(e.target.checked), style: { width: 16, height: 16, accentColor: "var(--brand-500)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 600 } }, "\uD559\uC0DD\uC5D0\uAC8C \uACF5\uAC1C"), /* @__PURE__ */ React.createElement("span", { style: { color: memoPublic ? "var(--success)" : "var(--fg-muted)" } }, memoPublic ? "\xB7 \uD559\uC0DD\uC5D0\uAC8C \uC804\uC1A1\uB3FC\uC694" : "\xB7 \uBE44\uACF5\uAC1C, \uD559\uC0DD\uC5D0\uAC8C \uC804\uC1A1\uB418\uC9C0 \uC54A\uC544\uC694"))))), composing && /* @__PURE__ */ React.createElement(ComposeOverlay, { onClose: () => setComposing(false) }), booking && /* @__PURE__ */ React.createElement(CounselingBookingDialog, { student: selected, onClose: () => setBooking(false), onBook: book }));
+  ), /* @__PURE__ */ React.createElement("button", { onClick: send, disabled: !input.trim(), style: { width: 36, height: 36, borderRadius: "50%", border: "none", background: input.trim() ? "var(--brand-500)" : "var(--line-strong)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() ? "pointer" : "not-allowed", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(IcSend, { size: 16 }))), cat === "memo" && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12.5, color: "var(--fg-default)", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: memoPublic, onChange: (e) => setMemoPublic(e.target.checked), style: { width: 16, height: 16, accentColor: "var(--brand-500)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 600 } }, "\uD559\uC0DD\uC5D0\uAC8C \uACF5\uAC1C"), /* @__PURE__ */ React.createElement("span", { style: { color: memoPublic ? "var(--success)" : "var(--fg-muted)" } }, memoPublic ? "\xB7 \uD559\uC0DD\uC5D0\uAC8C \uC804\uC1A1\uB3FC\uC694" : "\xB7 \uBE44\uACF5\uAC1C, \uD559\uC0DD\uC5D0\uAC8C \uC804\uC1A1\uB418\uC9C0 \uC54A\uC544\uC694"))))), composing && /* @__PURE__ */ React.createElement(ComposeOverlay, { onClose: () => setComposing(false), onSent: loadThreads }), booking && /* @__PURE__ */ React.createElement(CounselingBookingDialog, { student: selected, onClose: () => setBooking(false), onBook: book }));
 }
 function CounselingBookingDialog({ student, onClose, onBook }) {
   var _a, _b, _c;
@@ -266,15 +266,48 @@ function CounselingBookingDialog({ student, onClose, onBook }) {
     onClose();
   } }, "\uC608\uC57D\uD558\uACE0 \uC54C\uB9BC \uBCF4\uB0B4\uAE30"))));
 }
-function ComposeOverlay({ onClose }) {
+function ComposeOverlay({ onClose, onSent }) {
   const [target, setTarget] = React.useState("individual");
   const [picked, setPicked] = React.useState(null);
   const [q, setQ] = React.useState("");
   const [body, setBody] = React.useState("");
+  const [contacts, setContacts] = React.useState([]);
+  const [busy, setBusy] = React.useState(false);
   const trapRef = useFocusTrap(true, onClose);
-  const roster = (typeof TEACHER_STUDENTS !== "undefined" ? TEACHER_STUDENTS : []).filter((s) => s.name.includes(q));
-  const canSend = body.trim() && (target === "all" || picked);
-  return /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.45)" } }), /* @__PURE__ */ React.createElement("div", { ref: trapRef, role: "dialog", "aria-modal": "true", "aria-label": "\uC0C8 \uBA54\uC2DC\uC9C0", style: { position: "relative", width: 560, maxWidth: "94%", maxHeight: "90%", overflow: "auto", background: "var(--bg-elevated)", borderRadius: 20, padding: 24, boxShadow: "var(--shadow-pop)" }, className: "toss-scroll" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, "\uC0C8 \uBA54\uC2DC\uC9C0"), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 20 }), onClick: onClose })), /* @__PURE__ */ React.createElement(FormField, { label: "\uBC1B\uB294 \uC0AC\uB78C", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "all", label: "\uD559\uAE09 \uC804\uCCB4 (18\uBA85)" }, { id: "individual", label: "\uD559\uC0DD 1\uBA85" }], activeId: target, onChange: (v) => {
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await window.__apiFetch("/messages/contacts", { method: "GET" });
+        if (alive) setContacts(r && r.data || []);
+      } catch (e) {
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const students = contacts.filter((c) => c.role === "student");
+  const roster = students.filter((s) => (s.name || "").includes(q));
+  const canSend = body.trim() && (target === "all" ? students.length > 0 : !!picked) && !busy;
+  const doSend = async () => {
+    if (!canSend) return;
+    setBusy(true);
+    try {
+      const targets = target === "all" ? students : [picked];
+      for (const t of targets) {
+        await window.__apiFetch("/messages", { method: "POST", body: JSON.stringify({ recipientId: t.id, body: body.trim() }) });
+      }
+      showToast(target === "all" ? `\uD559\uAE09 \uC804\uCCB4(${students.length}\uBA85)\uC5D0\uAC8C \uBCF4\uB0C8\uC5B4\uC694` : `${picked.name} \uD559\uC0DD\uC5D0\uAC8C \uBCF4\uB0C8\uC5B4\uC694`, "success");
+      onSent && onSent();
+      onClose();
+    } catch (e) {
+      showToast(e && e.body && e.body.message || "\uC804\uC1A1\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.45)" } }), /* @__PURE__ */ React.createElement("div", { ref: trapRef, role: "dialog", "aria-modal": "true", "aria-label": "\uC0C8 \uBA54\uC2DC\uC9C0", style: { position: "relative", width: 560, maxWidth: "94%", maxHeight: "90%", overflow: "auto", background: "var(--bg-elevated)", borderRadius: 20, padding: 24, boxShadow: "var(--shadow-pop)" }, className: "toss-scroll" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, "\uC0C8 \uBA54\uC2DC\uC9C0"), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 20 }), onClick: onClose })), /* @__PURE__ */ React.createElement(FormField, { label: "\uBC1B\uB294 \uC0AC\uB78C", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "all", label: `\uD559\uAE09 \uC804\uCCB4 (${students.length}\uBA85)` }, { id: "individual", label: "\uD559\uC0DD 1\uBA85" }], activeId: target, onChange: (v) => {
     setTarget(v);
     setPicked(null);
   } })), target === "individual" && /* @__PURE__ */ React.createElement(FormField, { label: "\uD559\uC0DD \uC120\uD0DD", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(TextInput, { value: q, onChange: setQ, placeholder: "\uD559\uC0DD \uC774\uB984 \uAC80\uC0C9", leading: /* @__PURE__ */ React.createElement(IcSearch, { size: 16 }), style: { marginBottom: 8 } }), /* @__PURE__ */ React.createElement("div", { style: { maxHeight: 200, overflow: "auto", border: "1px solid var(--line-subtle)", borderRadius: 12 }, className: "toss-scroll" }, roster.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 20, textAlign: "center", fontSize: 13, color: "var(--fg-muted)" } }, "\uD559\uC0DD\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC5B4\uC694") : roster.map((s, i) => /* @__PURE__ */ React.createElement("button", { key: s.id, onClick: () => setPicked(s), style: {
@@ -288,20 +321,7 @@ function ComposeOverlay({ onClose }) {
     cursor: "pointer",
     borderBottom: i < roster.length - 1 ? "1px solid var(--line-subtle)" : "none",
     background: picked && picked.id === s.id ? "var(--brand-50)" : "transparent"
-  } }, /* @__PURE__ */ React.createElement(Avatar, { name: s.name[0], size: 32 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)" } }, s.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" } }, s.grade)), picked && picked.id === s.id && /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 18, color: "var(--brand-500)" }))))), /* @__PURE__ */ React.createElement(FormField, { label: "\uCE74\uD14C\uACE0\uB9AC", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(Chip, { tone: "info" }, "\uC77C\uBC18 \uBA54\uC2DC\uC9C0"), /* @__PURE__ */ React.createElement(Chip, { tone: "purple" }, "\uC0C1\uB2F4 \uBA54\uBAA8"), /* @__PURE__ */ React.createElement(Chip, { tone: "warning" }, "\uC0C1\uB2F4 \uC608\uC57D"), /* @__PURE__ */ React.createElement(Chip, { tone: "brand" }, "\uD559\uC2B5 \uD53C\uB4DC\uBC31"), /* @__PURE__ */ React.createElement(Chip, { tone: "mint" }, "\uC785\uC2DC \uC548\uB0B4"))), /* @__PURE__ */ React.createElement(FormField, { label: "\uB0B4\uC6A9", required: true }, /* @__PURE__ */ React.createElement(Textarea, { value: body, onChange: setBody, rows: 5, placeholder: target === "all" ? "\uD559\uAE09 \uC804\uCCB4\uC5D0\uAC8C \uBCF4\uB0BC \uB0B4\uC6A9" : picked ? `${picked.name} \uD559\uC0DD\uC5D0\uAC8C \uC804\uD560 \uB0B4\uC6A9` : "\uBA3C\uC800 \uD559\uC0DD\uC744 \uC120\uD0DD\uD558\uC138\uC694" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 20 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: onClose }, "\uCDE8\uC18C"), /* @__PURE__ */ React.createElement(
-    Button,
-    {
-      variant: "primary",
-      full: true,
-      trailing: /* @__PURE__ */ React.createElement(IcSend, { size: 14 }),
-      disabled: !canSend,
-      onClick: () => {
-        showToast(target === "all" ? "\uD559\uAE09 \uC804\uCCB4\uC5D0\uAC8C \uBA54\uC2DC\uC9C0\uB97C \uBCF4\uB0C8\uC5B4\uC694" : `${picked.name} \uD559\uC0DD\uC5D0\uAC8C \uBA54\uC2DC\uC9C0\uB97C \uBCF4\uB0C8\uC5B4\uC694`, "success");
-        onClose();
-      }
-    },
-    "\uBCF4\uB0B4\uAE30"
-  ))));
+  } }, /* @__PURE__ */ React.createElement(Avatar, { name: s.name[0], size: 32 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)" } }, s.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" } }, s.classroom || s.school || "\uD559\uC0DD")), picked && picked.id === s.id && /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 18, color: "var(--brand-500)" }))))), /* @__PURE__ */ React.createElement(FormField, { label: "\uCE74\uD14C\uACE0\uB9AC", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(Chip, { tone: "info" }, "\uC77C\uBC18 \uBA54\uC2DC\uC9C0"), /* @__PURE__ */ React.createElement(Chip, { tone: "purple" }, "\uC0C1\uB2F4 \uBA54\uBAA8"), /* @__PURE__ */ React.createElement(Chip, { tone: "warning" }, "\uC0C1\uB2F4 \uC608\uC57D"), /* @__PURE__ */ React.createElement(Chip, { tone: "brand" }, "\uD559\uC2B5 \uD53C\uB4DC\uBC31"), /* @__PURE__ */ React.createElement(Chip, { tone: "mint" }, "\uC785\uC2DC \uC548\uB0B4"))), /* @__PURE__ */ React.createElement(FormField, { label: "\uB0B4\uC6A9", required: true }, /* @__PURE__ */ React.createElement(Textarea, { value: body, onChange: setBody, rows: 5, placeholder: target === "all" ? "\uD559\uAE09 \uC804\uCCB4\uC5D0\uAC8C \uBCF4\uB0BC \uB0B4\uC6A9" : picked ? `${picked.name} \uD559\uC0DD\uC5D0\uAC8C \uC804\uD560 \uB0B4\uC6A9` : "\uBA3C\uC800 \uD559\uC0DD\uC744 \uC120\uD0DD\uD558\uC138\uC694" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 20 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: onClose }, "\uCDE8\uC18C"), /* @__PURE__ */ React.createElement(Button, { variant: "primary", full: true, trailing: /* @__PURE__ */ React.createElement(IcSend, { size: 14 }), disabled: !canSend, onClick: doSend }, busy ? "\uBCF4\uB0B4\uB294 \uC911\u2026" : "\uBCF4\uB0B4\uAE30"))));
 }
 Object.assign(window, {
   StudentMessages,
