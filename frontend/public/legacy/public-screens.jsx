@@ -810,13 +810,14 @@ function AuthScreen({ role = 'student', mode = 'login', onNav, onBack, setRole, 
             <div style={{ flex: 1, height: 1, background: 'var(--line)' }}/>
           </div>
           <FormField label="이메일" required={isSignup} style={{ marginBottom: 14 }} error={email && !emailValid ? '올바른 이메일 형식이 아니에요' : null}>
-            <TextInput value={email} onChange={setEmail} placeholder="이메일을 입력하세요" type="email"/>
+            <TextInput value={email} onChange={setEmail} placeholder="이메일을 입력하세요" type="email" onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}/>
           </FormField>
           <FormField label="비밀번호" required={isSignup} style={{ marginBottom: 14 }} hint={isSignup ? '영문, 숫자 포함 8자 이상' : null} error={password && !pwValid ? '비밀번호는 8자 이상이어야 해요' : null}>
             <TextInput
               value={password} onChange={setPassword}
               type={showPw ? 'text' : 'password'}
               placeholder="비밀번호를 입력하세요"
+              onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
               trailing={
                 <button onClick={() => setShowPw(s => !s)} style={{ background: 'transparent', border: 'none', color: 'var(--fg-subtle)', cursor: 'pointer', padding: 4, display: 'flex' }}>
                   {showPw ? <IcEye size={16}/> : <IcEyeOff size={16}/>}

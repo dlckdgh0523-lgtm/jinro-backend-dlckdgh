@@ -232,7 +232,7 @@ function ErrorState({ title = '문제가 발생했어요', body, onRetry }) {
 // ────────────────────────────────────────────────────────────────
 // Form: TextInput, Textarea, Select, FormField
 // ────────────────────────────────────────────────────────────────
-function TextInput({ value, onChange, placeholder, type = 'text', leading, trailing, error, style, autoFocus }) {
+function TextInput({ value, onChange, placeholder, type = 'text', leading, trailing, error, style, autoFocus, onKeyDown, readOnly }) {
   const [focus, setFocus] = React.useState(false);
   return (
     <div style={{
@@ -250,7 +250,9 @@ function TextInput({ value, onChange, placeholder, type = 'text', leading, trail
         type={type}
         value={value}
         autoFocus={autoFocus}
+        readOnly={readOnly}
         onChange={(e) => onChange && onChange(e.target.value)}
+        onKeyDown={onKeyDown}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
         placeholder={placeholder}

@@ -235,7 +235,7 @@ function ErrorState({ title = "\uBB38\uC81C\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694
     }
   );
 }
-function TextInput({ value, onChange, placeholder, type = "text", leading, trailing, error, style, autoFocus }) {
+function TextInput({ value, onChange, placeholder, type = "text", leading, trailing, error, style, autoFocus, onKeyDown, readOnly }) {
   const [focus, setFocus] = React.useState(false);
   return /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex",
@@ -255,7 +255,9 @@ function TextInput({ value, onChange, placeholder, type = "text", leading, trail
       type,
       value,
       autoFocus,
+      readOnly,
       onChange: (e) => onChange && onChange(e.target.value),
+      onKeyDown,
       onFocus: () => setFocus(true),
       onBlur: () => setFocus(false),
       placeholder,

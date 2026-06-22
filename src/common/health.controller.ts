@@ -96,7 +96,11 @@ export class HealthController {
           sse: { status: 'ok' },
           aiProvider: { primary: { name: aiClient.provider, status: 'ok' }, fallback: null },
           paymentProvider: { name: 'none', status: 'down', mode: 'preparing' },
-          oauth: { google: { status: 'preparing' }, kakao: { status: 'preparing' } },
+          // 실제 설정 여부 반영 — 클라이언트 ID/키가 있으면 'ok', 없으면 'preparing'.
+          oauth: {
+            google: { status: env().GOOGLE_CLIENT_ID ? 'ok' : 'preparing' },
+            kakao: { status: env().KAKAO_REST_API_KEY ? 'ok' : 'preparing' },
+          },
         },
         resources: {
           memory: { usedMB: Math.round(mem.rss / 1024 / 1024), heapMB: Math.round(mem.heapUsed / 1024 / 1024) },
