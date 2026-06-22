@@ -125,11 +125,24 @@ function TourTooltip({ target, title, body, step, total, onNext, onPrev, onSkip,
 // Welcome modal (step 0)
 // ────────────────────────────────────────────────────────
 function WelcomeModal({ onStart, onSkip, role = 'student' }) {
+  const [meName, setMeName] = React.useState('');
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!window.__apiFetch) return;
+        const r = await window.__apiFetch('/auth/me', { method: 'GET' });
+        const nm = (r && (r.data ? r.data.name : r.name)) || '';
+        if (alive) setMeName(nm);
+      } catch (e) {}
+    })();
+    return () => { alive = false; };
+  }, []);
+  const honorific = role === 'teacher' ? ' 선생님' : '님';
   const greeting = {
-    student: { name: '지훈님', tag: '학생' },
-    teacher: { name: '이지원 선생님', tag: '교사' },
-    admin: { name: '관리자님', tag: 'Super Admin' },
-  }[role];
+    name: meName ? meName + honorific : (role === 'teacher' ? '선생님' : ''),
+    tag: ({ student: '학생', teacher: '교사', admin: 'Super Admin' })[role] || '학생',
+  };
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.55)', animation: 'fadeIn 240ms var(--ease-std)' }}/>
@@ -150,7 +163,7 @@ function WelcomeModal({ onStart, onSkip, role = 'student' }) {
         </div>
         <Chip tone="brand" size="sm" style={{ marginBottom: 12 }}>{greeting.tag}</Chip>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--fg-strong)', margin: 0, marginBottom: 8, letterSpacing: '-0.5px' }} className="kr-heading">
-          환영해요, {greeting.name}!
+          환영해요{greeting.name ? ', ' + greeting.name : ''}!
         </h2>
         <p style={{ fontSize: 14, color: 'var(--fg-muted)', lineHeight: 1.6, margin: 0, marginBottom: 24 }} className="kr-heading">
           진로나침반을 처음 사용하시는군요. 1분 안에 주요 기능을 한 바퀴 안내해드릴게요. 메뉴마다 어디서 무엇을 할 수 있는지 알려드려요.

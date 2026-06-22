@@ -12,6 +12,10 @@ const ADMIN_NAV = [
     { id: "ai-usage", label: "AI \uC0AC\uC6A9\uB7C9", icon: /* @__PURE__ */ React.createElement(IcSparkles, null) },
     { id: "counseling", label: "\uC0C1\uB2F4 \uC138\uC158", icon: /* @__PURE__ */ React.createElement(IcMessage, null) }
   ] },
+  { section: "\uC18C\uD1B5", items: [
+    { id: "announcements", label: "\uACF5\uC9C0\uC0AC\uD56D", icon: /* @__PURE__ */ React.createElement(IcBell, null) },
+    { id: "suggestions", label: "\uAC74\uC758\uC0AC\uD56D", icon: /* @__PURE__ */ React.createElement(IcMessage, null) }
+  ] },
   { section: "\uC2DC\uC2A4\uD15C", items: [
     { id: "notifications", label: "\uC54C\uB9BC \uC774\uBCA4\uD2B8", icon: /* @__PURE__ */ React.createElement(IcBell, null) },
     { id: "audit-logs", label: "\uAC10\uC0AC \uB85C\uADF8", icon: /* @__PURE__ */ React.createElement(IcDoc, null) },
@@ -542,6 +546,99 @@ function AdminApp({ initialScreen = "dashboard" }) {
     setScreen(s);
     setNavOpen(false);
   };
-  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", height: "100%", position: "relative", overflow: "hidden" } }, isMobile && /* @__PURE__ */ React.createElement(MobileTopBar, { title: "\uC9C4\uB85C\uB098\uCE68\uBC18 \xB7 \uAD00\uB9AC\uC790", onMenu: () => setNavOpen(true) }), isMobile ? /* @__PURE__ */ React.createElement(SidebarDrawer, { open: navOpen, onClose: () => setNavOpen(false) }, /* @__PURE__ */ React.createElement(AdminSidebar, { activeId: screen, onChange: wrapNav })) : /* @__PURE__ */ React.createElement(AdminSidebar, { activeId: screen, onChange: setScreen }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, position: "relative", overflowY: "auto" } }, screen === "dashboard" && /* @__PURE__ */ React.createElement(AdminDashboard, { go: setScreen }), screen === "users" && /* @__PURE__ */ React.createElement(AdminUsers, null), screen === "payments" && /* @__PURE__ */ React.createElement(AdminPayments, null), screen === "audit-logs" && /* @__PURE__ */ React.createElement(AdminAuditLogs, null), screen === "system" && /* @__PURE__ */ React.createElement(AdminSystem, null), screen === "teachers" && /* @__PURE__ */ React.createElement(AdminTeachers, null), screen === "students" && /* @__PURE__ */ React.createElement(AdminStudents, null), screen === "classrooms" && /* @__PURE__ */ React.createElement(AdminClassrooms, null), screen === "subscriptions" && /* @__PURE__ */ React.createElement(AdminSubscriptions, null), screen === "ai-usage" && /* @__PURE__ */ React.createElement(AdminAIUsage, null), screen === "counseling" && /* @__PURE__ */ React.createElement(AdminCounseling, null), screen === "notifications" && /* @__PURE__ */ React.createElement(AdminNotifEvents, null)));
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", height: "100%", position: "relative", overflow: "hidden" } }, isMobile && /* @__PURE__ */ React.createElement(MobileTopBar, { title: "\uC9C4\uB85C\uB098\uCE68\uBC18 \xB7 \uAD00\uB9AC\uC790", onMenu: () => setNavOpen(true) }), isMobile ? /* @__PURE__ */ React.createElement(SidebarDrawer, { open: navOpen, onClose: () => setNavOpen(false) }, /* @__PURE__ */ React.createElement(AdminSidebar, { activeId: screen, onChange: wrapNav })) : /* @__PURE__ */ React.createElement(AdminSidebar, { activeId: screen, onChange: setScreen }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, position: "relative", overflowY: "auto" } }, screen === "dashboard" && /* @__PURE__ */ React.createElement(AdminDashboard, { go: setScreen }), screen === "users" && /* @__PURE__ */ React.createElement(AdminUsers, null), screen === "payments" && /* @__PURE__ */ React.createElement(AdminPayments, null), screen === "audit-logs" && /* @__PURE__ */ React.createElement(AdminAuditLogs, null), screen === "system" && /* @__PURE__ */ React.createElement(AdminSystem, null), screen === "teachers" && /* @__PURE__ */ React.createElement(AdminTeachers, null), screen === "students" && /* @__PURE__ */ React.createElement(AdminStudents, null), screen === "classrooms" && /* @__PURE__ */ React.createElement(AdminClassrooms, null), screen === "subscriptions" && /* @__PURE__ */ React.createElement(AdminSubscriptions, null), screen === "ai-usage" && /* @__PURE__ */ React.createElement(AdminAIUsage, null), screen === "counseling" && /* @__PURE__ */ React.createElement(AdminCounseling, null), screen === "notifications" && /* @__PURE__ */ React.createElement(AdminNotifEvents, null), screen === "announcements" && /* @__PURE__ */ React.createElement(AdminAnnouncements, null), screen === "suggestions" && /* @__PURE__ */ React.createElement(AdminSuggestions, null)));
+}
+function AdminAnnouncements() {
+  const [rows, setRows] = React.useState(null);
+  const [addOpen, setAddOpen] = React.useState(false);
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try {
+      const res = await adminFetch("/announcements?limit=100");
+      setRows(res && res.data || []);
+    } catch (e) {
+      setRows([]);
+    }
+  }, []);
+  React.useEffect(() => {
+    load();
+  }, [load]);
+  const del = async (id) => {
+    try {
+      await window.__apiFetch("/admin/announcements/" + id, { method: "DELETE" });
+      showToast("\uACF5\uC9C0\uB97C \uC0AD\uC81C\uD588\uC5B4\uC694", "success");
+      load();
+    } catch (e) {
+      showToast("\uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694", "error");
+    }
+  };
+  const loading = rows === null;
+  const list = rows || [];
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(
+    AdminTopbar,
+    {
+      title: "\uACF5\uC9C0\uC0AC\uD56D",
+      subtitle: loading ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : `${list.length}\uAC74 \xB7 \uD559\uC0DD\xB7\uAD50\uC0AC\uC5D0\uAC8C \uB178\uCD9C`,
+      action: /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "sm", leading: /* @__PURE__ */ React.createElement(IcPlus, { size: 14 }), onClick: () => setAddOpen(true) }, "\uC0C8 \uACF5\uC9C0")
+    }
+  ), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: 24, background: "var(--bg-canvas)" } }, loading ? /* @__PURE__ */ React.createElement(Skeleton, { height: 100 }) : list.length === 0 ? /* @__PURE__ */ React.createElement(Card, { padding: 24 }, /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcBell, { size: 22 }), title: "\uB4F1\uB85D\uB41C \uACF5\uC9C0\uAC00 \uC5C6\uC5B4\uC694", body: "\uC0C8 \uACF5\uC9C0\uB97C \uC791\uC131\uD558\uBA74 \uD559\uC0DD\xB7\uAD50\uC0AC \uD654\uBA74\uC5D0 \uB178\uCD9C\uB3FC\uC694." })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, list.map((a) => /* @__PURE__ */ React.createElement(Card, { key: a.id, padding: 18 }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" } }, a.pinned && /* @__PURE__ */ React.createElement(Chip, { tone: "warning", size: "sm" }, "\uACE0\uC815"), /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, a.audience === "all" ? "\uC804\uCCB4" : a.audience === "student" ? "\uD559\uC0DD" : "\uAD50\uC0AC"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, a.title)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-default)", whiteSpace: "pre-line", lineHeight: 1.6 }, className: "kr-heading" }, a.body), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-subtle)", marginTop: 8 } }, a.author, " \xB7 ", fmtDateTime(a.createdAt))), /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", onClick: () => del(a.id) }, "\uC0AD\uC81C")))))), addOpen && /* @__PURE__ */ React.createElement(AnnouncementDialog, { onClose: () => setAddOpen(false), onSaved: () => {
+    setAddOpen(false);
+    load();
+  } }));
+}
+function AnnouncementDialog({ onClose, onSaved }) {
+  const [f, setF] = React.useState({ title: "", body: "", audience: "all", pinned: false });
+  const [busy, setBusy] = React.useState(false);
+  const trapRef = useFocusTrap(true, onClose);
+  const can = f.title.trim() && f.body.trim();
+  const submit = async () => {
+    if (!can || busy) return;
+    setBusy(true);
+    try {
+      await window.__apiFetch("/admin/announcements", { method: "POST", body: JSON.stringify({ title: f.title.trim(), body: f.body.trim(), audience: f.audience, pinned: f.pinned }) });
+      showToast("\uACF5\uC9C0\uB97C \uB4F1\uB85D\uD588\uC5B4\uC694", "success");
+      onSaved && onSaved();
+    } catch (e) {
+      showToast(e && e.body && e.body.message || "\uB4F1\uB85D\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.5)" } }), /* @__PURE__ */ React.createElement("div", { ref: trapRef, role: "dialog", "aria-modal": "true", "aria-label": "\uC0C8 \uACF5\uC9C0", style: { position: "relative", width: 520, maxWidth: "94%", background: "var(--bg-elevated)", borderRadius: 20, padding: 24, boxShadow: "var(--shadow-pop)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, "\uC0C8 \uACF5\uC9C0 \uC791\uC131"), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 20 }), onClick: onClose, ariaLabel: "\uB2EB\uAE30" })), /* @__PURE__ */ React.createElement(FormField, { label: "\uC81C\uBAA9", required: true, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(TextInput, { value: f.title, onChange: (v) => setF((s) => ({ ...s, title: v })), placeholder: "\uACF5\uC9C0 \uC81C\uBAA9" })), /* @__PURE__ */ React.createElement(FormField, { label: "\uB0B4\uC6A9", required: true, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(Textarea, { value: f.body, onChange: (v) => setF((s) => ({ ...s, body: v })), rows: 6, placeholder: "\uACF5\uC9C0 \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694" })), /* @__PURE__ */ React.createElement(FormField, { label: "\uB300\uC0C1", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "all", label: "\uC804\uCCB4" }, { id: "student", label: "\uD559\uC0DD" }, { id: "teacher", label: "\uAD50\uC0AC" }], activeId: f.audience, onChange: (v) => setF((s) => ({ ...s, audience: v })) })), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 20, fontSize: 13, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: f.pinned, onChange: (e) => setF((s) => ({ ...s, pinned: e.target.checked })), style: { width: 16, height: 16, accentColor: "var(--brand-500)" } }), "\uC0C1\uB2E8 \uACE0\uC815"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: onClose }, "\uCDE8\uC18C"), /* @__PURE__ */ React.createElement(Button, { variant: "primary", full: true, disabled: !can || busy, onClick: submit }, busy ? "\uB4F1\uB85D \uC911\u2026" : "\uB4F1\uB85D"))));
+}
+function AdminSuggestions() {
+  const [rows, setRows] = React.useState(null);
+  const [filter, setFilter] = React.useState("all");
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try {
+      const res = await adminFetch("/admin/suggestions?limit=200");
+      setRows(res && res.data || []);
+    } catch (e) {
+      setRows([]);
+    }
+  }, []);
+  React.useEffect(() => {
+    load();
+  }, [load]);
+  const setStatus = async (id, status) => {
+    try {
+      await window.__apiFetch("/admin/suggestions/" + id, { method: "PATCH", body: JSON.stringify({ status }) });
+      load();
+    } catch (e) {
+      showToast("\uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694", "error");
+    }
+  };
+  const loading = rows === null;
+  const list = (rows || []).filter((s) => filter === "all" || s.status === filter);
+  const sChip = (s) => ({ open: /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "sm" }, "\uC811\uC218"), reviewed: /* @__PURE__ */ React.createElement(Chip, { tone: "warning", size: "sm" }, "\uAC80\uD1A0\uC911"), resolved: /* @__PURE__ */ React.createElement(Chip, { tone: "success", size: "sm" }, "\uC644\uB8CC") })[s] || /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, s);
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(
+    AdminTopbar,
+    {
+      title: "\uAC74\uC758\uC0AC\uD56D",
+      subtitle: loading ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : `${list.length}\uAC74`,
+      action: /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", leading: /* @__PURE__ */ React.createElement(IcRefresh, { size: 14 }), onClick: load }, "\uC0C8\uB85C\uACE0\uCE68")
+    }
+  ), /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 24px 8px", display: "flex", gap: 8, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "all", label: "\uC804\uCCB4" }, { id: "open", label: "\uC811\uC218" }, { id: "reviewed", label: "\uAC80\uD1A0\uC911" }, { id: "resolved", label: "\uC644\uB8CC" }], activeId: filter, onChange: setFilter })), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: "8px 24px 24px", background: "var(--bg-canvas)" } }, loading ? /* @__PURE__ */ React.createElement(Skeleton, { height: 100 }) : list.length === 0 ? /* @__PURE__ */ React.createElement(Card, { padding: 24 }, /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcMessage, { size: 22 }), title: "\uAC74\uC758\uC0AC\uD56D\uC774 \uC5C6\uC5B4\uC694", body: "\uD559\uC0DD\xB7\uAD50\uC0AC\uAC00 '\uAC74\uC758\uD558\uAE30'\uB85C \uBCF4\uB0B4\uBA74 \uC5EC\uAE30\uC5D0 \uBAA8\uC5EC\uC694." })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, list.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, padding: 16 }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, s.category), sChip(s.status), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--fg-muted)" } }, s.author, " (", s.role === "teacher" ? "\uAD50\uC0AC" : s.role === "admin" ? "\uAD00\uB9AC\uC790" : "\uD559\uC0DD", ") \xB7 ", fmtDateTime(s.createdAt))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-strong)", whiteSpace: "pre-line", lineHeight: 1.6 }, className: "kr-heading" }, s.body)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 } }, s.status !== "reviewed" && /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", onClick: () => setStatus(s.id, "reviewed") }, "\uAC80\uD1A0\uC911"), s.status !== "resolved" && /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", onClick: () => setStatus(s.id, "resolved") }, "\uC644\uB8CC"), s.status !== "open" && /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", onClick: () => setStatus(s.id, "open") }, "\uC811\uC218\uB85C"))))))));
 }
 Object.assign(window, { AdminApp });

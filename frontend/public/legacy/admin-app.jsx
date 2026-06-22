@@ -15,6 +15,10 @@ const ADMIN_NAV = [
     { id: 'ai-usage', label: 'AI 사용량', icon: <IcSparkles/> },
     { id: 'counseling', label: '상담 세션', icon: <IcMessage/> },
   ]},
+  { section: '소통', items: [
+    { id: 'announcements', label: '공지사항', icon: <IcBell/> },
+    { id: 'suggestions', label: '건의사항', icon: <IcMessage/> },
+  ]},
   { section: '시스템', items: [
     { id: 'notifications', label: '알림 이벤트', icon: <IcBell/> },
     { id: 'audit-logs', label: '감사 로그', icon: <IcDoc/> },
@@ -911,7 +915,154 @@ function AdminApp({ initialScreen = 'dashboard' }) {
         {screen === 'ai-usage' && <AdminAIUsage/>}
         {screen === 'counseling' && <AdminCounseling/>}
         {screen === 'notifications' && <AdminNotifEvents/>}
+        {screen === 'announcements' && <AdminAnnouncements/>}
+        {screen === 'suggestions' && <AdminSuggestions/>}
       </main>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────
+// SCREEN: 공지사항 (관리자 작성/삭제)
+// ────────────────────────────────────────────────────────
+function AdminAnnouncements() {
+  const [rows, setRows] = React.useState(null);
+  const [addOpen, setAddOpen] = React.useState(false);
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try { const res = await adminFetch('/announcements?limit=100'); setRows((res && res.data) || []); }
+    catch (e) { setRows([]); }
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+  const del = async (id) => {
+    try { await window.__apiFetch('/admin/announcements/' + id, { method: 'DELETE' }); showToast('공지를 삭제했어요', 'success'); load(); }
+    catch (e) { showToast('삭제하지 못했어요', 'error'); }
+  };
+  const loading = rows === null; const list = rows || [];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <AdminTopbar title="공지사항" subtitle={loading ? '불러오는 중…' : `${list.length}건 · 학생·교사에게 노출`}
+        action={<Button variant="primary" size="sm" leading={<IcPlus size={14}/>} onClick={() => setAddOpen(true)}>새 공지</Button>}/>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 24, background: 'var(--bg-canvas)' }}>
+        {loading ? <Skeleton height={100}/> : list.length === 0 ? (
+          <Card padding={24}><EmptyState icon={<IcBell size={22}/>} title="등록된 공지가 없어요" body="새 공지를 작성하면 학생·교사 화면에 노출돼요."/></Card>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {list.map(a => (
+              <Card key={a.id} padding={18}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                      {a.pinned && <Chip tone="warning" size="sm">고정</Chip>}
+                      <Chip tone="neutral" size="sm">{a.audience === 'all' ? '전체' : a.audience === 'student' ? '학생' : '교사'}</Chip>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">{a.title}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--fg-default)', whiteSpace: 'pre-line', lineHeight: 1.6 }} className="kr-heading">{a.body}</div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginTop: 8 }}>{a.author} · {fmtDateTime(a.createdAt)}</div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => del(a.id)}>삭제</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+      {addOpen && <AnnouncementDialog onClose={() => setAddOpen(false)} onSaved={() => { setAddOpen(false); load(); }}/>}
+    </div>
+  );
+}
+
+function AnnouncementDialog({ onClose, onSaved }) {
+  const [f, setF] = React.useState({ title: '', body: '', audience: 'all', pinned: false });
+  const [busy, setBusy] = React.useState(false);
+  const trapRef = useFocusTrap(true, onClose);
+  const can = f.title.trim() && f.body.trim();
+  const submit = async () => {
+    if (!can || busy) return; setBusy(true);
+    try {
+      await window.__apiFetch('/admin/announcements', { method: 'POST', body: JSON.stringify({ title: f.title.trim(), body: f.body.trim(), audience: f.audience, pinned: f.pinned }) });
+      showToast('공지를 등록했어요', 'success'); onSaved && onSaved();
+    } catch (e) { showToast((e && e.body && e.body.message) || '등록하지 못했어요', 'error'); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.5)' }}/>
+      <div ref={trapRef} role="dialog" aria-modal="true" aria-label="새 공지" style={{ position: 'relative', width: 520, maxWidth: '94%', background: 'var(--bg-elevated)', borderRadius: 20, padding: 24, boxShadow: 'var(--shadow-pop)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>새 공지 작성</div>
+          <IconButton icon={<IcX size={20}/>} onClick={onClose} ariaLabel="닫기"/>
+        </div>
+        <FormField label="제목" required style={{ marginBottom: 14 }}><TextInput value={f.title} onChange={(v) => setF(s => ({ ...s, title: v }))} placeholder="공지 제목"/></FormField>
+        <FormField label="내용" required style={{ marginBottom: 14 }}><Textarea value={f.body} onChange={(v) => setF(s => ({ ...s, body: v }))} rows={6} placeholder="공지 내용을 입력하세요"/></FormField>
+        <FormField label="대상" style={{ marginBottom: 14 }}>
+          <Tabs items={[{id:'all',label:'전체'},{id:'student',label:'학생'},{id:'teacher',label:'교사'}]} activeId={f.audience} onChange={(v) => setF(s => ({ ...s, audience: v }))}/>
+        </FormField>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, fontSize: 13, cursor: 'pointer' }}>
+          <input type="checkbox" checked={f.pinned} onChange={(e) => setF(s => ({ ...s, pinned: e.target.checked }))} style={{ width: 16, height: 16, accentColor: 'var(--brand-500)' }}/>
+          상단 고정
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" full onClick={onClose}>취소</Button>
+          <Button variant="primary" full disabled={!can || busy} onClick={submit}>{busy ? '등록 중…' : '등록'}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────
+// SCREEN: 건의사항 (사용자 제출 → 관리자 열람/상태변경)
+// ────────────────────────────────────────────────────────
+function AdminSuggestions() {
+  const [rows, setRows] = React.useState(null);
+  const [filter, setFilter] = React.useState('all');
+  const load = React.useCallback(async () => {
+    setRows(null);
+    try { const res = await adminFetch('/admin/suggestions?limit=200'); setRows((res && res.data) || []); }
+    catch (e) { setRows([]); }
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+  const setStatus = async (id, status) => {
+    try { await window.__apiFetch('/admin/suggestions/' + id, { method: 'PATCH', body: JSON.stringify({ status }) }); load(); }
+    catch (e) { showToast('변경하지 못했어요', 'error'); }
+  };
+  const loading = rows === null;
+  const list = (rows || []).filter(s => filter === 'all' || s.status === filter);
+  const sChip = (s) => ({ open: <Chip tone="info" size="sm">접수</Chip>, reviewed: <Chip tone="warning" size="sm">검토중</Chip>, resolved: <Chip tone="success" size="sm">완료</Chip> }[s] || <Chip tone="neutral" size="sm">{s}</Chip>);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <AdminTopbar title="건의사항" subtitle={loading ? '불러오는 중…' : `${list.length}건`}
+        action={<Button variant="outline" size="sm" leading={<IcRefresh size={14}/>} onClick={load}>새로고침</Button>}/>
+      <div style={{ padding: '16px 24px 8px', display: 'flex', gap: 8, background: 'var(--bg-canvas)' }}>
+        <Tabs items={[{id:'all',label:'전체'},{id:'open',label:'접수'},{id:'reviewed',label:'검토중'},{id:'resolved',label:'완료'}]} activeId={filter} onChange={setFilter}/>
+      </div>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: '8px 24px 24px', background: 'var(--bg-canvas)' }}>
+        {loading ? <Skeleton height={100}/> : list.length === 0 ? (
+          <Card padding={24}><EmptyState icon={<IcMessage size={22}/>} title="건의사항이 없어요" body="학생·교사가 '건의하기'로 보내면 여기에 모여요."/></Card>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {list.map(s => (
+              <Card key={s.id} padding={16}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                      <Chip tone="neutral" size="sm">{s.category}</Chip>{sChip(s.status)}
+                      <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{s.author} ({s.role === 'teacher' ? '교사' : s.role === 'admin' ? '관리자' : '학생'}) · {fmtDateTime(s.createdAt)}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--fg-strong)', whiteSpace: 'pre-line', lineHeight: 1.6 }} className="kr-heading">{s.body}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                    {s.status !== 'reviewed' && <Button variant="ghost" size="sm" onClick={() => setStatus(s.id, 'reviewed')}>검토중</Button>}
+                    {s.status !== 'resolved' && <Button variant="ghost" size="sm" onClick={() => setStatus(s.id, 'resolved')}>완료</Button>}
+                    {s.status !== 'open' && <Button variant="ghost" size="sm" onClick={() => setStatus(s.id, 'open')}>접수로</Button>}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -86,11 +86,27 @@ function TourTooltip({ target, title, body, step, total, onNext, onPrev, onSkip,
   } })))));
 }
 function WelcomeModal({ onStart, onSkip, role = "student" }) {
+  const [meName, setMeName] = React.useState("");
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!window.__apiFetch) return;
+        const r = await window.__apiFetch("/auth/me", { method: "GET" });
+        const nm = r && (r.data ? r.data.name : r.name) || "";
+        if (alive) setMeName(nm);
+      } catch (e) {
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const honorific = role === "teacher" ? " \uC120\uC0DD\uB2D8" : "\uB2D8";
   const greeting = {
-    student: { name: "\uC9C0\uD6C8\uB2D8", tag: "\uD559\uC0DD" },
-    teacher: { name: "\uC774\uC9C0\uC6D0 \uC120\uC0DD\uB2D8", tag: "\uAD50\uC0AC" },
-    admin: { name: "\uAD00\uB9AC\uC790\uB2D8", tag: "Super Admin" }
-  }[role];
+    name: meName ? meName + honorific : role === "teacher" ? "\uC120\uC0DD\uB2D8" : "",
+    tag: { student: "\uD559\uC0DD", teacher: "\uAD50\uC0AC", admin: "Super Admin" }[role] || "\uD559\uC0DD"
+  };
   return /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 } }, /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.55)", animation: "fadeIn 240ms var(--ease-std)" } }), /* @__PURE__ */ React.createElement("div", { style: {
     position: "relative",
     width: "min(460px, 100%)",
@@ -111,7 +127,7 @@ function WelcomeModal({ onStart, onSkip, role = "student" }) {
     justifyContent: "center",
     margin: "0 auto 16px",
     boxShadow: "0 12px 28px rgba(49,130,246,0.32)"
-  } }, /* @__PURE__ */ React.createElement(IcCompass, { size: 36 })), /* @__PURE__ */ React.createElement(Chip, { tone: "brand", size: "sm", style: { marginBottom: 12 } }, greeting.tag), /* @__PURE__ */ React.createElement("h2", { style: { fontSize: 22, fontWeight: 800, color: "var(--fg-strong)", margin: 0, marginBottom: 8, letterSpacing: "-0.5px" }, className: "kr-heading" }, "\uD658\uC601\uD574\uC694, ", greeting.name, "!"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 14, color: "var(--fg-muted)", lineHeight: 1.6, margin: 0, marginBottom: 24 }, className: "kr-heading" }, "\uC9C4\uB85C\uB098\uCE68\uBC18\uC744 \uCC98\uC74C \uC0AC\uC6A9\uD558\uC2DC\uB294\uAD70\uC694. 1\uBD84 \uC548\uC5D0 \uC8FC\uC694 \uAE30\uB2A5\uC744 \uD55C \uBC14\uD034 \uC548\uB0B4\uD574\uB4DC\uB9B4\uAC8C\uC694. \uBA54\uB274\uB9C8\uB2E4 \uC5B4\uB514\uC11C \uBB34\uC5C7\uC744 \uD560 \uC218 \uC788\uB294\uC9C0 \uC54C\uB824\uB4DC\uB824\uC694."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, leading: /* @__PURE__ */ React.createElement(IcSparkles, { size: 16 }), onClick: onStart }, "1\uBD84 \uAC00\uC774\uB4DC \uC2DC\uC791\uD558\uAE30"), /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "md", full: true, onClick: onSkip }, "\uB2E4\uC74C\uC5D0 \uD560\uAC8C\uC694")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, fontSize: 11, color: "var(--fg-subtle)" }, className: "kr-heading" }, "\uC774 \uC548\uB0B4\uB294 \uCC98\uC74C \uD55C \uBC88\uB9CC \uD45C\uC2DC\uB3FC\uC694. \uB098\uC911\uC5D0 \uB0B4\uC815\uBCF4 \u2192 \uB3C4\uC6C0\uB9D0\uC5D0\uC11C \uB2E4\uC2DC \uBCFC \uC218 \uC788\uC5B4\uC694.")));
+  } }, /* @__PURE__ */ React.createElement(IcCompass, { size: 36 })), /* @__PURE__ */ React.createElement(Chip, { tone: "brand", size: "sm", style: { marginBottom: 12 } }, greeting.tag), /* @__PURE__ */ React.createElement("h2", { style: { fontSize: 22, fontWeight: 800, color: "var(--fg-strong)", margin: 0, marginBottom: 8, letterSpacing: "-0.5px" }, className: "kr-heading" }, "\uD658\uC601\uD574\uC694", greeting.name ? ", " + greeting.name : "", "!"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 14, color: "var(--fg-muted)", lineHeight: 1.6, margin: 0, marginBottom: 24 }, className: "kr-heading" }, "\uC9C4\uB85C\uB098\uCE68\uBC18\uC744 \uCC98\uC74C \uC0AC\uC6A9\uD558\uC2DC\uB294\uAD70\uC694. 1\uBD84 \uC548\uC5D0 \uC8FC\uC694 \uAE30\uB2A5\uC744 \uD55C \uBC14\uD034 \uC548\uB0B4\uD574\uB4DC\uB9B4\uAC8C\uC694. \uBA54\uB274\uB9C8\uB2E4 \uC5B4\uB514\uC11C \uBB34\uC5C7\uC744 \uD560 \uC218 \uC788\uB294\uC9C0 \uC54C\uB824\uB4DC\uB824\uC694."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, leading: /* @__PURE__ */ React.createElement(IcSparkles, { size: 16 }), onClick: onStart }, "1\uBD84 \uAC00\uC774\uB4DC \uC2DC\uC791\uD558\uAE30"), /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "md", full: true, onClick: onSkip }, "\uB2E4\uC74C\uC5D0 \uD560\uAC8C\uC694")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, fontSize: 11, color: "var(--fg-subtle)" }, className: "kr-heading" }, "\uC774 \uC548\uB0B4\uB294 \uCC98\uC74C \uD55C \uBC88\uB9CC \uD45C\uC2DC\uB3FC\uC694. \uB098\uC911\uC5D0 \uB0B4\uC815\uBCF4 \u2192 \uB3C4\uC6C0\uB9D0\uC5D0\uC11C \uB2E4\uC2DC \uBCFC \uC218 \uC788\uC5B4\uC694.")));
 }
 function useTour(steps, role = "student") {
   const [phase, setPhase] = React.useState("welcome");

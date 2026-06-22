@@ -51,6 +51,8 @@ model User {
   studentRequests  CounselingRequest[] @relation("studentRequests")
   teacherRequests  CounselingRequest[] @relation("teacherRequests")
   auditLogs        AuditLog[] @relation("AuditActor")
+  announcements    Announcement[] @relation("AnnouncementAuthor")
+  suggestions      Suggestion[] @relation("SuggestionAuthor")
 }
 
 model RefreshToken {
@@ -488,6 +490,36 @@ model AuditLog {
 
   @@index([createdAt])
   @@index([actorId])
+}
+
+// ─── 공지사항 (관리자 작성 → 학생/교사 노출) ───
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  pinned    Boolean  @default(false)
+  audience  String   @default("all") // all | student | teacher
+  authorId  String
+  author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+// ─── 건의사항 (학생/교사 제출 → 관리자 열람) ───
+
+model Suggestion {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("SuggestionAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  category  String   @default("기타") // 기능 | 버그 | 기타
+  body      String
+  status    String   @default("open") // open | reviewed | resolved
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // ─── 진로 목표 ───

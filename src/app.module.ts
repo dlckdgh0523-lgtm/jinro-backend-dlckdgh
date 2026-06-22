@@ -42,6 +42,7 @@ import { AdminController } from './admin/admin.controller';
 import { CounselingRequestsController } from './counseling-requests/counseling-requests.controller';
 import { VolunteersController } from './volunteers/volunteers.controller';
 import { MaterialsController } from './career/materials.controller';
+import { ContentController } from './content/content.controller';
 import { NotificationsController } from './realtime/notifications.controller';
 import { NotificationsService } from './realtime/notifications.service';
 import { PubSubService } from './realtime/pubsub.service';
@@ -70,6 +71,7 @@ import { PubSubService } from './realtime/pubsub.service';
     MessagesController,
     TeacherController,
     AdminController,
+    ContentController,
     CounselingRequestsController,
     VolunteersController,
     MaterialsController,
