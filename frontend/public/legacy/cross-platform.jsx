@@ -158,6 +158,7 @@ function StudentWebSidebar({ activeId, onChange }) {
 }
 
 function StudentWebDashboard({ go }) {
+  const isMobile = useViewportMobile();
   const [me, setMe] = React.useState(null);
   const [stats, setStats] = React.useState(null); // null=loading
   const [events, setEvents] = React.useState(null);
@@ -185,7 +186,7 @@ function StudentWebDashboard({ go }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{
-        padding: '16px 28px',
+        padding: isMobile ? '14px 16px' : '16px 28px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         borderBottom: '1px solid var(--line-subtle)', background: 'var(--bg-surface)',
       }}>
@@ -197,10 +198,10 @@ function StudentWebDashboard({ go }) {
           <NotifBell role="student"/>
         </div>
       </div>
-      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 28, background: 'var(--bg-canvas)' }}>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: isMobile ? 16 : 28, background: 'var(--bg-canvas)' }}>
         {/* Hero — AI 상담 진행도 */}
         <Card padding={28} style={{ background: 'linear-gradient(135deg, #3182F6 0%, #1957C2 100%)', color: '#fff', marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 14 : 0, justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start' }}>
             <div>
               <Chip tone="info" size="sm" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', marginBottom: 10 }}>AI 진로 상담</Chip>
               <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.6px', maxWidth: 560 }} className="kr-heading">
@@ -215,14 +216,14 @@ function StudentWebDashboard({ go }) {
         </Card>
 
         {/* KPI row — 신규 계정은 모두 0/빈값 (실배포 기준) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
           <MetricCard label="최근 평균" value={gradeAvg} delta={s.hasGrades ? '내 성적' : '미입력'} deltaTone={s.hasGrades ? 'success' : 'neutral'} icon={<IcChart size={16}/>}/>
           <MetricCard label="AI 상담 진행도" value={aiProgress + '%'} delta={'단서 ' + (s.signalsCount || 0) + '개'} deltaTone="info" icon={<IcSparkles size={16}/>}/>
           <MetricCard label="다가오는 일정" value={(s.upcomingCount || 0) + '건'} delta="7일 이내" deltaTone="neutral" icon={<IcCalendar size={16}/>}/>
           <MetricCard label="관심 진로·학과" value={(s.targetCount || 0) + '개'} delta="진로 목표" deltaTone="info" icon={<IcGraduation size={16}/>}/>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <SectionCard title="성적 추이" subtitle="학기별 평균" action={<Button variant="ghost" size="sm" trailing={<IcChevronRight size={14}/>} onClick={() => goTo('grades-trend')}>성적 관리</Button>}>
               {trend.length === 0 ? (
