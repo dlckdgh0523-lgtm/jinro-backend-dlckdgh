@@ -205,6 +205,7 @@ function AdminTopbar({ title, subtitle, action }) {
 // SCREEN: Admin dashboard
 // ────────────────────────────────────────────────────────
 function AdminDashboard({ go }) {
+  const isMobile = useViewportMobile();
   const [stats, setStats] = React.useState(null); // null=loading
   const [recent, setRecent] = React.useState(null); // null=loading
   const [audit, setAudit] = React.useState(null); // null=loading
@@ -245,11 +246,11 @@ function AdminDashboard({ go }) {
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 24, background: 'var(--bg-canvas)' }}>
         {/* KPI grid */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: 12, marginBottom: 16 }}>
             {[0,1,2,3,4,5].map(i => <Card key={i} padding={18}><Skeleton width="60%" height={12}/><Skeleton width="40%" height={24} style={{ marginTop: 12 }}/></Card>)}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: 12, marginBottom: 16 }}>
             <MetricCard label="총 사용자" value={n(u.total)} icon={<IcUsers size={16}/>}/>
             <MetricCard label="학생" value={n(u.students)} icon={<IcUser size={16}/>}/>
             <MetricCard label="교사" value={n(u.teachers)} icon={<IcGraduation size={16}/>}/>
@@ -260,7 +261,7 @@ function AdminDashboard({ go }) {
         )}
 
         {!loading && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
             <MetricCard label="활성 사용자" value={n(u.active)} icon={<IcUsers size={16}/>}/>
             <MetricCard label="봉사 데이터" value={n(c.volunteers)} icon={<IcMessage size={16}/>}/>
             <MetricCard label="장학금 데이터" value={n(c.scholarships)} icon={<IcCreditCard size={16}/>}/>
@@ -268,7 +269,7 @@ function AdminDashboard({ go }) {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <SectionCard title="최근 AI 상담 세션" subtitle="세션 메타데이터 (내용 비공개)"
               action={<Button variant="ghost" size="sm" trailing={<IcChevronRight size={14}/>} onClick={() => go && go('ai-usage')}>전체</Button>}
@@ -360,6 +361,7 @@ function RecentSessions({ recent, mini }) {
 // SCREEN: Users
 // ────────────────────────────────────────────────────────
 function AdminUsers() {
+  const isMobile = useViewportMobile();
   const [q, setQ] = React.useState('');
   const [role, setRole] = React.useState('all');
   const [selectedUser, setSelectedUser] = React.useState(null);
@@ -395,8 +397,8 @@ function AdminUsers() {
           <Button variant="primary" size="sm" leading={<IcPlus size={14}/>} onClick={() => setAddOpen(true)}>사용자 추가</Button>
         </>}
       />
-      <div style={{ padding: '16px 24px 12px', display: 'flex', gap: 12, alignItems: 'center', background: 'var(--bg-canvas)' }}>
-        <TextInput value={q} onChange={setQ} placeholder="이름, 이메일 검색" leading={<IcSearch size={16}/>} style={{ flex: 1, maxWidth: 320, height: 40 }}/>
+      <div style={{ padding: isMobile ? '14px 16px 8px' : '16px 24px 12px', display: 'flex', gap: 12, alignItems: 'center', background: 'var(--bg-canvas)', flexWrap: 'wrap' }}>
+        <TextInput value={q} onChange={setQ} placeholder="이름, 이메일 검색" leading={<IcSearch size={16}/>} style={{ flex: 1, minWidth: isMobile ? 140 : 0, maxWidth: isMobile ? '100%' : 320, height: 40 }}/>
         <Tabs items={[
           { id: 'all', label: '전체' },
           { id: 'student', label: '학생' },
@@ -404,10 +406,10 @@ function AdminUsers() {
           { id: 'admin', label: '관리자' },
         ]} activeId={role} onChange={setRole}/>
       </div>
-      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 24px 24px', background: 'var(--bg-canvas)' }}>
-        <Card padding={0} style={{ minWidth: 880 }}>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: isMobile ? '0 12px 20px' : '0 24px 24px', background: 'var(--bg-canvas)' }}>
+        <Card padding={0} style={{ minWidth: isMobile ? 0 : 880 }}>
           <div style={{
-            display: 'grid', gridTemplateColumns: '2.2fr 1fr 1.4fr 1.2fr 1.2fr 1fr 36px',
+            display: isMobile ? 'none' : 'grid', gridTemplateColumns: '2.2fr 1fr 1.4fr 1.2fr 1.2fr 1fr 36px',
             padding: '12px 20px', fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)',
             textTransform: 'uppercase', letterSpacing: 0.3,
             borderBottom: '1px solid var(--line-subtle)',
@@ -429,7 +431,27 @@ function AdminUsers() {
             ))
           ) : list.length === 0 ? (
             <div style={{ padding: 24 }}><EmptyState icon={<IcUsers size={22}/>} title="표시할 사용자가 없어요" body={q.trim() ? '검색 조건을 바꿔보세요.' : '아직 가입한 사용자가 없어요.'}/></div>
-          ) : list.map((u, i) => (
+          ) : list.map((u, i) => isMobile ? (
+            <div key={u.id} onClick={() => setSelectedUser(u)} style={{
+              padding: '12px 14px', borderBottom: i < list.length-1 ? '1px solid var(--line-subtle)' : 'none',
+              cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Avatar name={(u.name || '?').slice(0,1)} size={32}/>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--fg-strong)' }}>{u.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                </div>
+                {roleChip(u.role)}
+                <IcChevronRight size={16} color="var(--fg-subtle)"/>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--fg-muted)' }}>
+                {statusChip(u.status)}
+                <span>{[u.school, u.classroom].filter(Boolean).join(' · ') || '학교 미정'}</span>
+                <span className="num">· {fmtDate(u.createdAt)}</span>
+              </div>
+            </div>
+          ) : (
             <div key={u.id} onClick={() => setSelectedUser(u)} style={{
               display: 'grid', gridTemplateColumns: '2.2fr 1fr 1.4fr 1.2fr 1.2fr 1fr 36px',
               padding: '14px 20px', alignItems: 'center', fontSize: 13,
@@ -618,7 +640,7 @@ function AdminPayments() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <AdminTopbar title="결제 이벤트" subtitle="결제 연동 준비 중"/>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-canvas)', padding: 24 }}>
-        <Card padding={32} style={{ width: 480, textAlign: 'center' }}>
+        <Card padding={32} style={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
           <EmptyState
             icon={<IcCreditCard size={24}/>}
             title="결제 연동은 준비 중이에요"
@@ -634,6 +656,7 @@ function AdminPayments() {
 // SCREEN: Audit logs
 // ────────────────────────────────────────────────────────
 function AdminAuditLogs() {
+  const isMobile = useViewportMobile();
   const [rows, setRows] = React.useState(null); // null=loading
   const load = React.useCallback(async () => {
     setRows(null);
@@ -648,9 +671,9 @@ function AdminAuditLogs() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <AdminTopbar title="감사 로그" subtitle={loading ? '불러오는 중…' : `최근 ${list.length}건의 관리자 조치`}
         action={<Button variant="outline" size="sm" leading={<IcRefresh size={14}/>} onClick={load}>새로고침</Button>}/>
-      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 24, background: 'var(--bg-canvas)' }}>
-        <Card padding={0} style={{ minWidth: 820 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '170px 120px 1.6fr 1.4fr', padding: '12px 20px', fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: 0.3, borderBottom: '1px solid var(--line-subtle)' }}>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: isMobile ? '12px' : 24, background: 'var(--bg-canvas)' }}>
+        <Card padding={0} style={{ minWidth: isMobile ? 0 : 820 }}>
+          <div style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: '170px 120px 1.6fr 1.4fr', padding: '12px 20px', fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: 0.3, borderBottom: '1px solid var(--line-subtle)' }}>
             <span>시각</span><span>조치</span><span>내용</span><span>수행자 · 사유</span>
           </div>
           {loading ? (
@@ -659,7 +682,16 @@ function AdminAuditLogs() {
             <div style={{ padding: 24 }}><EmptyState icon={<IcDoc size={22}/>} title="기록된 감사 로그가 없어요" body="관리자가 계정을 비활성화·활성화·생성하면 사유와 함께 여기에 기록돼요."/></div>
           ) : list.map((a, i) => {
             const meta = auditActionMeta(a.action);
-            return (
+            return isMobile ? (
+              <div key={a.id || i} style={{ padding: '12px 16px', borderBottom: i < list.length-1 ? '1px solid var(--line-subtle)' : 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <Chip tone={meta.tone} size="sm">{meta.label}</Chip>
+                  <span className="num" style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{fmtDateTime(a.createdAt)}</span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--fg-strong)' }} className="kr-heading">{a.summary}</div>
+                <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{a.actor}{a.reason ? ` · ${a.reason}` : ''}</div>
+              </div>
+            ) : (
               <div key={a.id || i} style={{ display: 'grid', gridTemplateColumns: '170px 120px 1.6fr 1.4fr', padding: '14px 20px', alignItems: 'center', fontSize: 13, borderBottom: i < list.length-1 ? '1px solid var(--line-subtle)' : 'none' }}>
                 <span className="num" style={{ fontSize: 12, color: 'var(--fg-muted)' }}>{fmtDateTime(a.createdAt)}</span>
                 <span><Chip tone={meta.tone} size="sm">{meta.label}</Chip></span>
@@ -678,6 +710,7 @@ function AdminAuditLogs() {
 // SCREEN: System health (expanded)
 // ────────────────────────────────────────────────────────
 function AdminSystem() {
+  const isMobile = useViewportMobile();
   const [data, setData] = React.useState(null); // null=loading
   const [err, setErr] = React.useState(false);
 
@@ -712,7 +745,7 @@ function AdminSystem() {
         <AdminTopbar title="시스템 상태" subtitle="확인 불가"
           action={<Button variant="outline" size="sm" leading={<IcRefresh size={14}/>} onClick={load}>새로고침</Button>}/>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-canvas)', padding: 24 }}>
-          <Card padding={32} style={{ width: 480, textAlign: 'center' }}>
+          <Card padding={32} style={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
             <EmptyState icon={<IcServer size={24}/>} title="시스템 상태를 확인할 수 없어요" body="헬스 엔드포인트에 연결하지 못했어요. 잠시 후 다시 시도해주세요."
               action={<Button variant="secondary" size="sm" leading={<IcRefresh size={14}/>} onClick={load}>다시 시도</Button>}/>
           </Card>
@@ -750,7 +783,7 @@ function AdminSystem() {
       />
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 24, background: 'var(--bg-canvas)' }}>
         <SectionCard title="배포 / 런타임" subtitle="현재 라이브 환경" style={{ marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: 10 }}>
             <InfoTile label="배포 버전" value={build.version || '—'} tone="success"/>
             <InfoTile label="Git SHA" value={build.gitSha || '—'} mono/>
             <InfoTile label="환경" value={build.env || '—'}/>
@@ -761,7 +794,7 @@ function AdminSystem() {
 
         {serviceCards.length > 0 && (
           <SectionCard title="서비스 상태" subtitle="API · DB · Redis · Queue · SSE" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 12 }}>
               {serviceCards.map((s, i) => <ServiceCard key={i} {...s}/>)}
             </div>
           </SectionCard>
@@ -769,7 +802,7 @@ function AdminSystem() {
 
         {providerCards.length > 0 && (
           <SectionCard title="외부 Provider" subtitle="AI · 결제 · OAuth" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 12 }}>
               {providerCards.map((s, i) => <ServiceCard key={i} {...s}/>)}
             </div>
           </SectionCard>
@@ -777,7 +810,7 @@ function AdminSystem() {
 
         {res.memory && (
           <SectionCard title="리소스 사용량" subtitle="프로세스" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 10 }}>
               <InfoTile label="RSS 메모리" value={`${res.memory.usedMB ?? 0} MB`}/>
               <InfoTile label="Heap 사용량" value={`${res.memory.heapMB ?? 0} MB`}/>
               <InfoTile label="CPU 코어" value={String((res.cpu && res.cpu.cores) ?? '—')}/>
@@ -873,7 +906,7 @@ function AdminPlaceholder({ title, subtitle }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <AdminTopbar title={title} subtitle={subtitle}/>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-canvas)' }}>
-        <Card padding={32} style={{ width: 480, textAlign: 'center' }}>
+        <Card padding={32} style={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
           <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--brand-50)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
             <IcSparkles size={26}/>
           </div>
