@@ -195,10 +195,27 @@ export function startIngestWorker(prisma: PrismaClient): Worker {
           results['alimi'] = await run('alimi', async () => {
             const year = (await alimi.latestPubYear()) ?? new Date().getFullYear();
             const univs = await alimi.listUniversities(year);
+            // 표기 차이로 매칭 실패하던 대학들(약 152교) 보강 — School.name과 alimi name이 다르면
+            // 변형(국립 prefix 제거/추가, 공백 제거, "대학교"/"대학" 토글)로 한 번 더 시도.
+            const allSchools = await prisma.school.findMany({ select: { seq: true, name: true } });
+            const normNorm = (s: string) => s.replace(/^(국립|공립|사립)/, '').replace(/\s+/g, '').trim();
+            const nameIndex = new Map<string, { seq: string; name: string }[]>();
+            for (const s of allSchools) {
+              const k = normNorm(s.name);
+              const arr = nameIndex.get(k) ?? []; arr.push(s); nameIndex.set(k, arr);
+            }
             let enriched = 0;
             for (const u of univs) {
               // 본교 항목 우선 — 같은 이름의 캠퍼스 항목이 본교를 덮어쓰지 않게
-              const school = await prisma.school.findFirst({ where: { name: u.name } });
+              let school = await prisma.school.findFirst({ where: { name: u.name } });
+              if (!school) {
+                // 표기 변형 매칭: 정규화 후 동일하면 첫 후보 사용
+                const candidates = nameIndex.get(normNorm(u.name)) ?? [];
+                if (candidates.length > 0) {
+                  const found = await prisma.school.findUnique({ where: { seq: candidates[0]!.seq } });
+                  if (found) school = found;
+                }
+              }
               if (!school) continue;
               const prevAlimi = (school.raw as Record<string, unknown>)?.['alimi'] as Record<string, unknown> | undefined;
               if (prevAlimi && prevAlimi['clgcpDivNm'] === '본교' && u.campus !== '본교') continue;
@@ -232,7 +249,58 @@ export function startIngestWorker(prisma: PrismaClient): Worker {
         results['alimi'] = 'skipped (no DATA_GO_KR_API_KEY)';
       }
 
-      // 대학별 학과 — 경기데이터드림 API로 최신 조사연도 학과 갱신 (키 있을 때만, 없으면 CSV importer 데이터 유지)
+      // 대학별 학과 (PRIMARY) — 대학알리미 학과정보 API (B340014/BasicInformationService_1, schlId+svyYr).
+      // 2026-06 검증: 전국 320교(schlId 보유) × 평균 100여 학과 = ~34,000건. svyYr=2025 최신.
+      // schlId 누락 학교는 이 단계 앞에서 alimi 단계가 listUniversities로 채워둠.
+      if (alimi.enabled) {
+        try {
+          results['departments_alimi'] = await run('departments_alimi', async () => {
+            const svyYr = 2025; // alimi 학과 API 최신 공시연도. 필요 시 latestPubYear로 동기화 가능.
+            const schools = await prisma.school.findMany({ select: { seq: true, name: true, raw: true } });
+            const targets = schools
+              .map((s) => ({ seq: s.seq, name: s.name, schlId: ((s.raw as Record<string, unknown> | null)?.['alimi'] as Record<string, unknown> | undefined)?.['schlId'] as string | undefined }))
+              .filter((s): s is { seq: string; name: string; schlId: string } => !!s.schlId);
+            let majors = 0;
+            for (const t of targets) {
+              try {
+                const rows = await alimi.listMajorsBySchool(t.schlId, svyYr);
+                for (const r of rows) {
+                  await prisma.universityDepartment.upsert({
+                    where: { schoolName_campus_name_svyYr: { schoolName: r.schoolName, campus: r.campus ?? '', name: r.name, svyYr: r.svyYr } },
+                    create: {
+                      svyYr: r.svyYr, schoolName: r.schoolName, campus: r.campus ?? '', name: r.name,
+                      college: r.college, dayNight: r.dayNight, feature: r.feature,
+                      status: r.status, active: r.active,
+                      seriesLarge: r.seriesLarge, seriesMid: r.seriesMid, seriesSmall: r.seriesSmall,
+                      degree: r.degree, years: r.years,
+                      schoolSeq: t.seq, source: '대학알리미 학과정보(B340014)',
+                    },
+                    update: {
+                      svyYr: r.svyYr, schoolName: r.schoolName, campus: r.campus ?? '', name: r.name,
+                      college: r.college, dayNight: r.dayNight, feature: r.feature,
+                      status: r.status, active: r.active,
+                      seriesLarge: r.seriesLarge, seriesMid: r.seriesMid, seriesSmall: r.seriesSmall,
+                      degree: r.degree, years: r.years,
+                      schoolSeq: t.seq, source: '대학알리미 학과정보(B340014)',
+                    },
+                  });
+                  majors += 1;
+                }
+              } catch (e) {
+                logger.warn({ schlId: t.schlId, name: t.name, err: (e as Error).message }, 'alimi majors fetch failed');
+              }
+              await new Promise((r) => setTimeout(r, 20));
+            }
+            logger.info({ svyYr, schools: targets.length, majors }, 'alimi majors refresh');
+            return majors;
+          });
+        } catch (e) {
+          results['departments_alimi'] = `failed: ${(e as Error).message}`;
+        }
+      }
+
+      // 대학별 학과 (LEGACY) — 경기데이터드림 API. 2023 기준이라 대학알리미 단계가 우선이고, 이건 fallback.
+      // monthly에만 돌고, alimi가 못 채운 대학을 메우는 용도(같은 unique key라 alimi 데이터를 덮어쓰진 않음 — 동일 학과면 source만 바뀜).
       const deptApi = new DeptApiClient();
       // 학과 정보는 거의 안 바뀜 — monthly만 실행 (사용자 요청)
       if (deptApi.enabled && runMonthly) {

@@ -10,6 +10,25 @@ import { cleanString, ensureArray } from '../career/sanitize';
 // estbDivNm(설립), schlDivNm(대학/전문대학), schlKndNm(종류), znNm(지역), svyYr.
 // 응답 래퍼: response.header.resultCode('00'=정상) + body.items.item[] (단일→배열 정규화)
 
+export interface AlimiMajor {
+  schlId: string;
+  schoolName: string;
+  campus: string | null;
+  college: string | null;
+  name: string;
+  dayNight: string | null;
+  feature: string | null;
+  status: string;
+  active: boolean;
+  seriesLarge: string | null;
+  seriesMid: string | null;
+  seriesSmall: string | null;
+  degree: string | null;
+  years: string | null;
+  svyYr: number;
+  raw: Record<string, unknown>;
+}
+
 export interface AlimiUniversity {
   schlId: string;
   name: string; // schlKrnNm
@@ -118,6 +137,67 @@ export class AlimiClient {
       this.getStudentVal('getComparisonEntranceModelLastRegistrationRatio', svyYr, schlId),
     ]);
     return { competitionRate, freshmanFillRate, finalRegistrationRate };
+  }
+
+  /**
+   * 학교별 학과 코드조회 (B340014/BasicInformationService_1/getUniversityMajorCode).
+   * 2026-06 실키 검증: schlId+svyYr 필수, 한 학교당 학과 ~100여 개 → 1 페이지(1000)로 충분.
+   * 페이지네이션 안전망(>=2 페이지 자동 순회), totalCount=0이면 빈 배열.
+   * 응답 필드: korMjrNm/clgNm/korSrsLclftNm/...(원본 보존은 호출자 책임).
+   */
+  async listMajorsBySchool(schlId: string, svyYr: number): Promise<AlimiMajor[]> {
+    const base = env().ALIMI_BASE_URL.replace(/\/[^/]+$/, '/BasicInformationService_1');
+    const acc: AlimiMajor[] = [];
+    for (let pageNo = 1; pageNo <= 20; pageNo++) {
+      const url = new URL(`${base}/getUniversityMajorCode`);
+      url.searchParams.set('serviceKey', env().DATA_GO_KR_API_KEY);
+      url.searchParams.set('schlId', schlId);
+      url.searchParams.set('svyYr', String(svyYr));
+      url.searchParams.set('pageNo', String(pageNo));
+      url.searchParams.set('numOfRows', '1000');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), env().ALIMI_TIMEOUT_MS);
+      let text: string;
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (res.status >= 400) throw new Error(`alimi-major http ${res.status}`);
+        text = await res.text();
+      } finally {
+        clearTimeout(timer);
+      }
+      const root = parser.parse(text) as Record<string, unknown>;
+      const body = ((root['response'] as Record<string, unknown>)?.['body']) as Record<string, unknown> | undefined;
+      const code = String(((root['response'] as Record<string, unknown>)?.['header'] as Record<string, unknown>)?.['resultCode'] ?? '');
+      if (code !== '00') break; // 정상 외 코드는 조용히 종료(보조 데이터)
+      const total = Number(body?.['totalCount'] ?? 0);
+      const items = ensureArray((body?.['items'] as Record<string, unknown> | undefined)?.['item'] as Record<string, unknown> | Record<string, unknown>[] | undefined);
+      for (const it of items) {
+        const name = cleanString(it['korMjrNm']);
+        if (!name) continue;
+        const status = cleanString(it['schlMjrStatNm']) ?? '';
+        acc.push({
+          schlId: cleanString(it['schlId']) ?? schlId,
+          schoolName: cleanString(it['korSchlNm']) ?? '',
+          campus: cleanString(it['psbsDivNm']),
+          college: cleanString(it['clgNm']),
+          name,
+          dayNight: cleanString(it['dghtDivNm']),
+          feature: cleanString(it['schlMjrCharNm']),
+          status,
+          active: !status.includes('폐'),
+          seriesLarge: cleanString(it['korSrsLclftNm']),
+          seriesMid: cleanString(it['korSrsMclftNm']),
+          seriesSmall: cleanString(it['korSrsSclftNm']),
+          degree: cleanString(it['pbnfDgriCrseDivNm']),
+          years: cleanString(it['lsnTrmNm']),
+          svyYr: Number(cleanString(it['svyYr'])) || svyYr,
+          raw: it,
+        });
+      }
+      if (acc.length >= total || items.length === 0) break;
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    return acc;
   }
 
   /** 대학 검색목록 (대학비교통계) — 전국 ~377교, 한 페이지 수신 */
