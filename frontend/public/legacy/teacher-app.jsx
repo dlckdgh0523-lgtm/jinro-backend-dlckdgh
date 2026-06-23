@@ -219,6 +219,7 @@ function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
 // SCREEN: Teacher Dashboard
 // ────────────────────────────────────────────────────────
 function TeacherDashboard({ go, openNotif }) {
+  const isMobile = useViewportMobile();
   const [trendMode, setTrendMode] = React.useState('avg');
   const { rows, meta, loading } = useTeacherRoster();
   const invite = useInviteCode();
@@ -239,7 +240,7 @@ function TeacherDashboard({ go, openNotif }) {
       <TeacherTopbar help="teacher-dashboard" title="좋은 아침이에요, 선생님" subtitle="오늘 학급에서 주목할 학생을 정리했어요." openNotif={openNotif}/>
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 28, background: 'var(--bg-canvas)' }}>
         {/* KPI row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
           <MetricCard label="총 학생" value={loading ? '–' : String(total)} hint={meta?.classroom || undefined} icon={<IcUsers size={16}/>}/>
           <MetricCard label="이번 주 활동" value={loading ? '–' : `${activeCount}명`} delta={activeCount > 0 ? '활성' : undefined} deltaTone="success" icon={<IcZap size={16}/>}/>
           <MetricCard label="상담 필요" value={loading ? '–' : `${needsCount}명`} delta={needsCount > 0 ? '확인 필요' : undefined} deltaTone="warning" icon={<IcMessage size={16}/>}/>
@@ -247,7 +248,7 @@ function TeacherDashboard({ go, openNotif }) {
         </div>
 
         {/* Two-column main */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16 }}>
           {/* Left: focus students */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <SectionCard
@@ -410,6 +411,7 @@ function ClassTrendChart({ mode = 'avg' }) {
 // SCREEN: Classroom + Invite Code
 // ────────────────────────────────────────────────────────
 function TeacherClassroom({ go, openNotif }) {
+  const isMobile = useViewportMobile();
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const { rows, meta, loading } = useTeacherRoster();
   const invite = useInviteCode();
@@ -422,7 +424,7 @@ function TeacherClassroom({ go, openNotif }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TeacherTopbar help="teacher-classroom" title="우리 학급" subtitle={`${classroomLabel} · ${loading ? '…' : count}명`} openNotif={openNotif}/>
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 28, background: 'var(--bg-canvas)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
           {/* Invite code panel */}
           <Card padding={28} style={{
             background: 'linear-gradient(135deg, #3182F6 0%, #1957C2 100%)', color: '#fff',
@@ -518,6 +520,7 @@ function TeacherClassroom({ go, openNotif }) {
 // SCREEN: Students list
 // ────────────────────────────────────────────────────────
 function TeacherStudents({ go, openNotif }) {
+  const isMobile = useViewportMobile();
   const [q, setQ] = React.useState('');
   const [filter, setFilter] = React.useState('all');
   const [registerOpen, setRegisterOpen] = React.useState(false);
@@ -546,8 +549,8 @@ function TeacherStudents({ go, openNotif }) {
           <Button variant="primary" size="sm" leading={<IcPlus size={14}/>} onClick={() => setRegisterOpen(true)}>학생 등록</Button>
         </>}
       />
-      <div style={{ padding: '20px 28px 12px', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-canvas)', flexWrap: 'wrap' }}>
-        <TextInput value={q} onChange={setQ} placeholder="학생 이름으로 검색" leading={<IcSearch size={16}/>} style={{ flex: 1, minWidth: 240, height: 44 }}/>
+      <div style={{ padding: isMobile ? '14px 16px 8px' : '20px 28px 12px', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-canvas)', flexWrap: 'wrap' }}>
+        <TextInput value={q} onChange={setQ} placeholder="학생 이름으로 검색" leading={<IcSearch size={16}/>} style={{ flex: 1, minWidth: isMobile ? 140 : 240, height: 44 }}/>
         <Tabs items={[
           { id: 'all', label: `전체 ${allStudents.length}` },
           { id: 'needs-counseling', label: `상담 필요 ${needsCounselingCount}` },
@@ -555,7 +558,7 @@ function TeacherStudents({ go, openNotif }) {
           { id: 'ungraded', label: `성적 미입력 ${ungradedCount}` },
         ]} activeId={filter} onChange={setFilter}/>
       </div>
-      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 28px 28px', background: 'var(--bg-canvas)' }}>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: isMobile ? '0 12px 20px' : '0 28px 28px', background: 'var(--bg-canvas)' }}>
         {loading ? (
           <Card padding={16}><div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0,1,2,3,4].map(i => <Skeleton key={i} height={56} radius={12}/>)}</div></Card>
         ) : error ? (
@@ -565,10 +568,10 @@ function TeacherStudents({ go, openNotif }) {
         ) : filtered.length === 0 ? (
           <Card padding={8}><EmptyState icon={<IcSearch size={24}/>} title="검색 결과가 없어요" body="다른 이름이나 필터를 시도해보세요."/></Card>
         ) : (
-        <Card padding={0} style={{ minWidth: 720 }}>
+        <Card padding={0} style={{ minWidth: isMobile ? 0 : 720 }}>
           {/* Header */}
           <div style={{
-            display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 1.2fr 1.4fr 36px',
+            display: isMobile ? 'none' : 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 1.2fr 1.4fr 36px',
             padding: '12px 20px', fontSize: 12, fontWeight: 700, color: 'var(--fg-muted)',
             borderBottom: '1px solid var(--line-subtle)',
           }}>
@@ -579,7 +582,45 @@ function TeacherStudents({ go, openNotif }) {
             <span>마지막 활동</span>
             <span/>
           </div>
-          {filtered.map((s, i) => (
+          {filtered.map((s, i) => isMobile ? (
+            <div key={s.id} onClick={() => openStudentDetail(go, s.id)} style={{
+              padding: '12px 14px', borderBottom: i < filtered.length - 1 ? '1px solid var(--line-subtle)' : 'none',
+              cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Avatar name={(s.name || '?').slice(0,1)} size={36}/>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {s.name}
+                    {s.needsCounseling && <Chip tone="warning" size="sm" style={{ height: 18, padding: '0 6px', fontSize: 10 }}>상담 필요</Chip>}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{s.grade || '학년 미정'}</div>
+                </div>
+                <IcChevronRight size={16} color="var(--fg-subtle)"/>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div style={{ background: 'var(--bg-muted)', borderRadius: 10, padding: '8px 10px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginBottom: 3 }}>최근 평균</div>
+                  {s.gradeAverage == null ? <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>미입력</span> : <span className="num" style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg-strong)' }}>{s.gradeAverage}</span>}
+                </div>
+                <div style={{ background: 'var(--bg-muted)', borderRadius: 10, padding: '8px 10px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginBottom: 3 }}>AI 진행도</div>
+                  {aiProgressBadge(s.aiProgress || 0)}
+                </div>
+                <div style={{ background: 'var(--bg-muted)', borderRadius: 10, padding: '8px 10px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginBottom: 3 }}>학습 진도</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <ProgressBar value={s.studyDone} max={Math.max(s.studyTotal, 1)} height={5}/>
+                    <span className="num" style={{ fontSize: 11, color: 'var(--fg-muted)', minWidth: 28, textAlign: 'right' }}>{s.studyDone}/{s.studyTotal}</span>
+                  </div>
+                </div>
+                <div style={{ background: 'var(--bg-muted)', borderRadius: 10, padding: '8px 10px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginBottom: 3 }}>마지막 활동</div>
+                  <span style={{ fontSize: 11, color: 'var(--fg-subtle)' }}>{fmtActivity(s.lastActivityAt)}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
             <div key={s.id} onClick={() => openStudentDetail(go, s.id)} style={{
               display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.4fr 1.2fr 1.4fr 36px',
               padding: '14px 20px', alignItems: 'center',
@@ -775,13 +816,14 @@ function groupGradesByTerm(grades) {
 }
 
 function TeacherStudentOverview({ detail, onTab }) {
+  const isMobile = useViewportMobile();
   const grades = detail.grades || [];
   const signals = detail.signals || [];
   const targets = detail.targets || [];
   const terms = groupGradesByTerm(grades);
   const lastAvg = terms.length ? terms[terms.length - 1].avg : null;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: 16 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Card padding={20}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
@@ -850,6 +892,7 @@ function TeacherStudentOverview({ detail, onTab }) {
 }
 
 function TeacherStudentGrades({ grades }) {
+  const isMobile = useViewportMobile();
   const terms = groupGradesByTerm(grades);
   if (terms.length === 0) {
     return <Card padding={8}><EmptyState icon={<IcChart size={24}/>} title="입력된 성적이 없어요" body="아직 등록된 성적 기록이 없어요."/></Card>;
@@ -859,10 +902,21 @@ function TeacherStudentGrades({ grades }) {
       {terms.map((t) => (
         <SectionCard key={t.term} title={t.term} action={t.avg != null && <Chip tone="info" size="sm">평균 {t.avg}</Chip>}>
           <Card padding={0}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)', borderBottom: '1px solid var(--line-subtle)' }}>
+            <div style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', padding: '10px 16px', fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)', borderBottom: '1px solid var(--line-subtle)' }}>
               <span>과목</span><span>분류</span><span>점수</span><span>등급</span>
             </div>
-            {t.items.map((g, i) => (
+            {t.items.map((g, i) => isMobile ? (
+              <div key={g.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: i < t.items.length - 1 ? '1px solid var(--line-subtle)' : 'none' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)' }}>{g.subject}</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{g.category || '-'}</div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)' }}>{g.score == null ? '-' : g.score + '점'}</div>
+                  <div className="num" style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{g.rank == null ? '-' : g.rank + '등급'}</div>
+                </div>
+              </div>
+            ) : (
               <div key={g.id || i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', padding: '12px 16px', alignItems: 'center', fontSize: 13, borderBottom: i < t.items.length - 1 ? '1px solid var(--line-subtle)' : 'none' }}>
                 <span style={{ fontWeight: 700, color: 'var(--fg-strong)' }}>{g.subject}</span>
                 <span style={{ color: 'var(--fg-muted)' }}>{g.category || '-'}</span>
