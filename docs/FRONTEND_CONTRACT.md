@@ -113,7 +113,7 @@ GET  /v1/ai-counseling/reports/:id               → { data: Report }
 - 스트리밍 UX 근거: 타이핑 인디케이터 ChatThinking (student-app.jsx:491-514), "실시간 SSE 알림" (student-app.jsx:770)
 - `Message` (student-app.jsx:26-32): `{ id, role:'ai'|'user', text, createdAt }`
 - `Signal` (student-app.jsx:34-39, backend-integration.md:68): `{ tag:'흥미'|'강점'|'가치'|'맥락', text, sourceMessageId, confidence }`
-- `progress.completeness`는 **evidence 기반** (고정 step 금지, backend-integration.md:67). 프론트 공식 참고: `evidenceCount*12+20` cap 100 (student-app.jsx:344-345), 리포트 버튼은 evidenceCount>=5에 활성 (student-app.jsx:448-457)
+- `progress.completeness`는 **evidence 기반** (고정 step 금지, backend-integration.md:67). 프론트 공식 참고: `evidenceCount*12+20` cap 100 (student-app.jsx:344-345), 리포트 버튼은 evidenceCount>=5에 활성 (student-app.jsx:448-457). **자동 종료(2026-06-23~)**: AI가 메인 응답에 메타블록 `<meta>{signals,shouldFinalize,finalizeReason}</meta>`을 함께 출력하고, `shouldFinalize=true && evidenceCount>=5`면 백엔드가 리포트를 자동 enqueue. 학생이 버튼을 누르지 않아도 자연스러운 종결 시점에 리포트가 만들어진다. 메타블록은 stripLeakedState가 본문에서 제거하므로 학생에게 노출되지 않음.
 - `Report` (extras-v4.jsx:12-33): `{ id, student, generated, turns, headline, summary, careers:[{title,score,why}], majors:string[], signals, strengths:string[], risks:string[], nextActions:string[], disclaimer }` — 항상 disclaimer 포함, "잠정 가설" 표기 (backend-integration.md:69)
 - AI provider: Anthropic primary (키 없으면 mock 스트림). 토큰/비용 로깅 필수 (backend-integration.md:70)
 

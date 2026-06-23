@@ -450,14 +450,14 @@ function AICounseling({ go, openSignals }) {
           <ProgressBar value={progress} height={4}/>
           <span className="num" style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-600)', minWidth: 36, textAlign: 'right' }}>{progress}%</span>
         </div>
-        {/* 단계 스테퍼 — 대화로 단서가 쌓이면 자동으로 다음 단계로 넘어가요 */}
+        {/* 단계 스테퍼 — AI가 대화로 단서를 파악해 단계를 자연스럽게 진행해요 */}
         {(() => {
           const STEPS = [['explore','탐색'],['profile','파악'],['recommend','추천'],['prepare','준비']];
           const cur = STEPS.findIndex(s => s[0] === stage);
-          const hint = stage === 'explore' ? `단서를 ${Math.max(1, 2 - signals.length)}개 더 모으면 ‘파악’ 단계로 넘어가요`
-            : stage === 'profile' ? `단서를 ${Math.max(1, 4 - signals.length)}개 더 모으면 ‘추천’ 단계로 넘어가요`
-            : stage === 'recommend' ? `마음에 드는 진로를 ‘진로 목표’로 저장하면 ‘준비’ 단계로 넘어가요`
-            : `입시·성적과 연결해 상담을 마무리해요`;
+          const hint = stage === 'explore' ? `대화로 흥미·강점·가치·맥락 단서를 모아요. AI가 충분히 파악했다고 판단하면 다음 단계로 넘어가요`
+            : stage === 'profile' ? `지금까지 모은 단서를 정리해 확인해요. 방향이 잡히면 AI가 자연스럽게 추천 단계로 안내해요`
+            : stage === 'recommend' ? `데이터 근거로 직업·전공·대학을 제안해요. 마음에 드는 진로를 ‘진로 목표’로 저장하면 준비 단계로 넘어가요`
+            : `입시·성적과 연결해 상담을 마무리해요. 충분한 단서가 쌓이면 AI가 자동으로 진로 리포트를 만들어드려요`;
           return (
             <div style={{ marginTop: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

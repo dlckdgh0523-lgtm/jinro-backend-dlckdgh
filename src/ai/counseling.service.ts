@@ -285,7 +285,8 @@ export class CounselingService {
     ]);
     const distinctTags = new Set(signals.map((s) => s.tag)).size;
     let stage: 'explore' | 'profile' | 'recommend' | 'prepare';
-    // 단계 진행을 쉽게 — 단서가 조금만 쌓여도 다음 단계로 (사용자가 진행이 더디다는 피드백 반영).
+    // 단계 진행 — evidence(단서) 기반. AI가 메타블록(parseAiMeta)에서 매 응답마다 새 단서를 적극적으로
+    // 뽑아 누적되므로, 임계값을 낮춰도 같은 주제 반복 없이 자연스럽게 진행된다.
     // explore: 단서 2개 미만 / profile: 단서 4개 미만 / 그 이후 recommend(또는 목표 있으면 prepare).
     if (signals.length < 2) stage = 'explore';
     else if (signals.length < 4) stage = 'profile';
