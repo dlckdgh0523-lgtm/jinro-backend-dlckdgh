@@ -568,7 +568,7 @@ function UserDetailDrawer({ user, onClose, onChanged }) {
     }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.4)', animation: 'fadeIn 200ms' }}/>
       <div ref={trapRef} role="dialog" aria-modal="true" aria-label={`${user.name} 상세`} style={{
-        position: 'relative', width: 480,
+        position: 'relative', width: 'min(480px, 100vw)',
         background: 'var(--bg-elevated)', height: '100%',
         boxShadow: 'var(--shadow-pop)', overflow: 'auto',
         animation: 'slideRight 280ms var(--ease-toss)',

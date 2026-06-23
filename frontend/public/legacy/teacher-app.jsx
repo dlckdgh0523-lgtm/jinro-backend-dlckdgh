@@ -1441,7 +1441,7 @@ function TeacherNotifPopover({ items, onClose, onAll }) {
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 40 }}/>
       <div style={{
         position: 'absolute', top: 64, right: 28, zIndex: 41,
-        width: 360, background: 'var(--bg-elevated)',
+        width: 'min(360px, calc(100vw - 40px))', background: 'var(--bg-elevated)',
         borderRadius: 16, boxShadow: 'var(--shadow-pop)',
         overflow: 'hidden',
         animation: 'sheetIn 220ms var(--ease-toss)',

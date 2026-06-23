@@ -738,7 +738,7 @@ function TeacherNotifPopover({ items, onClose, onAll }) {
     top: 64,
     right: 28,
     zIndex: 41,
-    width: 360,
+    width: "min(360px, calc(100vw - 40px))",
     background: "var(--bg-elevated)",
     borderRadius: 16,
     boxShadow: "var(--shadow-pop)",
