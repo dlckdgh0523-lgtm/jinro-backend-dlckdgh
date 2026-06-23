@@ -482,11 +482,11 @@ function TeacherClassroom({ go, openNotif }) {
         {/* Roster */}
         <SectionCard title="학급 학생" action={<Button variant="ghost" size="sm" onClick={() => go('students')} trailing={<IcChevronRight size={14}/>}>전체 학생 보기</Button>}>
           {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>{[0,1,2,3,4,5].map(i => <Skeleton key={i} height={64} radius={12}/>)}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 12 }}>{[0,1,2,3,4,5].map(i => <Skeleton key={i} height={64} radius={12}/>)}</div>
           ) : rows.length === 0 ? (
             <EmptyState icon={<IcUsers size={24}/>} title="아직 등록된 학급 학생이 없어요" body="학급 초대코드를 공유해 첫 학생을 초대해보세요."/>
           ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 12 }}>
             {rows.map(s => (
               <div key={s.id} onClick={() => openStudentDetail(go, s.id)} style={{
                 padding: 14, border: '1px solid var(--line-subtle)', borderRadius: 12,
@@ -826,7 +826,7 @@ function TeacherStudentOverview({ detail, onTab }) {
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: 16 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Card padding={20}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 12 }}>
             <div>
               <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>최근 평균</div>
               <div className="num" style={{ fontSize: 24, fontWeight: 700, color: 'var(--fg-strong)' }}>{lastAvg == null ? '미입력' : lastAvg}</div>
