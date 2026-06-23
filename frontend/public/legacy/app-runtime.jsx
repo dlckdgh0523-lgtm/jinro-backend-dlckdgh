@@ -489,7 +489,7 @@ function SidebarDrawer({ open, onClose, children }) {
   return (
     <>
       {open && <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 199 }}/>}
-      <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', zIndex: 200, transform: open ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform .26s var(--ease-toss, ease)', boxShadow: open ? '0 0 40px rgba(0,0,0,0.3)' : 'none' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', maxHeight: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch', zIndex: 200, transform: open ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform .26s var(--ease-toss, ease)', boxShadow: open ? '0 0 40px rgba(0,0,0,0.3)' : 'none' }}>
         {children}
       </div>
     </>
@@ -683,7 +683,7 @@ function LiveRunner() {
 
       {/* APP MOUNT */}
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'stretch', padding: width === 0 ? 0 : '16px 0' }}>
-        <div key={role + ':' + remount} style={{ ...frameStyle, background: 'var(--bg-canvas)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div key={role + ':' + remount} style={{ ...frameStyle, minWidth: 0, maxWidth: '100%', background: 'var(--bg-canvas)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <AuthProvider role={role.startsWith('teacher') ? 'teacher' : role === 'admin' ? 'admin' : 'student'}>
             {role === 'auth-mobile'
               ? <MobileAuthApp onEnter={handleAuthComplete}/>

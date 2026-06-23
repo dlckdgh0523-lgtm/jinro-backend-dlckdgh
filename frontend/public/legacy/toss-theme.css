@@ -97,6 +97,11 @@ a { color: inherit; text-decoration: none; }
 /* Korean wrap helpers */
 .kr-heading { word-break: keep-all; text-wrap: pretty; }
 
+/* 좌우 흔들림(가로 오버플로) 차단 — 앱 내부 스크롤 컨테이너는 세로 스크롤만 허용.
+   인라인 overflow:auto 가 만든 가로 스크롤이 화면을 좌우로 흔드는 문제를 전역 차단.
+   (콘텐츠 자체의 고정폭/다단 그리드는 화면별로 별도 축소한다 — 여기서는 흔들림만 막음) */
+.toss-scroll { overflow-x: hidden !important; max-width: 100%; }
+
 /* Scrollbar (subtle) */
 .toss-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .toss-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }

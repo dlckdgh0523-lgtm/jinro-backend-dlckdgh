@@ -653,6 +653,7 @@ function LandingAiSafety() {
 // Auth pages (stateful, with consent gates)
 // ────────────────────────────────────────────────────────
 function AuthScreen({ role = 'student', mode = 'login', onNav, onBack, setRole, setMode }) {
+  const isMobile = useViewportMobile();
   const isTeacher = role === 'teacher';
   const isSignup = mode === 'signup';
   const switchRole = setRole || (() => {});
@@ -740,9 +741,9 @@ function AuthScreen({ role = 'student', mode = 'login', onNav, onBack, setRole, 
     <div style={{
       minHeight: '100%', background: 'var(--bg-canvas)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 40,
+      padding: isMobile ? '20px 16px' : 40,
     }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', maxWidth: 1080, gap: 60, width: '100%', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.1fr', maxWidth: 1080, gap: isMobile ? 24 : 60, width: '100%', alignItems: 'center' }}>
         {/* Left: copy */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 36 }}>
@@ -779,7 +780,7 @@ function AuthScreen({ role = 'student', mode = 'login', onNav, onBack, setRole, 
               );
             })}
           </div>
-          <h1 style={{ fontSize: 40, fontWeight: 800, color: 'var(--fg-strong)', margin: 0, letterSpacing: '-1.2px', lineHeight: 1.2, marginBottom: 16 }} className="kr-heading">
+          <h1 style={{ fontSize: isMobile ? 26 : 40, fontWeight: 800, color: 'var(--fg-strong)', margin: 0, letterSpacing: '-1.2px', lineHeight: 1.2, marginBottom: 16 }} className="kr-heading">
             {isTeacher
               ? (isSignup ? '학급을 만들고\n학생을 초대해보세요' : '오늘 학급도 잘 부탁해요')
               : (isSignup ? '진로 고민,\n대화로 시작해요' : '다시 만나서 반가워요')
@@ -965,7 +966,7 @@ function PaymentResult({ status = 'success' }) {
   }[status];
   return (
     <div style={{ minHeight: '100%', background: 'var(--bg-canvas)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-      <Card padding={40} style={{ width: 480, textAlign: 'center' }}>
+      <Card padding={40} style={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
         <div style={{
           width: 72, height: 72, borderRadius: 20,
           background: config.bg, color: config.color,
