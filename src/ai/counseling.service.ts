@@ -81,9 +81,40 @@ function parseReportJson(text: string): Record<string, unknown> | null {
   return null;
 }
 
-/** 모델이 응답에 누수한 단계 안내/내부 태그 제거 (이중 안전망) */
+/** AI가 응답 끝에 함께 출력하는 메타블록의 스키마. 추가 LLM 호출 없이 단서·종료 판단을 받는다. */
+export interface AiMeta {
+  signals: { tag: '흥미' | '강점' | '가치' | '맥락'; text: string; confidence?: 'high' | 'mid' | 'low' }[];
+  shouldFinalize: boolean;
+  finalizeReason?: string;
+}
+
+/**
+ * 응답 본문에서 메타블록 `<meta>{...}</meta>`을 추출(파싱)한다. 없거나 깨지면 null.
+ * 응답에 노출되면 안 되므로 추출 후 본문에서 제거하는 건 stripLeakedState가 담당.
+ */
+export function parseAiMeta(text: string): AiMeta | null {
+  const m = /<meta>\s*([\s\S]*?)\s*<\/meta>/i.exec(text);
+  if (!m) return null;
+  try {
+    const obj = JSON.parse(m[1]!) as Partial<AiMeta>;
+    const signals = Array.isArray(obj.signals) ? obj.signals.filter((s) =>
+      s && typeof s.text === 'string' && s.text.length > 0 && ['흥미','강점','가치','맥락'].includes(s.tag as string),
+    ).map((s) => ({ tag: s.tag, text: String(s.text).slice(0, 200), confidence: (s.confidence ?? 'mid') as 'high' | 'mid' | 'low' })) : [];
+    return {
+      signals: signals as AiMeta['signals'],
+      shouldFinalize: obj.shouldFinalize === true,
+      finalizeReason: typeof obj.finalizeReason === 'string' ? obj.finalizeReason.slice(0, 200) : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 모델이 응답에 누수한 단계 안내/내부 태그/메타블록 제거 (이중 안전망) */
 export function stripLeakedState(text: string): string {
   return text
+    .replace(/<meta>[\s\S]*?<\/meta>/gi, '') // 메타블록(닫힌 형태) — parseAiMeta가 먼저 추출
+    .replace(/<meta>[\s\S]*$/i, '')          // 메타블록(스트림 중단 등으로 잘린 형태)
     .replace(/<state>[\s\S]*?<\/state>/gi, '')
     .replace(/<state>[\s\S]*$/i, '') // 닫는 태그 없이 잘린 경우
     .replace(/\[상담 단계 안내[\s\S]*$/i, '')
@@ -168,7 +199,7 @@ export function formatAdmissionMetricLine(name: string, a: AdmissionsRaw): strin
 }
 
 /** 단위테스트 전용 export */
-export const __test = { parseReportJson, stripFence, stripLeakedState, gradeToTarget, gradeKoreanLabel, summarizeGrades, extractUniversityNames, formatAdmissionMetricLine };
+export const __test = { parseReportJson, stripFence, stripLeakedState, parseAiMeta, gradeToTarget, gradeKoreanLabel, summarizeGrades, extractUniversityNames, formatAdmissionMetricLine };
 
 // 교사 코칭 모드 — AI가 '학생을 상담하는 척'하지 않고, 교사의 상담 설계를 돕는 코치 역할.
 const TEACHER_COACH_PROMPT = [
@@ -453,11 +484,23 @@ export class CounselingService {
         '[빠른 답변 보기 지침] 학생에게 질문을 던질 때는, 방금 그 질문에 대해 학생이 실제로 답할 법한 "상황에 맞는" 예시 보기를 응답 맨 마지막 별도 한 줄로 제시하라. 형식은 정확히: "[보기] 짧은답변1 | 짧은답변2 | 짧은답변3". ' +
         '보기는 직전 질문과 지금까지의 대화 맥락에 딱 맞게 매번 새로 만들어라(고정된 일반 문구 금지). 1인칭의 짧고 구체적인 표현으로 2~3개, 가능하면 "아직 잘 모르겠어요" 같은 부담 없는 선택지를 하나 포함하라. ' +
         '질문하지 않는 응답(정리·추천·표 등)에는 [보기] 줄을 붙이지 말 것. 보기 줄 외에 다른 설명을 덧붙이지 말 것.';
+      // 메타블록 지침 — AI가 매 응답 끝에 단서·종료 여부를 함께 출력해 별도 호출 없이 #3·#4·#5 통합.
+      // 학생에겐 보이지 않는 내부 신호이고, stripLeakedState가 응답에서 제거한다.
+      const metaGuide =
+        '[메타블록 지침 — 학생에게 보이지 않는 내부 신호, 응답 본문 뒤에 정확히 한 번만 출력하라] ' +
+        '답변을 모두 마친 후 마지막 줄에 정확히 다음 형식의 메타블록을 한 번만 출력하라: ' +
+        '<meta>{"signals":[{"tag":"흥미|강점|가치|맥락","text":"...80자 이내","confidence":"high|mid|low"}],"shouldFinalize":false,"finalizeReason":""}</meta> ' +
+        '· signals: 이번 학생 발화에서 새로 파악된 단서(없으면 빈 배열). 학생이 말한 내용을 기반으로만 — 추측 금지. ' +
+        '· shouldFinalize: 다음 모든 조건이 충족되면 true, 아니면 false. (1) 단서가 충분히(최소 4개 이상) 모였다, ' +
+        '(2) 학생이 추천/정리/마무리 의사를 표현했거나 자연스러운 종결 시점이다, ' +
+        '(3) 같은 주제를 반복하기보다 진로 리포트로 정리하는 게 학생에게 더 유익하다. 애매하면 false. ' +
+        '· finalizeReason: shouldFinalize=true일 때 한 줄 사유(예: "학생이 리포트를 요청했고 단서가 충분히 누적됨"). ' +
+        '메타블록은 반드시 유효한 JSON 한 줄이어야 하며, 본문에는 절대 인용/노출 금지.';
       const systemWithState = isTeacher
         ? TEACHER_COACH_PROMPT
         : `${SYSTEM_PROMPT}\n\n[상담 단계 안내 — 내부 정보, 응답에 노출 금지] 현재 단계: ${stageLabel}. 지금까지 모은 단서(${stageInfo.signals.length}개): ${signalSummary}. 학생 발화 ${stageInfo.userTurns}회. ${STAGE_GUIDE[stageInfo.stage] ?? '이 단계에 맞게 응답하라.'}\n` +
           `[학생 학년 안내 — 내부 정보, 응답에 노출 금지] 학년: ${gradeLabel}. 위 "학년별 톤·내용 지침"을 그대로 따르라.\n` +
-          `${ADMISSION_GUARD}\n${gradeContext}\n${formatGuide}\n${quickReplyGuide}`;
+          `${ADMISSION_GUARD}\n${gradeContext}\n${formatGuide}\n${quickReplyGuide}\n${metaGuide}`;
 
       const aiMsg = await this.prisma.counselingMessage.create({ data: { sessionId, role: 'ai', text: '' } });
       const streamChannel = `sse:aimsg:${aiMsg.id}`;
@@ -482,9 +525,26 @@ export class CounselingService {
         throw e;
       }
 
-      // 방어적 정리 — 모델이 단계 안내/내부 태그를 응답에 누수하면 제거 (프롬프트 지시 + 이중 안전망)
+      // 메타블록 추출 — AI가 응답 끝에 출력한 단서/종료신호. 본문에서 제거하기 전에 먼저 파싱.
+      const meta = parseAiMeta(fullText);
+      // 방어적 정리 — 모델이 단계 안내/내부 태그/메타블록을 응답에 누수하면 제거 (프롬프트 지시 + 이중 안전망)
       fullText = stripLeakedState(fullText);
       await this.prisma.counselingMessage.update({ where: { id: aiMsg.id }, data: { text: fullText } });
+
+      // 메타가 잡은 추가 단서를 저장 (extractSignals로 못 잡은 것 보강). 같은 문구는 중복 저장 안 함.
+      let metaSignalsSaved = 0;
+      if (meta && meta.signals.length > 0) {
+        const existing = await this.prisma.counselingSignal.findMany({ where: { sessionId }, select: { text: true } });
+        const seen = new Set(existing.map((e) => e.text));
+        const fresh = meta.signals.filter((s) => !seen.has(s.text));
+        if (fresh.length) {
+          await this.prisma.counselingSignal.createMany({
+            data: fresh.map((s) => ({ sessionId, tag: s.tag, text: s.text, confidence: s.confidence ?? 'mid', sourceMessageId: userMsg.id })),
+          });
+          metaSignalsSaved = fresh.length;
+        }
+      }
+
       const prog = await this.progressOf(sessionId);
       const donePayload = {
         messageId: aiMsg.id,
@@ -495,7 +555,15 @@ export class CounselingService {
       };
       void this.pubsub.publish(streamChannel, 'done', donePayload);
       callbacks.onDone(donePayload);
-      logger.info({ sessionId, usage }, 'ai message completed');
+
+      // 자동 리포트 — AI가 종료 시점이라고 판단(shouldFinalize=true)했고 단서가 충분(>=5)하면 자동 enqueue.
+      // 멱등키는 generateReport 내부가 처리하므로 중복 호출되어도 안전. 비동기로 실행해 응답 흐름 차단 안 함.
+      if (meta?.shouldFinalize && prog.evidenceCount >= 5) {
+        void this.generateReport(userId, sessionId)
+          .then((r) => logger.info({ sessionId, reportId: (r as { data?: { id?: string } })?.data?.id, reason: meta.finalizeReason }, 'auto-finalize report enqueued'))
+          .catch((e) => logger.warn({ sessionId, err: (e as Error).message }, 'auto-finalize failed'));
+      }
+      logger.info({ sessionId, usage, metaSignalsSaved, autoFinalize: !!meta?.shouldFinalize }, 'ai message completed');
     } finally {
       this.activeStreams -= 1;
     }
