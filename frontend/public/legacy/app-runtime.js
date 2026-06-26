@@ -455,9 +455,16 @@ function ingestOAuthHash() {
         localStorage.setItem("jinro:accessToken", data.accessToken);
         if (data.refreshToken) localStorage.setItem("jinro:refreshToken", data.refreshToken);
         if (data.needsProfile) {
+          let dismissed = false;
           try {
-            localStorage.setItem("jinro:onboard", JSON.stringify({ name: data.name || "" }));
+            dismissed = data.email && !!localStorage.getItem("jinro:onboard:dismissed:" + data.email);
           } catch (e) {
+          }
+          if (!dismissed) {
+            try {
+              localStorage.setItem("jinro:onboard", JSON.stringify({ name: data.name || "", email: data.email || "" }));
+            } catch (e) {
+            }
           }
         }
         const role = data.role === "teacher" ? "teacher-web" : data.role === "admin" ? "admin" : "student-web";

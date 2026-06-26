@@ -5,7 +5,16 @@ import bcrypt from 'bcryptjs';
 import { PrismaService } from '../db/prisma.service';
 import { AppError, ErrorCode } from '../common/errors';
 import { env } from '../common/env';
+import { createRedis } from '../common/redis';
+import { logger } from '../common/logger';
 import type { Role, User } from '@prisma/client';
+
+// 로그인 실패 잠금 — Redis 카운터로 계정 단위 잠금. 5회 실패 → 15분 잠금.
+// IP 단위 throttler(5/min/IP)와 별개 — 계정 단위라 IP 우회 brute-force도 차단.
+const LOGIN_FAIL_MAX = 5;
+const LOGIN_LOCK_SEC = 15 * 60;
+const lockoutRedis = createRedis('auth-lockout');
+const lockoutKey = (email: string) => `auth:lockout:${email.toLowerCase()}`;
 
 export interface Consents {
   tos: boolean;
@@ -95,7 +104,7 @@ export class AuthService {
 
   // 소셜 로그인 — 이메일로 기존 계정 매칭, 없으면 학생으로 생성(미완성: grade 없음 → 온보딩 유도).
   // 기존 사용자(다음번)는 연동된 그 계정으로 바로 로그인. 신규는 needsProfile=true로 온보딩 진입.
-  async oauthLogin(input: { email: string; name: string; provider: 'google' | 'kakao' }): Promise<{ accessToken: string; refreshToken: string; role: Role; isNew: boolean; needsProfile: boolean; name: string }> {
+  async oauthLogin(input: { email: string; name: string; provider: 'google' | 'kakao' }): Promise<{ accessToken: string; refreshToken: string; role: Role; isNew: boolean; needsProfile: boolean; name: string; email: string }> {
     const email = input.email.trim().toLowerCase();
     let user = await this.prisma.user.findUnique({ where: { email } });
     let isNew = false;
@@ -117,7 +126,7 @@ export class AuthService {
     }
     const tokens = await this.issueTokens(user);
     const needsProfile = user.role === 'student' && !user.grade; // 학년 없으면 온보딩 필요
-    return { ...tokens, role: user.role, isNew, needsProfile, name: user.name };
+    return { ...tokens, role: user.role, isNew, needsProfile, name: user.name, email: user.email };
   }
 
   // OAuth 온보딩 완료 — 이름/학년/필수동의 입력 반영.
@@ -132,19 +141,83 @@ export class AuthService {
   }
 
   async login(input: { email: string; password: string; role?: Role }) {
+    // 계정 잠금 체크 — Redis 카운터(키 auth:lockout:<email>). N회 실패 시 잠금.
+    // Redis 다운 시 throw 안 함(베스트 에포트 잠금 — 다운돼도 로그인은 가능, 보안은 throttler가 1차 방어).
+    const lkey = lockoutKey(input.email);
+    let failCount = 0;
+    try { failCount = Number((await lockoutRedis.get(lkey)) || 0); } catch (e) { logger.warn({ err: (e as Error).message }, 'login lockout redis read failed'); }
+    if (failCount >= LOGIN_FAIL_MAX) {
+      throw new AppError(ErrorCode.AUTH_FORBIDDEN, `로그인 시도가 너무 많아요. 15분 후 다시 시도해주세요. (보안 잠금)`);
+    }
+
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
-    if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
+    const passwordOk = user && (await bcrypt.compare(input.password, user.passwordHash));
+    if (!user || !passwordOk) {
+      // 실패 카운터 증가 — TTL 15분(슬라이딩 윈도 아님. 임계 도달 후 15분 잠금)
+      try {
+        const c = await lockoutRedis.incr(lkey);
+        if (c === 1) await lockoutRedis.expire(lkey, LOGIN_LOCK_SEC);
+      } catch (e) { /* 로깅만 */ }
       throw new AppError(ErrorCode.AUTH_INVALID_CREDENTIALS, '이메일 또는 비밀번호가 올바르지 않아요.');
     }
     if (user.status !== 'active') {
       throw new AppError(ErrorCode.AUTH_FORBIDDEN, '이용이 제한된 계정이에요. 고객센터에 문의해주세요.');
     }
     if (input.role && user.role !== input.role) {
+      // 역할 불일치도 invalid credentials로 응답 (계정 존재 노출 방지)
       throw new AppError(ErrorCode.AUTH_INVALID_CREDENTIALS, '이메일 또는 비밀번호가 올바르지 않아요.');
     }
+    // 성공 — 카운터 초기화
+    try { await lockoutRedis.del(lkey); } catch (e) { /* silent */ }
     const tokens = await this.issueTokens(user);
     const nextPath = user.role === 'teacher' ? '/teacher/dashboard' : user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard';
     return { ...tokens, user: this.toUserDto(user), nextPath };
+  }
+
+  /**
+   * 비밀번호 변경 — 현재 비번 검증 + 새 비번 저장 + **모든 refresh 토큰 일괄 폐기**.
+   * 보안 핵심: 비번 바꿔도 기존 다른 기기/세션이 그대로 유효하면 의미 없음.
+   */
+  async changePassword(userId: string, input: { currentPassword: string; newPassword: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError(ErrorCode.AUTH_EXPIRED, '세션이 만료됐어요. 다시 로그인해주세요.');
+    const ok = await bcrypt.compare(input.currentPassword, user.passwordHash);
+    if (!ok) throw new AppError(ErrorCode.AUTH_INVALID_CREDENTIALS, '현재 비밀번호가 일치하지 않아요.');
+    if (input.newPassword === input.currentPassword) {
+      throw new AppError(ErrorCode.VALIDATION_FAILED, '새 비밀번호는 현재와 달라야 해요.');
+    }
+    const newHash = await bcrypt.hash(input.newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash } });
+    // 모든 refresh 토큰 폐기 — 다른 기기에서 자동 로그아웃됨
+    await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    // 잠금 카운터도 초기화 (혹시 누적돼 있었을 수 있음)
+    try { await lockoutRedis.del(lockoutKey(user.email)); } catch (e) { /* silent */ }
+    return { ok: true };
+  }
+
+  /**
+   * 계정 삭제 (개인정보 보호법 — 정보주체의 삭제권).
+   * 비번 재확인 후 user 삭제 → schema의 onDelete:Cascade로 모든 개인 데이터 함께 삭제
+   * (refresh/grades/sessions/messages/targets/calendar/notifications/audit-logs).
+   * 학교/학급 공통 데이터는 제외(다른 사람의 데이터).
+   */
+  async deleteAccount(userId: string, currentPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError(ErrorCode.AUTH_EXPIRED, '세션이 만료됐어요. 다시 로그인해주세요.');
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) throw new AppError(ErrorCode.AUTH_INVALID_CREDENTIALS, '비밀번호가 일치하지 않아요. 안전을 위해 한 번 더 확인해주세요.');
+    // 교사 계정 삭제 시 학급 학생들이 고아가 되지 않게 — 같은 학급 학생이 있으면 막음
+    if (user.role === 'teacher' && user.school && user.classroom) {
+      const studentsInClass = await this.prisma.user.count({
+        where: { role: 'student', school: user.school, classroom: user.classroom },
+      });
+      if (studentsInClass > 0) {
+        throw new AppError(ErrorCode.CONFLICT, `담당 학급에 학생 ${studentsInClass}명이 있어요. 학교에 후임 교사 인계 후 다시 시도해주세요.`);
+      }
+    }
+    await this.prisma.user.delete({ where: { id: userId } });
+    logger.info({ userId, role: user.role }, 'account deleted (self-service)');
+    return { ok: true };
   }
 
   async refresh(refreshToken: string): Promise<TokenPair> {

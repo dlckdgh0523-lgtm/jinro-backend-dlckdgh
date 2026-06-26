@@ -223,6 +223,21 @@ export class TeacherController {
       this.prisma.counselingSession.findFirst({ where: { userId: id, status: 'active' } }),
       this.prisma.careerTarget.findMany({ where: { userId: id }, orderBy: { createdAt: 'asc' } }),
     ]);
+
+    // 감사 로그 — 교사가 학생 상세를 조회한 사실 기록 (학생 PII 보호 책무).
+    // 학생 본인은 자기 데이터를 보는 것이라 기록 안 함(actor!=student). best-effort, 실패해도 응답 안 막음.
+    try {
+      if (me.role === 'teacher' || me.role === 'admin') {
+        await this.prisma.auditLog.create({
+          data: {
+            actorId: me.id,
+            action: 'student.view',
+            summary: `${me.role === 'teacher' ? '교사' : '관리자'} ${(teacher && teacher.name) || ''}가 학생 ${student.name} 상세 조회`,
+            reason: null,
+          },
+        });
+      }
+    } catch (e) { /* silent */ }
     let signals: { tag: string; text: string }[] = [];
     let aiProgress = 0;
     if (session) {

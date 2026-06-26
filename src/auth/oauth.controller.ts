@@ -30,10 +30,10 @@ export class OAuthController {
     const p = await this.jwt.verifyAsync<{ typ?: string; p?: string }>(state ?? '', { secret: env().JWT_SECRET });
     if (p.typ !== 'oauth' || p.p !== provider) throw new Error('state mismatch');
   }
-  private ok(res: Response, t: { accessToken: string; refreshToken: string; role: string; needsProfile?: boolean; name?: string }): void {
+  private ok(res: Response, t: { accessToken: string; refreshToken: string; role: string; needsProfile?: boolean; name?: string; email?: string }): void {
     const payload = Buffer.from(JSON.stringify({
       accessToken: t.accessToken, refreshToken: t.refreshToken, role: t.role,
-      needsProfile: !!t.needsProfile, name: t.name || '',
+      needsProfile: !!t.needsProfile, name: t.name || '', email: t.email || '',
     })).toString('base64url');
     res.redirect(`/legacy/index.html#oauth=${payload}`);
   }

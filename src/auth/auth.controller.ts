@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 import { AuthService } from './auth.service';
@@ -123,6 +123,29 @@ export class AuthController {
   // 구글/카카오 OAuth는 OAuthController(GET /auth/{provider}/start·/callback)에서 처리.
 
   // ─── 차기 범위 예약 라우트 (OPEN_QUESTIONS #7) — 501 표준 에러 ───
+
+  // 비밀번호 변경 — 현재 비번 검증 + 새 비번 저장 + 모든 refresh 토큰 일괄 폐기(보안)
+  @Patch('password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  changePassword(@Req() req: AuthedRequest, @Body() body: unknown) {
+    const schema = z.object({
+      currentPassword: z.string().min(1).max(128),
+      newPassword: passwordSchema,
+    });
+    return this.auth.changePassword(req.user.id, parseOrThrow(schema, body));
+  }
+
+  // 계정 삭제권 (정보주체의 삭제권) — 비번 재확인 후 모든 개인 데이터 함께 삭제
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  deleteMe(@Req() req: AuthedRequest, @Body() body: unknown) {
+    const { currentPassword } = parseOrThrow(z.object({ currentPassword: z.string().min(1).max(128) }), body);
+    return this.auth.deleteAccount(req.user.id, currentPassword);
+  }
 
   @Post('password/forgot')
   passwordForgot(): never {

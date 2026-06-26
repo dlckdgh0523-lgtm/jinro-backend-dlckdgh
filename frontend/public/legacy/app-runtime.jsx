@@ -425,8 +425,13 @@ function ingestOAuthHash() {
         localStorage.setItem('jinro:accessToken', data.accessToken);
         if (data.refreshToken) localStorage.setItem('jinro:refreshToken', data.refreshToken);
         // 소셜 신규 가입자 → 온보딩(이름/학년/약관) 플래그. 기존 사용자는 바로 로그인.
+        // 사용자가 한 번 "나중에 입력"으로 dismiss했으면 이메일별 flag로 다시 안 띄움(매 로그인마다 또 나오던 문제).
         if (data.needsProfile) {
-          try { localStorage.setItem('jinro:onboard', JSON.stringify({ name: data.name || '' })); } catch (e) {}
+          let dismissed = false;
+          try { dismissed = data.email && !!localStorage.getItem('jinro:onboard:dismissed:' + data.email); } catch (e) {}
+          if (!dismissed) {
+            try { localStorage.setItem('jinro:onboard', JSON.stringify({ name: data.name || '', email: data.email || '' })); } catch (e) {}
+          }
         }
         const role = data.role === 'teacher' ? 'teacher-web' : data.role === 'admin' ? 'admin' : 'student-web';
         window.location.hash = role;

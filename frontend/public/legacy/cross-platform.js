@@ -290,13 +290,14 @@ function OAuthOnboarding() {
       onClick: () => {
         try {
           localStorage.removeItem("jinro:onboard");
+          if (flag && flag.email) localStorage.setItem("jinro:onboard:dismissed:" + flag.email, "1");
         } catch (e) {
         }
         setFlag(null);
       },
       style: { width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 12, border: "none", background: "transparent", color: "var(--text-muted, #64748b)", fontSize: 13, fontWeight: 600, cursor: "pointer" }
     },
-    "\uB098\uC911\uC5D0 \uC785\uB825\uD560\uAC8C\uC694 (\uB9C8\uC774\uD398\uC774\uC9C0\uC5D0\uC11C \uAC00\uB2A5)"
+    "\uB098\uC911\uC5D0 \uC785\uB825\uD560\uAC8C\uC694 (\uB9C8\uC774\uD398\uC774\uC9C0\uC5D0\uC11C \uC785\uB825 \uAC00\uB2A5)"
   )));
 }
 function StudentWebApp({ initialScreen = "dashboard", withToasts = false }) {

@@ -27,7 +27,7 @@ export async function createApp(): Promise<NestExpressApplication> {
   // Caddy가 이미 일부 헤더 줄 수 있어 false 옵션은 충돌 시 추후 조정.
   app.use(
     helmet({
-      contentSecurityPolicy: false, // 레거시 인라인 스크립트와 충돌 — 다음 단계에서 자체 CSP
+      contentSecurityPolicy: false, // enforce 모드는 인라인 스크립트와 충돌 — 아래에서 Report-Only로 점진적 적용
       crossOriginEmbedderPolicy: false, // SSE/외부 폰트와 호환
       strictTransportSecurity: { maxAge: 31536000, includeSubDomains: true, preload: false },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
@@ -36,6 +36,25 @@ export async function createApp(): Promise<NestExpressApplication> {
       hidePoweredBy: true,
     }),
   );
+  // CSP Report-Only — 위반 사항을 차단하지 않고 보고만(점진 적용). 운영 안정화 후 enforce 전환.
+  // 외부: react/three/html2canvas CDN, pretendard 폰트, data.go.kr 이미지. 인라인 스크립트는 unsafe-inline 임시 허용.
+  app.use((_req, res, next) => {
+    res.setHeader(
+      'Content-Security-Policy-Report-Only',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com",
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "font-src 'self' https://cdn.jsdelivr.net data:",
+        "img-src 'self' data: blob: https:",
+        "connect-src 'self' https://api.jinronavi.kr https://www.jinro.it.kr",
+        "frame-ancestors 'none'",
+        "object-src 'none'",
+        "base-uri 'self'",
+      ].join('; '),
+    );
+    next();
+  });
 
   // traceId 전파 — 모든 요청을 AsyncLocalStorage 컨텍스트로 감싼다
   app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {

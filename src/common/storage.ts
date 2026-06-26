@@ -47,8 +47,9 @@ export class StorageService {
     return { body, contentType };
   }
 
-  /** presigned-유사 URL: /v1/files/{key}?expires=&sig= (HMAC-SHA256) */
-  getSignedUrl(key: string, ttlSec = 3600): string {
+  /** presigned-유사 URL: /v1/files/{key}?expires=&sig= (HMAC-SHA256).
+   *  보안 강화 — 기본 TTL 5분(이전 1h). URL 유출 시 단기 노출만. PDF는 새 탭으로 열고 끝나면 만료. */
+  getSignedUrl(key: string, ttlSec = 300): string {
     const expires = Math.floor(Date.now() / 1000) + ttlSec;
     const sig = this.sign(key, expires);
     return `${env().PUBLIC_BASE_URL}/v1/files/${encodeURIComponent(key)}?expires=${expires}&sig=${sig}`;
