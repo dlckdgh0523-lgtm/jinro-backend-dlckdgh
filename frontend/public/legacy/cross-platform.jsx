@@ -386,6 +386,11 @@ function OAuthOnboarding() {
             background: busy ? 'var(--border-default, #cbd5e1)' : 'var(--brand, #4f46e5)', color: '#fff', fontSize: 16, fontWeight: 800 }}>
           {busy ? '저장 중…' : '시작하기'}
         </button>
+        {/* 안전망 — 사용자가 "이미 입력했는데 또 나옴"이라 한 케이스 대응. flag 제거해 다시 안 나옴. */}
+        <button type="button" onClick={() => { try { localStorage.removeItem('jinro:onboard'); } catch (e) {} setFlag(null); }}
+          style={{ width: '100%', marginTop: 8, padding: '10px 0', borderRadius: 12, border: 'none', background: 'transparent', color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          나중에 입력할게요 (마이페이지에서 가능)
+        </button>
       </div>
     </div>
   );

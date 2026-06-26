@@ -209,6 +209,33 @@ function UniversityDetail({ go }) {
   const [depts, setDepts] = React.useState(null);    // null=loading
   const [deptMeta, setDeptMeta] = React.useState(null);
   const [q, setQ] = React.useState('');
+  // 학과 즐겨찾기(=입시 희망) — careerTarget 재활용. 이미 저장한 학과는 별이 채워짐.
+  const [favs, setFavs] = React.useState(new Set());
+  const refreshFavs = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch('/career/targets', { method: 'GET' });
+      const list = (r && r.data) || [];
+      setFavs(new Set(list.filter(t => t.univ).map(t => `${t.univ}|${t.dept || ''}`)));
+    } catch (e) { setFavs(new Set()); }
+  }, []);
+  React.useEffect(() => { refreshFavs(); }, [refreshFavs]);
+  const toggleFav = async (dept, e) => {
+    e.stopPropagation();
+    const univ = (detail && detail.name) || univName;
+    const key = `${univ}|${dept.name}`;
+    if (favs.has(key)) return; // 이미 저장됨. 해제는 진로 목표 화면에서.
+    try {
+      await window.__apiFetch('/career/target', { method: 'POST', body: JSON.stringify({
+        career: dept.name, univ, dept: dept.name, track: dept.track || undefined,
+        reason: '입시 희망 학과 (즐겨찾기)',
+      }) });
+      setFavs(prev => new Set(prev).add(key));
+      if (typeof window.showToast === 'function') window.showToast(`${univ} ${dept.name} 입시 희망에 추가됐어요`, 'success');
+    } catch (er) {
+      const msg = (er && er.body && (er.body.message || (er.body.error && er.body.error.message))) || '저장 실패';
+      alert(msg);
+    }
+  };
 
   React.useEffect(() => {
     if (!univId) return;
@@ -283,20 +310,30 @@ function UniversityDetail({ go }) {
           <EmptyState icon={<IcSearch size={20}/>} title="검색 결과가 없어요" body="다른 키워드로 검색해보세요."/>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {filtered.slice(0, 200).map(d => (
-              <Card key={d.id} padding={14}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--bg-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <IcGraduation size={16} color="var(--fg-muted)"/>
+            {filtered.slice(0, 200).map(d => {
+              const univ = (detail && detail.name) || univName;
+              const saved = favs.has(`${univ}|${d.name}`);
+              return (
+                <Card key={d.id} padding={14}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--bg-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IcGraduation size={16} color="var(--fg-muted)"/>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)' }}>{d.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{[d.college, d.track, d.degree].filter(Boolean).join(' · ')}</div>
+                    </div>
+                    {d.track && <Chip tone={d.track === '예체능' ? 'warning' : d.track === '자연' ? 'success' : 'brand'} size="sm">{d.track}</Chip>}
+                    {/* 입시 희망(즐겨찾기) — 한 번 클릭하면 진로 목표에 저장. 저장된 학과는 노랑별 + "저장됨". */}
+                    <button onClick={(e) => toggleFav(d, e)} title={saved ? '입시 희망에 저장됨' : '입시 희망에 추가'}
+                      aria-label={saved ? '입시 희망에 저장됨' : '입시 희망에 추가'}
+                      style={{ border: 'none', background: 'transparent', cursor: saved ? 'default' : 'pointer', padding: 6, color: saved ? '#F59E0B' : 'var(--fg-subtle)', flexShrink: 0, fontSize: 18, lineHeight: 1 }}>
+                      {saved ? '★' : '☆'}
+                    </button>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)' }}>{d.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{[d.college, d.track, d.degree].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  {d.track && <Chip tone={d.track === '예체능' ? 'warning' : d.track === '자연' ? 'success' : 'brand'} size="sm">{d.track}</Chip>}
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

@@ -1742,6 +1742,17 @@ function NotificationDrawer({ open, onClose, items, role = 'student' }) {
 // SCREEN: Counseling request
 // ────────────────────────────────────────────────────────
 function StudentCounseling({ go }) {
+  // H — 상담 기록에 AI 세션 누적 노출 (사용자 요청: "상담기록에서 AI랑 상담한 것이 기록되지 않음")
+  const [aiSessions, setAiSessions] = React.useState(null);
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.__apiFetch('/ai-counseling/sessions?status=all', { method: 'GET' });
+        setAiSessions((r && r.data) || []);
+      } catch (e) { setAiSessions([]); }
+    })();
+  }, []);
+  const fmt = (iso) => { try { const d = new Date(iso); return `${d.getMonth()+1}월 ${d.getDate()}일`; } catch { return ''; } };
   return (
     <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
       <ScreenHeader title="상담 · 기록" leading={<BackButton onClick={() => go('dashboard')}/>}/>
@@ -1749,6 +1760,39 @@ function StudentCounseling({ go }) {
         <SectionCard title="AI 진로 상담" subtitle="언제든 대화하며 진로를 정리해요" style={{ marginBottom: 12 }}>
           <Button variant="primary" size="md" full leading={<IcSparkles size={16}/>} onClick={() => go('ai-counseling')}>AI 상담 이어가기</Button>
         </SectionCard>
+
+        {/* AI 상담 기록 — 모든 세션 노출 (활성/종료 함께) */}
+        <SectionCard title="AI 상담 기록" subtitle="지금까지 진행한 AI 상담 세션" style={{ marginBottom: 12 }}>
+          {aiSessions === null ? (
+            <Skeleton height={50}/>
+          ) : aiSessions.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--fg-muted)', padding: '8px 4px', lineHeight: 1.5 }} className="kr-heading">아직 진행한 AI 상담이 없어요. 위에서 첫 상담을 시작해보세요.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {aiSessions.slice(0, 10).map((s) => (
+                <button key={s.id} onClick={() => go('ai-counseling')}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: '1px solid var(--line-subtle)', background: 'var(--bg-surface)', borderRadius: 12, cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 10, background: s.status === 'active' ? 'var(--brand-50)' : 'var(--bg-muted)', color: s.status === 'active' ? 'var(--brand-600)' : 'var(--fg-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <IcSparkles size={14}/>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">
+                      {s.title || (s.status === 'active' ? '진행 중인 상담' : 'AI 진로 상담')}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>
+                      {fmt(s.startedAt)} 시작{s.status === 'ended' ? ' · 종료' : ' · 진행 중'}
+                    </div>
+                  </div>
+                  <IcChevronRight size={14} color="var(--fg-subtle)"/>
+                </button>
+              ))}
+              {aiSessions.length > 10 && (
+                <div style={{ fontSize: 11, color: 'var(--fg-subtle)', textAlign: 'center', padding: '4px 0' }}>+{aiSessions.length - 10}개 이전 기록</div>
+              )}
+            </div>
+          )}
+        </SectionCard>
+
         <SectionCard title="선생님과 상담" subtitle="담당 선생님께 메시지로 상담을 요청하세요">
           <Button variant="brandSoft" size="md" full leading={<IcMessage size={16}/>} onClick={() => go('messages')}>선생님께 메시지 보내기</Button>
           <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 10, lineHeight: 1.5 }} className="kr-heading">
