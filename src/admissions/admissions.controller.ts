@@ -303,13 +303,15 @@ export class AdmissionsController {
   @Post('career/target')
   @HttpCode(201)
   async createTarget(@Req() req: AuthedRequest, @Body() body: unknown) {
+    // 자유텍스트는 컨트롤 문자 차단, track은 enum 류 제한
+    const safe = (max: number) => z.string().trim().max(max).regex(/^[^\x00-\x1F\x7F]*$/u, '제어 문자는 사용할 수 없어요');
     const input = parseOrThrow(
       z.object({
-        career: z.string().trim().min(1).max(100),
-        univ: z.string().trim().max(100).optional(),
-        dept: z.string().trim().max(100).optional(),
-        track: z.string().trim().max(30).optional(),
-        reason: z.string().trim().max(1_000).optional(),
+        career: safe(100).min(1, '진로명을 입력해주세요'),
+        univ: safe(100).optional(),
+        dept: safe(100).optional(),
+        track: z.string().trim().max(30).regex(/^[\p{L}\p{M} ]*$/u, '한글/공백만 가능해요').optional(),
+        reason: safe(1_000).optional(),
       }),
       body,
     );

@@ -13,13 +13,8 @@
 </style>
 </head>
 <body>
-<script>
-  // 실 백엔드 연동 토글 — Vite nginx 서빙에서는 /v1이 백엔드로 프록시됨
-  window.__LIVE_MODE = true;
-  window.__ROLE_SET = 'web';
-  window.VITE_APP_ENV = 'live';          // ENV.USE_REAL_API = true
-  window.VITE_API_BASE_URL = '/v1';      // makeApiClient의 baseURL
-</script>
+<!-- LIVE 설정 — 외부 파일로 분리(CSP unsafe-inline 제거를 위해) -->
+<script src="_live-config.js"></script>
 <div id="root"></div>
 
 <!-- React / Babel -->

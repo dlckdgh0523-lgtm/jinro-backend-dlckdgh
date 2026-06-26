@@ -140,7 +140,7 @@ export class AuthService {
     return this.toUserDto(user);
   }
 
-  async login(input: { email: string; password: string; role?: Role }) {
+  async login(input: { email: string; password: string; role?: Role }, ctx?: { ip?: string; ua?: string }) {
     // 계정 잠금 체크 — Redis 카운터(키 auth:lockout:<email>). N회 실패 시 잠금.
     // Redis 다운 시 throw 안 함(베스트 에포트 잠금 — 다운돼도 로그인은 가능, 보안은 throttler가 1차 방어).
     const lkey = lockoutKey(input.email);
@@ -169,6 +169,39 @@ export class AuthService {
     }
     // 성공 — 카운터 초기화
     try { await lockoutRedis.del(lkey); } catch (e) { /* silent */ }
+
+    // 의심 IP 알림 — Redis에 최근 본 IP 30개를 user별로 보관(SET, 90일 TTL).
+    // 처음 보는 IP면 본인 알림 + AuditLog 기록. 사용자가 "이건 내가 아님" 알아챌 단서.
+    if (ctx?.ip) {
+      try {
+        const ipKey = `auth:knownip:${user.id}`;
+        const seen = await lockoutRedis.sismember(ipKey, ctx.ip);
+        if (seen === 0) {
+          await lockoutRedis.sadd(ipKey, ctx.ip);
+          await lockoutRedis.expire(ipKey, 90 * 24 * 3600);
+          // 첫 가입 직후도 "새 IP"라 알림이 한 번 옴 — 정상(가입 안내 같이 가도 무해)
+          await this.prisma.notification.create({
+            data: {
+              userId: user.id,
+              type: 'security.new_ip_login',
+              dedupeKey: `newip:${user.id}:${ctx.ip}`,
+              title: '새 위치에서 로그인됐어요',
+              body: `이 로그인이 본인이 아니라면 즉시 비밀번호를 변경해주세요. (IP ${ctx.ip}${ctx.ua ? ' · ' + ctx.ua.slice(0, 60) : ''})`,
+              payload: { ip: ctx.ip, ua: ctx.ua || null } as object,
+            },
+          }).catch(() => null);
+          await this.prisma.auditLog.create({
+            data: {
+              actorId: user.id,
+              action: 'auth.login.new_ip',
+              summary: `새 IP 로그인: ${ctx.ip}`,
+              reason: ctx.ua ? ctx.ua.slice(0, 200) : null,
+            },
+          }).catch(() => null);
+        }
+      } catch (e) { /* silent — 알림 실패가 로그인 막지 않음 */ }
+    }
+
     const tokens = await this.issueTokens(user);
     const nextPath = user.role === 'teacher' ? '/teacher/dashboard' : user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard';
     return { ...tokens, user: this.toUserDto(user), nextPath };

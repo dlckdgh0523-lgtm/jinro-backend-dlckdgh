@@ -43,8 +43,10 @@ export async function createApp(): Promise<NestExpressApplication> {
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com",
-        "script-src-attr 'unsafe-inline'", // onClick 인라인 핸들러
+        // 인라인 <script>는 외부 파일로 모두 분리됨(_live-config.js + build-legacy가 _mount.js로 추출) → unsafe-inline 제거 = 진짜 XSS 방어.
+        "script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com",
+        "script-src-attr 'none'",       // onclick="..." 같은 HTML 인라인 핸들러 금지(React onClick은 영향 없음)
+        // React는 style="..." 인라인 스타일이 매우 많아 unsafe-inline 유지 — 점진적으로 줄일 예정
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
         "font-src 'self' https://cdn.jsdelivr.net data:",
         "img-src 'self' data: blob: https:",

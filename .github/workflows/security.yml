@@ -1,0 +1,39 @@
+name: security
+# 주 1회 + PR 시 npm 취약점 스캔. moderate 이상 발견 시 실패.
+# 백엔드(pnpm)와 frontend(pnpm) 모두 점검.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 18 * * 0' # 매주 일요일 03:00 KST (UTC 일 18:00)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        scope: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'pnpm', cache-dependency-path: 'pnpm-lock.yaml' }
+
+      - name: Audit backend
+        if: matrix.scope == 'backend'
+        run: pnpm audit --audit-level=moderate --prod
+
+      - name: Audit frontend
+        if: matrix.scope == 'frontend'
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile && pnpm audit --audit-level=moderate --prod

@@ -7,17 +7,19 @@ import { NotificationsService } from '../realtime/notifications.service';
 import { parseOrThrow } from '../common/zod';
 import { AppError, ErrorCode } from '../common/errors';
 
+// 자유 텍스트 — 컨트롤 문자(0x00-0x1F, 0x7F) 차단. NUL은 main.ts에서도 제거하지만 명시 거부가 안전.
+const safeText = (max: number) => z.string().trim().max(max).regex(/^[^\x00-\x1F\x7F]*$/u, '제어 문자는 사용할 수 없어요');
 const eventSchema = z.object({
-  title: z.string().trim().min(1).max(120),
+  title: safeText(120).min(1, '제목을 입력해주세요'),
   category: z.enum(['volunteer', 'experience', 'exam', 'counseling', 'study', 'other']),
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime().optional(),
-  location: z.string().trim().max(160).optional(),
-  contact: z.string().trim().max(40).optional(),
-  link: z.string().trim().max(500).optional(),
-  notes: z.string().trim().max(2000).optional(),
-  refType: z.string().trim().max(40).optional(),
-  refId: z.string().trim().max(80).optional(),
+  location: safeText(160).optional(),
+  contact: z.string().trim().max(40).regex(/^[0-9\-+() ]*$/, '전화번호 형식만 가능해요').optional(),
+  link: z.string().trim().max(500).url('올바른 URL이 아니에요').optional().or(z.literal('')),
+  notes: safeText(2000).optional(),
+  refType: z.string().trim().max(40).regex(/^[A-Za-z0-9_-]*$/, '영숫자만 가능해요').optional(),
+  refId: z.string().trim().max(80).regex(/^[A-Za-z0-9_-]*$/, '영숫자만 가능해요').optional(),
 });
 
 const querySchema = z.object({

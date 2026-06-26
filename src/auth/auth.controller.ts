@@ -79,8 +79,11 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  login(@Body() body: unknown) {
-    return this.auth.login(parseOrThrow(loginSchema, body));
+  login(@Body() body: unknown, @Req() req: AuthedRequest) {
+    // 의심 IP 알림 — 새 IP/UA에서 로그인 시 본인에게 알림. 본인이면 무시, 본인이 아니면 즉시 비번 변경 유도.
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || (req as unknown as { ip?: string }).ip || '';
+    const ua = (req.headers['user-agent'] as string) || '';
+    return this.auth.login(parseOrThrow(loginSchema, body), { ip, ua });
   }
 
   /**

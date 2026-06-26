@@ -8,8 +8,10 @@ import { parseOrThrow } from '../common/zod';
 import { AppError, ErrorCode } from '../common/errors';
 
 const sendSchema = z.object({
-  recipientId: z.string().trim().min(1),
-  body: z.string().trim().min(1).max(2000),
+  // cuid 형식 (영숫자) — 임의 문자열 차단
+  recipientId: z.string().trim().min(1).max(64).regex(/^[a-z0-9_-]+$/i, '잘못된 수신자입니다'),
+  // 본문 — 컨트롤 문자 차단(NUL/탭 외 제어), 길이 제한
+  body: z.string().trim().min(1).max(2000).regex(/^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$/u, '제어 문자는 사용할 수 없어요'),
 });
 
 function userId(req: Request): string {
