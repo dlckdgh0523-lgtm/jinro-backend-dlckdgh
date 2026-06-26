@@ -420,7 +420,28 @@ function AICounseling({ go, openSignals }) {
         setThinking(false);
         setMsgs(m => { const c = [...m]; c[c.length - 1] = { role: 'ai', text: (c[c.length - 1].text || '') + delta }; return c; });
       },
-      onDone: () => { setThinking(false); refreshProgress(sid); },
+      onDone: (data) => {
+        setThinking(false);
+        // done 페이로드의 메타 정보(파악한 단서, 종료신호)를 마지막 AI 메시지에 첨부 — JSON 노출 대신 칩으로 렌더.
+        if (data) {
+          setMsgs(m => {
+            const c = [...m];
+            const last = c[c.length - 1];
+            if (last && last.role === 'ai') {
+              c[c.length - 1] = {
+                ...last,
+                meta: {
+                  signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
+                  shouldFinalize: !!data.shouldFinalize,
+                  finalizeReason: data.finalizeReason || null,
+                },
+              };
+            }
+            return c;
+          });
+        }
+        refreshProgress(sid);
+      },
       onError: (code, message) => {
         setThinking(false);
         // 부분응답이 있으면 지우지 않고 유지(스크롤/끊김으로 보이던 응답이 사라지던 문제 방지).
@@ -519,9 +540,31 @@ function AICounseling({ go, openSignals }) {
           return msgs.map((m, i) => {
             const isLastAi = i === lastAiIdx && m.role === 'ai';
             const options = isLastAi && !thinking ? parseQuickReplies(m.text).options : [];
+            const metaSignals = (m.meta && Array.isArray(m.meta.signals)) ? m.meta.signals : [];
+            const willFinalize = !!(m.meta && m.meta.shouldFinalize);
             return (
               <React.Fragment key={i}>
                 <ChatBubble msg={m}/>
+                {/* 이번 메시지에서 파악한 단서 — 메시지 아래에 작은 칩으로 (raw JSON 노출 대신 시각화) */}
+                {metaSignals.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginLeft: 32, marginTop: 2 }}>
+                    <span style={{ fontSize: 11, color: 'var(--fg-subtle)', alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <IcSparkles size={11} color="var(--accent-purple)"/> 방금 파악한 단서
+                    </span>
+                    {metaSignals.map((s, j) => (
+                      <span key={j} style={{
+                        background: 'var(--accent-purple-bg, #F1ECFF)', color: 'var(--accent-purple, #7B61FF)',
+                        borderRadius: 999, padding: '3px 9px', fontSize: 11, fontWeight: 700,
+                      }}>{s.tag} · {(s.text || '').slice(0, 30)}</span>
+                    ))}
+                  </div>
+                )}
+                {/* 상담 마무리 신호 — AI가 리포트 준비를 결정했을 때 (자동 enqueue됨) */}
+                {willFinalize && (
+                  <div style={{ marginLeft: 32, marginTop: 4, padding: '8px 12px', borderRadius: 10, background: 'var(--brand-50)', border: '1px solid var(--brand-200, var(--line))', fontSize: 12, color: 'var(--brand-700)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+                    <IcSparkles size={12}/> AI가 진로 리포트를 준비하고 있어요
+                  </div>
+                )}
                 {options.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginLeft: 32, marginTop: 2 }}>
                     {options.map((opt, j) => (

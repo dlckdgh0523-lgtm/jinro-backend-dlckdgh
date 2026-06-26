@@ -194,22 +194,28 @@ function TeacherSidebar({ activeId, onChange }) {
 }
 
 function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
+  const isMobile = useViewportMobile();
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '16px 28px',
+      display: 'flex', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between',
+      flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 0,
+      padding: isMobile ? '14px 16px' : '16px 28px',
       borderBottom: '1px solid var(--line-subtle)',
       background: 'var(--bg-surface)',
     }}>
-      <div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--fg-strong)', letterSpacing: '-0.4px' }} className="kr-heading">{title}</div>
-        {subtitle && <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 2 }} className="kr-heading">{subtitle}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: 'var(--fg-strong)', letterSpacing: '-0.4px' }} className="kr-heading">{title}</div>
+          {subtitle && <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 2 }} className="kr-heading">{subtitle}</div>}
+        </div>
+        {/* 모바일에선 알림 벨만 제목과 같은 줄에 (오른쪽) */}
+        {isMobile && <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={3} ariaLabel="알림"/>}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
         {action}
         {help && typeof HelpButton !== 'undefined' && <HelpButton pageId={help}/>}
-        <Chip tone="info" size="md" leading={<IcSparkles size={11}/>}>무료 체험 18일 남음</Chip>
-        <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={3} ariaLabel="알림"/>
+        {!isMobile && <Chip tone="info" size="md" leading={<IcSparkles size={11}/>}>무료 체험 18일 남음</Chip>}
+        {!isMobile && <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={3} ariaLabel="알림"/>}
       </div>
     </div>
   );

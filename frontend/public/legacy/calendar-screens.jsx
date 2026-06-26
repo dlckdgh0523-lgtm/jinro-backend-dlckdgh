@@ -512,6 +512,7 @@ function CounselingRequest({ go }) {
 // ────────────────────────────────────────────────────────
 // 실연동 — /calendar/events (월별) + /counseling-requests (대기 요청). 수락/취소(사유)/시간변경(사유).
 function TeacherCalendar({ openNotif }) {
+  const isMobile = useViewportMobile();
   const today = new Date();
   const todayKey = dateKey(today);
   const [month, setMonth] = React.useState({ y: today.getFullYear(), m: today.getMonth() });
@@ -545,7 +546,7 @@ function TeacherCalendar({ openNotif }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TeacherTopbar title="캘린더" subtitle="학생 상담 요청을 수락하고, 일정 변경·취소 시 학생에게 사유와 함께 알림이 가요" openNotif={openNotif}/>
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '2fr 1fr', background: 'var(--bg-canvas)', minHeight: 0, padding: 24, gap: 16 }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', background: 'var(--bg-canvas)', minHeight: 0, padding: isMobile ? 12 : 24, gap: isMobile ? 12 : 16, overflowY: 'auto' }}>
         {/* Big calendar */}
         <Card padding={20} style={{ overflow: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

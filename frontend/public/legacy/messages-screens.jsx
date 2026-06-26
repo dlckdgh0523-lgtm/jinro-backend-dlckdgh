@@ -158,6 +158,7 @@ function DateDivider({ text }) {
 // TEACHER: Messages list + composer (real chat)
 // ────────────────────────────────────────────────────────
 function TeacherMessages({ openNotif, go }) {
+  const isMobile = useViewportMobile();
   const [threads, setThreads] = React.useState(null); // null = loading
   const [selected, setSelectedRaw] = React.useState(null); // { otherId, otherName }
   const [msgs, setMsgs] = React.useState(null); // null = loading thread
@@ -245,9 +246,14 @@ function TeacherMessages({ openNotif, go }) {
         openNotif={openNotif}
         action={<Button variant="primary" size="sm" leading={<IcPlus size={14}/>} onClick={() => setComposing(true)}>새 메시지</Button>}
       />
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '320px 1fr', background: 'var(--bg-canvas)', minHeight: 0 }}>
-        {/* Thread list */}
-        <div style={{ borderRight: '1px solid var(--line-subtle)', background: 'var(--bg-surface)', overflow: 'auto' }} className="toss-scroll">
+      <div style={{ flex: 1, display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : undefined, gridTemplateColumns: isMobile ? undefined : '320px 1fr', background: 'var(--bg-canvas)', minHeight: 0 }}>
+        {/* Thread list — 모바일에선 대화 선택 전에만 표시 */}
+        <div style={{
+          display: isMobile && selected ? 'none' : 'block',
+          borderRight: isMobile ? 'none' : '1px solid var(--line-subtle)',
+          background: 'var(--bg-surface)', overflow: 'auto',
+          flex: isMobile ? 1 : 'initial',
+        }} className="toss-scroll">
           <div style={{ padding: '14px 16px 8px' }}>
             <TextInput value={search} onChange={setSearch} placeholder="학생 이름으로 검색" leading={<IcSearch size={16}/>} style={{ height: 40 }}/>
           </div>
@@ -286,15 +292,23 @@ function TeacherMessages({ openNotif, go }) {
             })}
           </div>
         </div>
-        {/* Detail */}
+        {/* Detail — 모바일에선 대화 선택했을 때만 표시 (목록은 위에서 숨김) */}
         {!selected ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, background: '#EAF0F6' }}>
-            <EmptyState icon={<IcMessage size={24}/>} title="대화를 선택해주세요" body="왼쪽 목록에서 학생을 선택하면 대화가 열려요."/>
-          </div>
+          // 데스크톱에서만 안내 placeholder. 모바일에선 목록이 그 자리에 있으므로 표시 안 함.
+          !isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, background: '#EAF0F6' }}>
+              <EmptyState icon={<IcMessage size={24}/>} title="대화를 선택해주세요" body="왼쪽 목록에서 학생을 선택하면 대화가 열려요."/>
+            </div>
+          )
         ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--line-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button onClick={() => go && go('student-detail')} style={{ display: 'flex', alignItems: 'center', gap: 12, border: 'none', background: 'transparent', cursor: go ? 'pointer' : 'default', padding: 0, textAlign: 'left' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: isMobile ? 1 : 'initial' }}>
+          <div style={{ padding: isMobile ? '12px 14px' : '14px 24px', borderBottom: '1px solid var(--line-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {isMobile && (
+              <button onClick={() => setSelectedRaw(null)} aria-label="목록으로" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px 6px 4px 0', display: 'flex', alignItems: 'center' }}>
+                <IcChevronLeft size={20} color="var(--fg-strong)"/>
+              </button>
+            )}
+            <button onClick={() => go && go('student-detail')} style={{ display: 'flex', alignItems: 'center', gap: 12, border: 'none', background: 'transparent', cursor: go ? 'pointer' : 'default', padding: 0, textAlign: 'left', minWidth: 0, flex: 1 }}>
               <Avatar name={(selected.otherName || '').slice(0,1)} size={36}/>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)', display: 'flex', alignItems: 'center', gap: 4 }}>{selected.otherName}<IcChevronRight size={14} color="var(--fg-subtle)"/></div>

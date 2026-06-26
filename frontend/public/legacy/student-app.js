@@ -258,8 +258,25 @@ function AICounseling({ go, openSignals }) {
           return c;
         });
       },
-      onDone: () => {
+      onDone: (data) => {
         setThinking(false);
+        if (data) {
+          setMsgs((m) => {
+            const c = [...m];
+            const last = c[c.length - 1];
+            if (last && last.role === "ai") {
+              c[c.length - 1] = {
+                ...last,
+                meta: {
+                  signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
+                  shouldFinalize: !!data.shouldFinalize,
+                  finalizeReason: data.finalizeReason || null
+                }
+              };
+            }
+            return c;
+          });
+        }
         refreshProgress(sid);
       },
       onError: (code, message) => {
@@ -329,7 +346,16 @@ function AICounseling({ go, openSignals }) {
     return msgs.map((m, i) => {
       const isLastAi = i === lastAiIdx && m.role === "ai";
       const options = isLastAi && !thinking ? parseQuickReplies(m.text).options : [];
-      return /* @__PURE__ */ React.createElement(React.Fragment, { key: i }, /* @__PURE__ */ React.createElement(ChatBubble, { msg: m }), options.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginLeft: 32, marginTop: 2 } }, options.map((opt, j) => /* @__PURE__ */ React.createElement("button", { key: j, onClick: () => send(opt), disabled: thinking, style: {
+      const metaSignals = m.meta && Array.isArray(m.meta.signals) ? m.meta.signals : [];
+      const willFinalize = !!(m.meta && m.meta.shouldFinalize);
+      return /* @__PURE__ */ React.createElement(React.Fragment, { key: i }, /* @__PURE__ */ React.createElement(ChatBubble, { msg: m }), metaSignals.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginLeft: 32, marginTop: 2 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--fg-subtle)", alignSelf: "center", display: "inline-flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 11, color: "var(--accent-purple)" }), " \uBC29\uAE08 \uD30C\uC545\uD55C \uB2E8\uC11C"), metaSignals.map((s, j) => /* @__PURE__ */ React.createElement("span", { key: j, style: {
+        background: "var(--accent-purple-bg, #F1ECFF)",
+        color: "var(--accent-purple, #7B61FF)",
+        borderRadius: 999,
+        padding: "3px 9px",
+        fontSize: 11,
+        fontWeight: 700
+      } }, s.tag, " \xB7 ", (s.text || "").slice(0, 30)))), willFinalize && /* @__PURE__ */ React.createElement("div", { style: { marginLeft: 32, marginTop: 4, padding: "8px 12px", borderRadius: 10, background: "var(--brand-50)", border: "1px solid var(--brand-200, var(--line))", fontSize: 12, color: "var(--brand-700)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start" } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 12 }), " AI\uAC00 \uC9C4\uB85C \uB9AC\uD3EC\uD2B8\uB97C \uC900\uBE44\uD558\uACE0 \uC788\uC5B4\uC694"), options.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginLeft: 32, marginTop: 2 } }, options.map((opt, j) => /* @__PURE__ */ React.createElement("button", { key: j, onClick: () => send(opt), disabled: thinking, style: {
         border: "1px solid var(--brand-200, var(--line))",
         background: "var(--brand-50, var(--bg-surface))",
         borderRadius: 999,

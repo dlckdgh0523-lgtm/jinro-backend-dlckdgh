@@ -683,7 +683,7 @@ function LiveRunner() {
 
       {/* APP MOUNT */}
       <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'stretch', padding: width === 0 ? 0 : '16px 0' }}>
-        <div key={role + ':' + remount} style={{ ...frameStyle, minWidth: 0, maxWidth: '100%', background: 'var(--bg-canvas)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div key={role + ':' + remount} style={{ ...frameStyle, minWidth: 0, maxWidth: '100%', background: 'var(--bg-canvas)', overflowX: 'hidden', overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column' }}>
           <AuthProvider role={role.startsWith('teacher') ? 'teacher' : role === 'admin' ? 'admin' : 'student'}>
             {role === 'auth-mobile'
               ? <MobileAuthApp onEnter={handleAuthComplete}/>

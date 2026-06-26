@@ -581,6 +581,10 @@ export class CounselingService {
       const donePayload = {
         messageId: aiMsg.id,
         signals: extracted.map((s, i) => ({ ...s, sourceMessageId: userMsg.id, id: `${userMsg.id}:${i}` })),
+        // 메타블록이 잡은 단서/종료신호를 프론트에 그대로 전달 — 학생이 raw JSON 대신 칩으로 보게.
+        metaSignals: (meta?.signals ?? []).map((s, i) => ({ ...s, sourceMessageId: userMsg.id, id: `${userMsg.id}:m${i}` })),
+        shouldFinalize: !!meta?.shouldFinalize,
+        finalizeReason: meta?.finalizeReason ?? null,
         usage,
         completeness: prog.completeness,
         stage: prog.stage,
