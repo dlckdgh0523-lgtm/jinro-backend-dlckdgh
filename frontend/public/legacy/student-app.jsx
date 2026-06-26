@@ -605,7 +605,7 @@ function AICounseling({ go, openSignals }) {
           leading={<IcDoc size={14}/>}
           style={{ marginTop: 8 }}
         >
-          {evidenceCount >= 5 ? 'AI 진로 리포트 보기' : `대화를 ${5 - evidenceCount}회 더 이어가면 리포트가 준비돼요`}
+          {evidenceCount >= 5 ? 'AI 진로 리포트 보기' : '대화를 좀 더 이어가면 AI가 자동으로 리포트를 만들어드려요'}
         </Button>
       </div>
     </div>

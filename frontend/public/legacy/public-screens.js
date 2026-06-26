@@ -284,6 +284,9 @@ function AuthScreen({ role = "student", mode = "login", onNav, onBack, setRole, 
   };
   return /* @__PURE__ */ React.createElement("div", { style: {
     minHeight: "100%",
+    maxHeight: "100%",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
     background: "var(--bg-canvas)",
     display: "flex",
     alignItems: "center",

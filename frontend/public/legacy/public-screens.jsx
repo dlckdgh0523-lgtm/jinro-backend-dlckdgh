@@ -739,7 +739,8 @@ function AuthScreen({ role = 'student', mode = 'login', onNav, onBack, setRole, 
 
   return (
     <div style={{
-      minHeight: '100%', background: 'var(--bg-canvas)',
+      minHeight: '100%', maxHeight: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+      background: 'var(--bg-canvas)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: isMobile ? '20px 16px' : 40,
     }}>

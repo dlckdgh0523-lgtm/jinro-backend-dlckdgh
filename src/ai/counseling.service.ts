@@ -507,18 +507,49 @@ export class CounselingService {
       const streamChannel = `sse:aimsg:${aiMsg.id}`;
       let fullText = '';
       let usage: unknown = null;
+      // 메타블록 노출 차단 — 스트리밍 중 "<meta" 등장 직전까지만 학생에게 흘리고, 그 이후 토큰은
+      // 내부 fullText에만 누적(파싱용). stripLeakedState는 사후 정리지만 화면엔 이미 떴기 때문에 이게 필요.
+      // 안전망: 메타가 시작될 가능성이 있는 부분 토큰(예: "<m", "<met")은 버퍼에 잡아두고 다음 토큰을 합쳐 판정.
+      let metaStarted = false;
+      let pendingTail = ''; // 학생에게 보낼지 보류 중인 꼬리(부분 매치 가능성)
+      const META_OPEN = '<meta';
+      const flushSafe = (chunk: string): void => {
+        if (!chunk) return;
+        callbacks.onToken(chunk);
+        void this.pubsub.publish(streamChannel, 'token', { delta: chunk });
+      };
 
       try {
         for await (const ev of aiClient.streamChat({ tier: 'light', system: systemWithState, ragContext, messages, signal })) {
           if (ev.type === 'token') {
             fullText += ev.text;
-            callbacks.onToken(ev.text);
-            // GET /stream 재수신용 버퍼 (비동기 — 토큰 지연 방지 위해 await 안 함)
-            void this.pubsub.publish(streamChannel, 'token', { delta: ev.text });
+            if (metaStarted) continue; // 이미 메타 진입 — 학생에게 보내지 않음
+            // 부분 매치 안전망: 이전 보류 + 이번 토큰을 합쳐서 판정
+            const candidate = pendingTail + ev.text;
+            const idx = candidate.indexOf(META_OPEN);
+            if (idx >= 0) {
+              // 메타 시작 발견 — 그 직전까지만 흘리고 이후는 차단
+              const safe = candidate.slice(0, idx);
+              flushSafe(safe);
+              metaStarted = true;
+              pendingTail = '';
+              continue;
+            }
+            // 메타 시작 안 됨 — 꼬리(부분 매치 가능성)만 다음 토큰까지 보류, 나머지는 즉시 흘림.
+            // "<meta" 5글자라 안전하게 마지막 5자를 잡아둠.
+            const HOLD = META_OPEN.length - 1; // 4
+            if (candidate.length > HOLD) {
+              flushSafe(candidate.slice(0, candidate.length - HOLD));
+              pendingTail = candidate.slice(candidate.length - HOLD);
+            } else {
+              pendingTail = candidate;
+            }
           } else {
             usage = ev.usage;
           }
         }
+        // 스트림 정상 종료 — 메타가 안 왔으면 보류된 꼬리도 흘림
+        if (!metaStarted && pendingTail) flushSafe(pendingTail);
       } catch (e) {
         // 부분 응답 저장 후 에러 전파 — 스트림 중단/429/529 등은 컨트롤러가 SSE error 이벤트로 변환
         await this.prisma.counselingMessage.update({ where: { id: aiMsg.id }, data: { text: fullText } });

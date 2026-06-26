@@ -397,7 +397,7 @@ function AICounseling({ go, openSignals }) {
       leading: /* @__PURE__ */ React.createElement(IcDoc, { size: 14 }),
       style: { marginTop: 8 }
     },
-    evidenceCount >= 5 ? "AI \uC9C4\uB85C \uB9AC\uD3EC\uD2B8 \uBCF4\uAE30" : `\uB300\uD654\uB97C ${5 - evidenceCount}\uD68C \uB354 \uC774\uC5B4\uAC00\uBA74 \uB9AC\uD3EC\uD2B8\uAC00 \uC900\uBE44\uB3FC\uC694`
+    evidenceCount >= 5 ? "AI \uC9C4\uB85C \uB9AC\uD3EC\uD2B8 \uBCF4\uAE30" : "\uB300\uD654\uB97C \uC880 \uB354 \uC774\uC5B4\uAC00\uBA74 AI\uAC00 \uC790\uB3D9\uC73C\uB85C \uB9AC\uD3EC\uD2B8\uB97C \uB9CC\uB4E4\uC5B4\uB4DC\uB824\uC694"
   )));
 }
 function ChatBubble({ msg }) {
