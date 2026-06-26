@@ -190,6 +190,7 @@ function AICounseling({ go, openSignals }) {
   const [progress, setProgress] = React.useState(10);
   const [initErr, setInitErr] = React.useState(false);
   const [showSig, setShowSig] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const scrollRef = React.useRef(null);
   const SIG_TONE = { "\uD765\uBBF8": "brand", "\uAC15\uC810": "mint", "\uAC00\uCE58": "purple", "\uB9E5\uB77D": "info" };
   const initSession = React.useCallback(async () => {
@@ -221,6 +222,17 @@ function AICounseling({ go, openSignals }) {
     initSession();
   }, [initSession]);
   React.useEffect(() => {
+    const onVis = () => {
+      if (!document.hidden && sessionId) refreshProgress(sessionId);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
+  }, [sessionId]);
+  React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, thinking]);
   const refreshProgress = async (sid) => {
@@ -246,59 +258,60 @@ function AICounseling({ go, openSignals }) {
         return;
       }
     }
-    setMsgs((m) => [...m, { role: "user", text }, { role: "ai", text: "" }]);
+    setMsgs((m) => [...m, { role: "user", text }]);
     setInput("");
     setThinking(true);
-    await window.__apiStream("/ai-counseling/sessions/" + sid + "/messages", { text }, {
-      onToken: (delta) => {
-        setThinking(false);
-        setMsgs((m) => {
-          const c = [...m];
-          c[c.length - 1] = { role: "ai", text: (c[c.length - 1].text || "") + delta };
-          return c;
-        });
-      },
-      onDone: (data) => {
-        setThinking(false);
-        if (data) {
-          setMsgs((m) => {
-            const c = [...m];
-            const last = c[c.length - 1];
-            if (last && last.role === "ai") {
-              c[c.length - 1] = {
-                ...last,
-                meta: {
-                  signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
-                  shouldFinalize: !!data.shouldFinalize,
-                  finalizeReason: data.finalizeReason || null
-                }
-              };
-            }
-            return c;
-          });
-        }
-        refreshProgress(sid);
-      },
-      onError: (code, message) => {
-        setThinking(false);
-        setMsgs((m) => {
-          const c = [...m];
-          const last = c[c.length - 1];
-          const partial = last && last.text ? last.text : "";
-          c[c.length - 1] = { role: "ai", text: partial || message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694." };
-          return c;
-        });
-        refreshProgress(sid);
-      }
-    });
-    setThinking(false);
+    try {
+      const res = await window.__apiFetch("/ai-counseling/sessions/" + sid + "/messages?stream=false", {
+        method: "POST",
+        body: JSON.stringify({ text })
+      });
+      const data = res && res.data;
+      const aiText = data && data.message && data.message.text || "\uC751\uB2F5\uC744 \uBC1B\uC9C0 \uBABB\uD588\uC5B4\uC694.";
+      const meta = data ? {
+        signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
+        shouldFinalize: !!data.shouldFinalize,
+        finalizeReason: data.finalizeReason || null
+      } : null;
+      setMsgs((m) => [...m, meta ? { role: "ai", text: aiText, meta } : { role: "ai", text: aiText }]);
+    } catch (e) {
+      const msg = e && e.body && (e.body.message || e.body.error && e.body.error.message) || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694.";
+      setMsgs((m) => [...m, { role: "ai", text: msg }]);
+    } finally {
+      setThinking(false);
+      refreshProgress(sid);
+    }
   };
   const STAGE_LABEL = { explore: "\u2460 \uD0D0\uC0C9", profile: "\u2461 \uD30C\uC545", recommend: "\u2462 \uCD94\uCC9C", prepare: "\u2463 \uC900\uBE44" };
   return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement("div", { style: {
     padding: "8px 12px 12px",
     background: "var(--bg-surface)",
     borderBottom: "1px solid var(--line-subtle)"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go("dashboard") }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, textAlign: "center", fontSize: 15, fontWeight: 700, color: "var(--fg-strong)" } }, "AI \uC9C4\uB85C \uC0C1\uB2F4"), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcMore, { size: 20 }), ariaLabel: "\uB354\uBCF4\uAE30" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginTop: 8 } }, /* @__PURE__ */ React.createElement(ProgressBar, { value: progress, height: 4 }), /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontSize: 11, fontWeight: 700, color: "var(--brand-600)", minWidth: 36, textAlign: "right" } }, progress, "%")), (() => {
+  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go("dashboard") }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, textAlign: "center", fontSize: 15, fontWeight: 700, color: "var(--fg-strong)" } }, "AI \uC9C4\uB85C \uC0C1\uB2F4"), /* @__PURE__ */ React.createElement("div", { style: { position: "relative" } }, /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcMore, { size: 20 }), onClick: () => setMenuOpen((o) => !o), ariaLabel: "\uB354\uBCF4\uAE30" }), menuOpen && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { onClick: () => setMenuOpen(false), style: { position: "fixed", inset: 0, zIndex: 50 } }), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: "100%", right: 0, marginTop: 6, minWidth: 180, background: "var(--bg-surface)", borderRadius: 12, boxShadow: "var(--shadow-pop)", border: "1px solid var(--line)", zIndex: 51, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("button", { onClick: async () => {
+    setMenuOpen(false);
+    if (!confirm("\uC0C8 \uC0C1\uB2F4\uC744 \uC2DC\uC791\uD560\uAE4C\uC694? \uC9C0\uAE08 \uC0C1\uB2F4\uC740 \uC885\uB8CC\uB3FC\uC694.")) return;
+    try {
+      const r = await window.__apiFetch("/ai-counseling/sessions", { method: "POST" });
+      const newSid = r && r.data && r.data.id;
+      if (newSid) {
+        setSessionId(newSid);
+        setMsgs([]);
+        setSignals([]);
+        setEvidenceCount(0);
+        setStage("explore");
+        setProgress(10);
+        initSession();
+      }
+    } catch (e) {
+      alert("\uC0C8 \uC0C1\uB2F4 \uC2DC\uC791\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694.");
+    }
+  }, style: { width: "100%", padding: "12px 14px", border: "none", background: "transparent", textAlign: "left", fontSize: 13, fontWeight: 600, color: "var(--fg-default)", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(IcPlus, { size: 14 }), " \uC0C8 \uC0C1\uB2F4 \uC2DC\uC791"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    setMenuOpen(false);
+    go && go("career-report");
+  }, disabled: evidenceCount < 5, style: { width: "100%", padding: "12px 14px", border: "none", borderTop: "1px solid var(--line-subtle)", background: "transparent", textAlign: "left", fontSize: 13, fontWeight: 600, color: evidenceCount < 5 ? "var(--fg-subtle)" : "var(--fg-default)", cursor: evidenceCount < 5 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(IcDoc, { size: 14 }), " \uC9C4\uB85C \uB9AC\uD3EC\uD2B8 \uBCF4\uAE30 ", evidenceCount < 5 && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "var(--fg-subtle)" } }, "(\uB2E8\uC11C \uB354 \uD544\uC694)")), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    setMenuOpen(false);
+    setShowSig(true);
+  }, style: { width: "100%", padding: "12px 14px", border: "none", borderTop: "1px solid var(--line-subtle)", background: "transparent", textAlign: "left", fontSize: 13, fontWeight: 600, color: "var(--fg-default)", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 14 }), " \uC9C0\uAE08\uAE4C\uC9C0 \uBAA8\uC740 \uB2E8\uC11C"))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginTop: 8 } }, /* @__PURE__ */ React.createElement(ProgressBar, { value: progress, height: 4 }), /* @__PURE__ */ React.createElement("span", { className: "num", style: { fontSize: 11, fontWeight: 700, color: "var(--brand-600)", minWidth: 36, textAlign: "right" } }, progress, "%")), (() => {
     const STEPS = [["explore", "\uD0D0\uC0C9"], ["profile", "\uD30C\uC545"], ["recommend", "\uCD94\uCC9C"], ["prepare", "\uC900\uBE44"]];
     const cur = STEPS.findIndex((s) => s[0] === stage);
     const hint = stage === "explore" ? `\uB300\uD654\uB85C \uD765\uBBF8\xB7\uAC15\uC810\xB7\uAC00\uCE58\xB7\uB9E5\uB77D \uB2E8\uC11C\uB97C \uBAA8\uC544\uC694. AI\uAC00 \uCDA9\uBD84\uD788 \uD30C\uC545\uD588\uB2E4\uACE0 \uD310\uB2E8\uD558\uBA74 \uB2E4\uC74C \uB2E8\uACC4\uB85C \uB118\uC5B4\uAC00\uC694` : stage === "profile" ? `\uC9C0\uAE08\uAE4C\uC9C0 \uBAA8\uC740 \uB2E8\uC11C\uB97C \uC815\uB9AC\uD574 \uD655\uC778\uD574\uC694. \uBC29\uD5A5\uC774 \uC7A1\uD788\uBA74 AI\uAC00 \uC790\uC5F0\uC2A4\uB7FD\uAC8C \uCD94\uCC9C \uB2E8\uACC4\uB85C \uC548\uB0B4\uD574\uC694` : stage === "recommend" ? `\uB370\uC774\uD130 \uADFC\uAC70\uB85C \uC9C1\uC5C5\xB7\uC804\uACF5\xB7\uB300\uD559\uC744 \uC81C\uC548\uD574\uC694. \uB9C8\uC74C\uC5D0 \uB4DC\uB294 \uC9C4\uB85C\uB97C \u2018\uC9C4\uB85C \uBAA9\uD45C\u2019\uB85C \uC800\uC7A5\uD558\uBA74 \uC900\uBE44 \uB2E8\uACC4\uB85C \uB118\uC5B4\uAC00\uC694` : `\uC785\uC2DC\xB7\uC131\uC801\uACFC \uC5F0\uACB0\uD574 \uC0C1\uB2F4\uC744 \uB9C8\uBB34\uB9AC\uD574\uC694. \uCDA9\uBD84\uD55C \uB2E8\uC11C\uAC00 \uC313\uC774\uBA74 AI\uAC00 \uC790\uB3D9\uC73C\uB85C \uC9C4\uB85C \uB9AC\uD3EC\uD2B8\uB97C \uB9CC\uB4E4\uC5B4\uB4DC\uB824\uC694`;

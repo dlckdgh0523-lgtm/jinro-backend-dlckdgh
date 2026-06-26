@@ -469,8 +469,8 @@ export class CounselingService {
       const STAGE_GUIDE: Record<string, string> = {
         explore: '아직 탐색 단계지만, 학생이 답을 줄 때마다 단서를 빠르게 모아 2~3턴 안에 파악 단계로 넘어가도록 진행하라. 같은 질문을 반복하지 말 것.',
         profile: '단서가 어느 정도 모였다. 지금까지 들은 것을 짧게 정리해 확인하고, 학생이 동의하면 바로 추천으로 넘어가라. 너무 오래 파악에 머물지 말 것.',
-        recommend: '추천 단계다. 데이터 근거로 직업·전공·대학을 구체적으로 제안하라. 학생이 대학 추천을 요청하면 미루지 말고 제공된 [참고 데이터]를 근거로 바로 추천하라.',
-        prepare: '준비 단계다. 관심 학과의 입시 정보와 학생 성적을 연결해 구체적 실천을 제안하라.',
+        recommend: '추천 단계다. 데이터 근거로 직업·전공·대학을 구체적으로 제안하라. 학생이 대학 추천을 요청하면 미루지 말고 제공된 [참고 데이터]를 근거로 바로 추천하라. 마음에 드는 진로/학과를 학생이 표현하면 "진로 목표로 저장해두고 준비 단계로 넘어갈까요?"라고 적극 제안하라.',
+        prepare: '준비 단계다. 관심 학과의 입시 정보와 학생 성적을 연결해 구체적 실천을 제안하라. 입시 일정·전형·필요 활동을 한두 가지 짚어준 뒤, 학생이 충분히 정리됐다고 느껴지면 "지금까지의 상담을 진로 리포트로 정리해드릴까요?"라고 능동적으로 제안하라. 학생이 긍정하면 메타블록의 shouldFinalize를 true로 설정하라.',
       };
       const gradeContext = gradesSummary
         ? `[학생 성적 — 내부 정보, 응답에 노출 금지] 등록된 성적: ${gradesSummary}. 추천·준비 단계에서 이 성적을 근거로 현실적으로 조언하라. 성적을 단정적으로 평가하지 말고 강점과 보완점을 균형 있게.`
@@ -492,9 +492,9 @@ export class CounselingService {
         '답변을 모두 마친 후 마지막 줄에 정확히 다음 형식의 메타블록을 한 번만 출력하라: ' +
         '<meta>{"signals":[{"tag":"흥미|강점|가치|맥락","text":"...80자 이내","confidence":"high|mid|low"}],"shouldFinalize":false,"finalizeReason":""}</meta> ' +
         '· signals: 이번 학생 발화에서 새로 파악된 단서(없으면 빈 배열). 학생이 말한 내용을 기반으로만 — 추측 금지. ' +
-        '· shouldFinalize: 다음 모든 조건이 충족되면 true, 아니면 false. (1) 단서가 충분히(최소 4개 이상) 모였다, ' +
-        '(2) 학생이 추천/정리/마무리 의사를 표현했거나 자연스러운 종결 시점이다, ' +
-        '(3) 같은 주제를 반복하기보다 진로 리포트로 정리하는 게 학생에게 더 유익하다. 애매하면 false. ' +
+        '· shouldFinalize: 다음 중 하나라도 충족되면 true, 아니면 false. (a) 학생이 "리포트", "정리해줘", "마무리", "이제 그만" 같은 종결 의사를 직접 표현했다, ' +
+        '(b) 현재 단계가 prepare이고 단서가 4개 이상이며 학생에게 리포트를 제안했고 학생이 긍정했다, ' +
+        '(c) 같은 주제를 3턴 이상 맴돌고 있어 리포트로 정리하는 게 학생에게 더 유익하다. 애매하면 false. ' +
         '· finalizeReason: shouldFinalize=true일 때 한 줄 사유(예: "학생이 리포트를 요청했고 단서가 충분히 누적됨"). ' +
         '메타블록은 반드시 유효한 JSON 한 줄이어야 하며, 본문에는 절대 인용/노출 금지.';
       const systemWithState = isTeacher
@@ -617,8 +617,20 @@ export class CounselingService {
         result = p;
       },
     });
-    const done = result as unknown as { messageId: string; signals: unknown[]; usage: unknown; completeness: number };
-    return { data: { message: { id: done.messageId, role: 'ai', text: full }, signals: done.signals, completeness: done.completeness, usage: done.usage } };
+    const done = result as unknown as { messageId: string; signals: unknown[]; metaSignals?: unknown[]; shouldFinalize?: boolean; finalizeReason?: string | null; usage: unknown; completeness: number; stage?: string };
+    return {
+      data: {
+        message: { id: done.messageId, role: 'ai', text: full },
+        signals: done.signals,
+        // sync 응답에도 메타 칩 시각화용 정보 포함 — 스트림 모드와 동일한 페이로드 형태.
+        metaSignals: done.metaSignals ?? [],
+        shouldFinalize: !!done.shouldFinalize,
+        finalizeReason: done.finalizeReason ?? null,
+        completeness: done.completeness,
+        stage: done.stage,
+        usage: done.usage,
+      },
+    };
   }
 
   // ─── 리포트 ───

@@ -359,6 +359,7 @@ function AICounseling({ go, openSignals }) {
   const [progress, setProgress] = React.useState(10);
   const [initErr, setInitErr] = React.useState(false);
   const [showSig, setShowSig] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const scrollRef = React.useRef(null);
   const SIG_TONE = { '흥미': 'brand', '강점': 'mint', '가치': 'purple', '맥락': 'info' };
 
@@ -387,6 +388,15 @@ function AICounseling({ go, openSignals }) {
 
   React.useEffect(() => { initSession(); }, [initSession]);
 
+  // 화면 복귀 시(다른 탭에서 진로목표 저장 후 돌아왔을 때 등) stage 즉시 갱신.
+  // 진로목표 hasTarget이 바뀌면 백엔드 stageOf가 recommend→prepare로 전환.
+  React.useEffect(() => {
+    const onVis = () => { if (!document.hidden && sessionId) refreshProgress(sessionId); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onVis);
+    return () => { document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', onVis); };
+  }, [sessionId]);
+
   React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, thinking]);
@@ -412,44 +422,30 @@ function AICounseling({ go, openSignals }) {
         setSessionId(sid);
       } catch (e) { setInitErr(true); return; }
     }
-    setMsgs(m => [...m, { role: 'user', text }, { role: 'ai', text: '' }]);
+    // 학생 메시지만 먼저 추가 (AI 응답은 받아서 한 번에). thinking 인디케이터로 "생각 중" 표시.
+    setMsgs(m => [...m, { role: 'user', text }]);
     setInput('');
     setThinking(true);
-    await window.__apiStream('/ai-counseling/sessions/' + sid + '/messages', { text }, {
-      onToken: (delta) => {
-        setThinking(false);
-        setMsgs(m => { const c = [...m]; c[c.length - 1] = { role: 'ai', text: (c[c.length - 1].text || '') + delta }; return c; });
-      },
-      onDone: (data) => {
-        setThinking(false);
-        // done 페이로드의 메타 정보(파악한 단서, 종료신호)를 마지막 AI 메시지에 첨부 — JSON 노출 대신 칩으로 렌더.
-        if (data) {
-          setMsgs(m => {
-            const c = [...m];
-            const last = c[c.length - 1];
-            if (last && last.role === 'ai') {
-              c[c.length - 1] = {
-                ...last,
-                meta: {
-                  signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
-                  shouldFinalize: !!data.shouldFinalize,
-                  finalizeReason: data.finalizeReason || null,
-                },
-              };
-            }
-            return c;
-          });
-        }
-        refreshProgress(sid);
-      },
-      onError: (code, message) => {
-        setThinking(false);
-        // 부분응답이 있으면 지우지 않고 유지(스크롤/끊김으로 보이던 응답이 사라지던 문제 방지).
-        setMsgs(m => { const c = [...m]; const last = c[c.length - 1]; const partial = (last && last.text) ? last.text : ''; c[c.length - 1] = { role: 'ai', text: partial || message || '오류가 발생했어요.' }; return c; });
-        refreshProgress(sid);
-      },
-    });
-    setThinking(false);
+    try {
+      // 즉답 모드 — 한 글자씩 떨림 없이 응답이 완성되면 한 번에 표시 (사용자 요청).
+      const res = await window.__apiFetch('/ai-counseling/sessions/' + sid + '/messages?stream=false', {
+        method: 'POST', body: JSON.stringify({ text }),
+      });
+      const data = res && res.data;
+      const aiText = (data && data.message && data.message.text) || '응답을 받지 못했어요.';
+      const meta = data ? {
+        signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
+        shouldFinalize: !!data.shouldFinalize,
+        finalizeReason: data.finalizeReason || null,
+      } : null;
+      setMsgs(m => [...m, meta ? { role: 'ai', text: aiText, meta } : { role: 'ai', text: aiText }]);
+    } catch (e) {
+      const msg = (e && e.body && (e.body.message || (e.body.error && e.body.error.message))) || '오류가 발생했어요.';
+      setMsgs(m => [...m, { role: 'ai', text: msg }]);
+    } finally {
+      setThinking(false);
+      refreshProgress(sid);
+    }
   };
 
   const STAGE_LABEL = { explore: '① 탐색', profile: '② 파악', recommend: '③ 추천', prepare: '④ 준비' };
@@ -465,7 +461,36 @@ function AICounseling({ go, openSignals }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <BackButton onClick={() => go('dashboard')}/>
           <div style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--fg-strong)' }}>AI 진로 상담</div>
-          <IconButton icon={<IcMore size={20}/>} ariaLabel="더보기"/>
+          <div style={{ position: 'relative' }}>
+            <IconButton icon={<IcMore size={20}/>} onClick={() => setMenuOpen(o => !o)} ariaLabel="더보기"/>
+            {menuOpen && (
+              <>
+                <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }}/>
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, minWidth: 180, background: 'var(--bg-surface)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', border: '1px solid var(--line)', zIndex: 51, overflow: 'hidden' }}>
+                  <button onClick={async () => {
+                    setMenuOpen(false);
+                    if (!confirm('새 상담을 시작할까요? 지금 상담은 종료돼요.')) return;
+                    try {
+                      const r = await window.__apiFetch('/ai-counseling/sessions', { method: 'POST' });
+                      const newSid = r && r.data && r.data.id;
+                      if (newSid) {
+                        setSessionId(newSid); setMsgs([]); setSignals([]); setEvidenceCount(0); setStage('explore'); setProgress(10);
+                        initSession();
+                      }
+                    } catch (e) { alert('새 상담 시작에 실패했어요.'); }
+                  }} style={{ width: '100%', padding: '12px 14px', border: 'none', background: 'transparent', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--fg-default)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <IcPlus size={14}/> 새 상담 시작
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); go && go('career-report'); }} disabled={evidenceCount < 5} style={{ width: '100%', padding: '12px 14px', border: 'none', borderTop: '1px solid var(--line-subtle)', background: 'transparent', textAlign: 'left', fontSize: 13, fontWeight: 600, color: evidenceCount < 5 ? 'var(--fg-subtle)' : 'var(--fg-default)', cursor: evidenceCount < 5 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <IcDoc size={14}/> 진로 리포트 보기 {evidenceCount < 5 && <span style={{ fontSize: 10, color: 'var(--fg-subtle)' }}>(단서 더 필요)</span>}
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); setShowSig(true); }} style={{ width: '100%', padding: '12px 14px', border: 'none', borderTop: '1px solid var(--line-subtle)', background: 'transparent', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--fg-default)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <IcSparkles size={14}/> 지금까지 모은 단서
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
           <ProgressBar value={progress} height={4}/>
