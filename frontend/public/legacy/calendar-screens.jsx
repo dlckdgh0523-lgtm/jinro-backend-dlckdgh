@@ -520,6 +520,20 @@ function TeacherCalendar({ openNotif }) {
   const [events, setEvents] = React.useState([]);
   const [requests, setRequests] = React.useState([]);
   const [dialog, setDialog] = React.useState(null); // {kind, ...}
+  const [addOpen, setAddOpen] = React.useState(false);
+
+  // 일정 추가 — 학생 캘린더와 동일 패턴(POST /calendar/events). AddEventSheet 재사용.
+  const addEvent = async (ev) => {
+    const time = (ev && ev.time && /^\d{1,2}:\d{2}/.test(ev.time)) ? ev.time.slice(0, 5) : '09:00';
+    const startsAt = new Date(selected + 'T' + time + ':00').toISOString();
+    try {
+      await window.__apiFetch('/calendar/events', { method: 'POST', body: JSON.stringify({
+        title: (ev && ev.title) || '새 일정', category: (ev && ev.category) || 'other', startsAt,
+        ...(ev && ev.location ? { location: ev.location } : {}),
+      }) });
+      loadEvents();
+    } catch (e) { alert((e && e.body && e.body.message) || '일정 추가에 실패했어요.'); }
+  };
   const grid = buildMonth(month.y, month.m);
   const monthLabel = `${month.y}년 ${month.m + 1}월`;
 
@@ -545,7 +559,9 @@ function TeacherCalendar({ openNotif }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TeacherTopbar title="캘린더" subtitle="학생 상담 요청을 수락하고, 일정 변경·취소 시 학생에게 사유와 함께 알림이 가요" openNotif={openNotif}/>
+      <TeacherTopbar title="캘린더" subtitle="학생 상담 요청을 수락하고, 일정 변경·취소 시 학생에게 사유와 함께 알림이 가요" openNotif={openNotif}
+        action={<Button variant="primary" size="sm" leading={<IcPlus size={14}/>} onClick={() => setAddOpen(true)}>일정 추가</Button>}
+      />
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', background: 'var(--bg-canvas)', minHeight: 0, padding: isMobile ? 12 : 24, gap: isMobile ? 12 : 16, overflowY: 'auto' }}>
         {/* Big calendar */}
         <Card padding={20} style={{ overflow: 'auto' }}>
@@ -646,6 +662,7 @@ function TeacherCalendar({ openNotif }) {
         </Card>
       </div>
       {dialog && <CounselActionDialog dialog={dialog} selectedDate={selected} onClose={() => setDialog(null)} onDone={() => { setDialog(null); reload(); }}/>}
+      <AddEventSheet open={addOpen} onClose={() => setAddOpen(false)} date={selected} onAdd={addEvent} onPickDate={setSelected}/>
     </div>
   );
 }

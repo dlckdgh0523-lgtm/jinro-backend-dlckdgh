@@ -268,6 +268,22 @@ function TeacherCalendar({ openNotif }) {
   const [events, setEvents] = React.useState([]);
   const [requests, setRequests] = React.useState([]);
   const [dialog, setDialog] = React.useState(null);
+  const [addOpen, setAddOpen] = React.useState(false);
+  const addEvent = async (ev) => {
+    const time = ev && ev.time && /^\d{1,2}:\d{2}/.test(ev.time) ? ev.time.slice(0, 5) : "09:00";
+    const startsAt = (/* @__PURE__ */ new Date(selected + "T" + time + ":00")).toISOString();
+    try {
+      await window.__apiFetch("/calendar/events", { method: "POST", body: JSON.stringify({
+        title: ev && ev.title || "\uC0C8 \uC77C\uC815",
+        category: ev && ev.category || "other",
+        startsAt,
+        ...ev && ev.location ? { location: ev.location } : {}
+      }) });
+      loadEvents();
+    } catch (e) {
+      alert(e && e.body && e.body.message || "\uC77C\uC815 \uCD94\uAC00\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694.");
+    }
+  };
   const grid = buildMonth(month.y, month.m);
   const monthLabel = `${month.y}\uB144 ${month.m + 1}\uC6D4`;
   const loadEvents = React.useCallback(async () => {
@@ -306,7 +322,15 @@ function TeacherCalendar({ openNotif }) {
     loadEvents();
     loadRequests();
   };
-  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(TeacherTopbar, { title: "\uCE98\uB9B0\uB354", subtitle: "\uD559\uC0DD \uC0C1\uB2F4 \uC694\uCCAD\uC744 \uC218\uB77D\uD558\uACE0, \uC77C\uC815 \uBCC0\uACBD\xB7\uCDE8\uC18C \uC2DC \uD559\uC0DD\uC5D0\uAC8C \uC0AC\uC720\uC640 \uD568\uAED8 \uC54C\uB9BC\uC774 \uAC00\uC694", openNotif }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", background: "var(--bg-canvas)", minHeight: 0, padding: isMobile ? 12 : 24, gap: isMobile ? 12 : 16, overflowY: "auto" } }, /* @__PURE__ */ React.createElement(Card, { padding: 20, style: { overflow: "auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "num", style: { fontSize: 22, fontWeight: 800, color: "var(--fg-strong)" } }, monthLabel), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", onClick: () => {
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%" } }, /* @__PURE__ */ React.createElement(
+    TeacherTopbar,
+    {
+      title: "\uCE98\uB9B0\uB354",
+      subtitle: "\uD559\uC0DD \uC0C1\uB2F4 \uC694\uCCAD\uC744 \uC218\uB77D\uD558\uACE0, \uC77C\uC815 \uBCC0\uACBD\xB7\uCDE8\uC18C \uC2DC \uD559\uC0DD\uC5D0\uAC8C \uC0AC\uC720\uC640 \uD568\uAED8 \uC54C\uB9BC\uC774 \uAC00\uC694",
+      openNotif,
+      action: /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "sm", leading: /* @__PURE__ */ React.createElement(IcPlus, { size: 14 }), onClick: () => setAddOpen(true) }, "\uC77C\uC815 \uCD94\uAC00")
+    }
+  ), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", background: "var(--bg-canvas)", minHeight: 0, padding: isMobile ? 12 : 24, gap: isMobile ? 12 : 16, overflowY: "auto" } }, /* @__PURE__ */ React.createElement(Card, { padding: 20, style: { overflow: "auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { className: "num", style: { fontSize: 22, fontWeight: 800, color: "var(--fg-strong)" } }, monthLabel), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 4 } }, /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", onClick: () => {
     setMonth({ y: today.getFullYear(), m: today.getMonth() });
     setSelected(todayKey);
   } }, "\uC624\uB298"), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcChevronLeft, { size: 16 }), onClick: () => setMonth((m) => ({ y: m.m === 0 ? m.y - 1 : m.y, m: m.m === 0 ? 11 : m.m - 1 })), ariaLabel: "\uC774\uC804" }), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcChevronRight, { size: 16 }), onClick: () => setMonth((m) => ({ y: m.m === 11 ? m.y + 1 : m.y, m: m.m === 11 ? 0 : m.m + 1 })), ariaLabel: "\uB2E4\uC74C" }))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 0, marginBottom: 4 } }, ["\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0"].map((d, i) => /* @__PURE__ */ React.createElement("div", { key: d, style: { textAlign: "left", fontSize: 11, fontWeight: 700, color: i === 0 ? "var(--danger)" : i === 6 ? "var(--brand-600)" : "var(--fg-muted)", padding: "8px 6px" } }, d))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gridAutoRows: "90px", gap: 4 } }, grid.map((cell, i) => {
@@ -336,7 +360,7 @@ function TeacherCalendar({ openNotif }) {
   }))))), dialog && /* @__PURE__ */ React.createElement(CounselActionDialog, { dialog, selectedDate: selected, onClose: () => setDialog(null), onDone: () => {
     setDialog(null);
     reload();
-  } }));
+  } }), /* @__PURE__ */ React.createElement(AddEventSheet, { open: addOpen, onClose: () => setAddOpen(false), date: selected, onAdd: addEvent, onPickDate: setSelected }));
 }
 function CounselActionDialog({ dialog, selectedDate, onClose, onDone }) {
   var _a, _b;
