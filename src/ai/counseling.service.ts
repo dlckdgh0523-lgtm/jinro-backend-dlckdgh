@@ -241,14 +241,74 @@ export class CounselingService {
     private readonly pubsub: PubSubService,
   ) {}
 
-  async createSession(userId: string) {
-    // 한 사용자당 active 세션 1개 — 새로 만들면 이전 것은 종료
+  /**
+   * 세션 생성.
+   * - 학생/단일 모드(subjectStudentId 없음): 기존 active 세션은 종료(한 사용자당 1개 유지).
+   * - 교사 코칭 모드(subjectStudentId 있음): 학생별로 여러 세션 동시 active 가능(대화창 목록).
+   *   같은 학생 대상 active 세션이 이미 있으면 그걸 재사용(중복 생성 방지).
+   */
+  async createSession(userId: string, opts?: { subjectStudentId?: string | null; title?: string | null }) {
+    const subjectStudentId = opts?.subjectStudentId || null;
+    const title = (opts?.title ?? '').trim().slice(0, 80) || null;
+    if (subjectStudentId) {
+      // 교사 코칭 모드 — 같은 학생 active 세션 재사용
+      const existing = await this.prisma.counselingSession.findFirst({
+        where: { userId, subjectStudentId, status: 'active' },
+        orderBy: { startedAt: 'desc' },
+      });
+      if (existing) return { data: this.sessionDto(existing) };
+      const session = await this.prisma.counselingSession.create({ data: { userId, subjectStudentId, title } });
+      return { data: this.sessionDto(session) };
+    }
+    // 일반(학생) 모드 — 기존 active 종료 후 새로
     await this.prisma.counselingSession.updateMany({
-      where: { userId, status: 'active' },
+      where: { userId, status: 'active', subjectStudentId: null },
       data: { status: 'ended', endedAt: new Date() },
     });
-    const session = await this.prisma.counselingSession.create({ data: { userId } });
+    const session = await this.prisma.counselingSession.create({ data: { userId, title } });
     return { data: this.sessionDto(session) };
+  }
+
+  /** 사용자의 세션 목록 — 교사 대화창 사이드바용. status로 필터 가능. */
+  async listSessions(userId: string, opts?: { status?: 'active' | 'ended' | 'all' }) {
+    const status = opts?.status ?? 'all';
+    const sessions = await this.prisma.counselingSession.findMany({
+      where: { userId, ...(status !== 'all' ? { status } : {}) },
+      orderBy: { startedAt: 'desc' },
+      take: 100,
+    });
+    // 학생 정보(이름) 함께 — 교사 대화창 목록에 표시
+    const studentIds = [...new Set(sessions.map((s) => s.subjectStudentId).filter((x): x is string => !!x))];
+    const students = studentIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true } })
+      : [];
+    const studentMap = new Map(students.map((s) => [s.id, s.name]));
+    return {
+      data: sessions.map((s) => ({
+        ...this.sessionDto(s),
+        title: s.title,
+        subjectStudentId: s.subjectStudentId,
+        subjectStudentName: s.subjectStudentId ? studentMap.get(s.subjectStudentId) ?? null : null,
+      })),
+    };
+  }
+
+  /** 세션 제목 변경 또는 종료. */
+  async updateSession(userId: string, sessionId: string, patch: { title?: string | null; status?: 'active' | 'ended' }) {
+    await this.getOwnedSession(userId, sessionId);
+    const data: Record<string, unknown> = {};
+    if (patch.title !== undefined) data.title = patch.title ? patch.title.trim().slice(0, 80) : null;
+    if (patch.status === 'ended') { data.status = 'ended'; data.endedAt = new Date(); }
+    if (patch.status === 'active') { data.status = 'active'; data.endedAt = null; }
+    const session = await this.prisma.counselingSession.update({ where: { id: sessionId }, data });
+    return { data: this.sessionDto(session) };
+  }
+
+  /** 세션 삭제 — 메시지/시그널/리포트 cascade. */
+  async deleteSession(userId: string, sessionId: string) {
+    await this.getOwnedSession(userId, sessionId);
+    await this.prisma.counselingSession.delete({ where: { id: sessionId } });
+    return { data: { ok: true } };
   }
 
   async activeSession(userId: string) {
@@ -405,6 +465,38 @@ export class CounselingService {
       // 교사 코칭 모드는 항상 RAG(학과·진로·대학 데이터)를 제공. 학생은 탐색 단계에선 자유 대화 유지.
       const docs = (isTeacher || stageInfo.stage !== 'explore') ? await this.retriever.retrieve(text, 6) : [];
       let ragContext = docs.map((d) => `[${d.kind}] ${d.title}: ${d.body}`).join('\n');
+
+      // 교사 코칭 모드 + 특정 학생 세션이면 그 학생 컨텍스트(성적·AI 단서·진로목표)를 자동 주입.
+      // 매번 학생 정보를 다시 묻지 않게 하기 위한 핵심 — 사용자 요청: "등록된 학생마다 성적 입력해둔거 알아서 봐오고 했으면 좋겠다".
+      if (isTeacher && session?.subjectStudentId) {
+        const studentId = session.subjectStudentId;
+        const [student, sGrades, sSignals, sTargets] = await Promise.all([
+          this.prisma.user.findUnique({ where: { id: studentId }, select: { name: true, grade: true, school: true, classroom: true } }),
+          this.prisma.grade.findMany({ where: { userId: studentId } }),
+          // 그 학생의 AI 상담 세션들에서 누적된 단서
+          this.prisma.counselingSignal.findMany({
+            where: { session: { userId: studentId } },
+            orderBy: { createdAt: 'desc' },
+            take: 12,
+            select: { tag: true, text: true },
+          }),
+          this.prisma.careerTarget.findMany({ where: { userId: studentId }, orderBy: { createdAt: 'desc' }, take: 5 }),
+        ]);
+        if (student) {
+          const sGradeSummary = summarizeGrades(sGrades);
+          const sigLine = sSignals.length ? sSignals.map((s) => `[${s.tag}]${s.text}`).join(', ') : '아직 없음';
+          const tgtLine = sTargets.length
+            ? sTargets.map((t) => [t.career, t.univ, t.dept].filter(Boolean).join(' · ')).join(' / ')
+            : '아직 없음';
+          const studentCtx = [
+            `[상담 대상 학생] ${student.name} (${gradeKoreanLabel(student.grade || '') || '학년 미입력'}` + (student.classroom ? `, ${student.school ?? ''} ${student.classroom}` : '') + ')',
+            sGradeSummary ? `[학생 성적 요약] ${sGradeSummary}` : `[학생 성적] 미입력`,
+            `[학생이 모은 진로 단서(최신 12개)] ${sigLine}`,
+            `[학생의 진로 목표] ${tgtLine}`,
+          ].join('\n');
+          ragContext = studentCtx + (ragContext ? '\n\n' + ragContext : '');
+        }
+      }
       // prepare 단계 또는 초·중 학년이면 학년에 맞는 진로교육자료를 함께 제공
       if (grade && (stageInfo.stage === 'prepare' || stageInfo.stage === 'recommend')) {
         const targetCode = gradeToTarget(grade);

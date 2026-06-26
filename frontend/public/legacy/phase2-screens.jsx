@@ -819,22 +819,120 @@ function AIChatRAG({ go, coach = false }) {
   const [thinking, setThinking] = React.useState(false);
   const [sessionId, setSessionId] = React.useState(null);
   const scrollRef = React.useRef(null);
+  // 교사 코칭 멀티세션 — 학생별 대화창 목록. coach=false면 미사용.
+  const [sessions, setSessions] = React.useState([]);
+  const [showPicker, setShowPicker] = React.useState(false);
+  const [roster, setRoster] = React.useState([]);
+  const isMobile = useViewportMobile();
+  const [sidebarOpen, setSidebarOpen] = React.useState(!isMobile);
 
   React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, thinking]);
 
-  // 세션 확보 (기존 active 재사용)
+  // 세션 목록 로드 (coach 모드) — 학생별로 누적된 대화창. 첫 active 세션이 있으면 자동 선택.
+  const refreshSessions = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch('/ai-counseling/sessions?status=all', { method: 'GET' });
+      const list = (r && r.data) || [];
+      setSessions(list);
+      return list;
+    } catch (e) { return []; }
+  }, []);
+
+  // 학생 명렬 로드 (학생 선택 모달용)
+  const refreshRoster = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch('/teacher/students', { method: 'GET' });
+      setRoster((r && r.data) || []);
+    } catch (e) { setRoster([]); }
+  }, []);
+
+  // 세션 확보
   React.useEffect(() => {
     if (!window.__isLoggedIn || !window.__isLoggedIn()) return;
     (async () => {
-      try {
-        const active = await window.__apiFetch('/ai-counseling/sessions/active', { method: 'GET' });
-        const sid = (active && active.data && active.data.id) || (await window.__apiFetch('/ai-counseling/sessions', { method: 'POST' })).data.id;
-        setSessionId(sid);
-      } catch (e) {}
+      if (coach) {
+        // 교사 모드 — 세션 목록 + 학생 명렬을 로드. 첫 세션 자동 선택(없으면 그대로 placeholder).
+        const list = await refreshSessions();
+        refreshRoster();
+        const first = list.find(s => s.status === 'active') || list[0];
+        if (first) setSessionId(first.id);
+      } else {
+        // 학생/일반 모드 — active 1개 사용
+        try {
+          const active = await window.__apiFetch('/ai-counseling/sessions/active', { method: 'GET' });
+          const sid = (active && active.data && active.data.id) || (await window.__apiFetch('/ai-counseling/sessions', { method: 'POST' })).data.id;
+          setSessionId(sid);
+        } catch (e) {}
+      }
     })();
-  }, []);
+  }, [coach, refreshSessions, refreshRoster]);
+
+  // 세션 바뀌면 transcript 로드 (coach 모드)
+  React.useEffect(() => {
+    if (!coach || !sessionId) return;
+    (async () => {
+      try {
+        const t = await window.__apiFetch('/ai-counseling/sessions/' + sessionId + '/transcript', { method: 'GET' });
+        const loaded = ((t && t.data && t.data.messages) || []).map(m => ({ role: m.role, text: m.text }));
+        setMsgs(loaded.length ? loaded : COACH_INITIAL);
+      } catch (e) { setMsgs(COACH_INITIAL); }
+    })();
+  }, [coach, sessionId]);
+
+  // 학생 선택 → 그 학생 컨텍스트 세션 생성(또는 기존 재사용 — 백엔드가 중복 차단)
+  const createSessionForStudent = async (st) => {
+    try {
+      const r = await window.__apiFetch('/ai-counseling/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ subjectStudentId: st.id, title: `${st.name} 코칭` }),
+      });
+      const sid = r && r.data && r.data.id;
+      if (sid) { setSessionId(sid); refreshSessions(); }
+      setShowPicker(false);
+      if (isMobile) setSidebarOpen(false);
+    } catch (e) { alert((e && e.body && e.body.message) || '세션 생성 실패'); }
+  };
+  const createFreeSession = async () => {
+    try {
+      const r = await window.__apiFetch('/ai-counseling/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ title: '자유 대화' }),
+      });
+      const sid = r && r.data && r.data.id;
+      if (sid) { setSessionId(sid); refreshSessions(); }
+      setShowPicker(false);
+      if (isMobile) setSidebarOpen(false);
+    } catch (e) { alert('세션 생성 실패'); }
+  };
+  const deleteSession = async (sid) => {
+    if (!confirm('이 대화를 삭제할까요? 메시지와 리포트가 함께 삭제돼요.')) return;
+    try {
+      await window.__apiFetch('/ai-counseling/sessions/' + sid + '/delete', { method: 'POST' });
+      const list = await refreshSessions();
+      if (sessionId === sid) setSessionId(list[0] ? list[0].id : null);
+    } catch (e) { alert('삭제 실패'); }
+  };
+  const renameSession = async (sid, currentTitle) => {
+    const title = prompt('대화 제목을 입력하세요', currentTitle || '');
+    if (title === null) return;
+    try {
+      await window.__apiFetch('/ai-counseling/sessions/' + sid + '/patch', {
+        method: 'POST', body: JSON.stringify({ title }),
+      });
+      refreshSessions();
+    } catch (e) { alert('변경 실패'); }
+  };
+  const exportReport = async (sid) => {
+    try {
+      const r = await window.__apiFetch('/ai-counseling/sessions/' + sid + '/report', { method: 'POST' });
+      const reportId = r && r.data && r.data.reportId;
+      if (reportId) {
+        if (typeof window.showToast === 'function') window.showToast('리포트를 만들고 있어요. 잠시 후 알림에서 확인하세요.', 'success');
+      }
+    } catch (e) { alert((e && e.body && e.body.message) || '리포트 생성에 단서가 부족하거나 오류가 발생했어요.'); }
+  };
 
   const send = async (text) => {
     if (!text.trim() || thinking) return;
@@ -845,22 +943,154 @@ function AIChatRAG({ go, coach = false }) {
     let sid = sessionId;
     if (!sid) {
       try {
-        const active = await window.__apiFetch('/ai-counseling/sessions/active', { method: 'GET' });
-        sid = (active && active.data && active.data.id) || (await window.__apiFetch('/ai-counseling/sessions', { method: 'POST' })).data.id;
+        if (coach) {
+          // 교사 — 자유 대화 세션 자동 생성
+          const r = await window.__apiFetch('/ai-counseling/sessions', { method: 'POST', body: JSON.stringify({ title: '자유 대화' }) });
+          sid = r.data.id;
+        } else {
+          const active = await window.__apiFetch('/ai-counseling/sessions/active', { method: 'GET' });
+          sid = (active && active.data && active.data.id) || (await window.__apiFetch('/ai-counseling/sessions', { method: 'POST' })).data.id;
+        }
         setSessionId(sid);
       } catch (e) { setMsgs(m => [...m, { role: 'user', text }, { role: 'ai', text: '상담을 시작하지 못했어요. 잠시 후 다시 시도해주세요.' }]); setInput(''); return; }
     }
-    setMsgs(m => [...m, { role: 'user', text }, { role: 'ai', text: '' }]);
+    setMsgs(m => [...m, { role: 'user', text }]);
     setInput('');
     setThinking(true);
-    await window.__apiStream('/ai-counseling/sessions/' + sid + '/messages', { text }, {
-      onToken: (delta) => { setThinking(false); setMsgs(m => { const c = [...m]; c[c.length - 1] = { role: 'ai', text: (c[c.length - 1].text || '') + delta }; return c; }); },
-      onDone: () => { setThinking(false); },
-      onError: (code, message) => { setThinking(false); setMsgs(m => { const c = [...m]; const last = c[c.length - 1]; const partial = (last && last.text) ? last.text : ''; c[c.length - 1] = { role: 'ai', text: partial || message || '오류가 발생했어요.' }; return c; }); },
-    });
-    setThinking(false);
+    try {
+      // 즉답 모드 — 한 글자씩 떨림 없이 응답이 완성되면 한 번에 표시
+      const res = await window.__apiFetch('/ai-counseling/sessions/' + sid + '/messages?stream=false', {
+        method: 'POST', body: JSON.stringify({ text }),
+      });
+      const aiText = (res && res.data && res.data.message && res.data.message.text) || '응답을 받지 못했어요.';
+      setMsgs(m => [...m, { role: 'ai', text: aiText }]);
+    } catch (e) {
+      const msg = (e && e.body && (e.body.message || (e.body.error && e.body.error.message))) || '오류가 발생했어요.';
+      setMsgs(m => [...m, { role: 'ai', text: msg }]);
+    } finally {
+      setThinking(false);
+    }
   };
 
+  // 교사 코칭 모드 — 좌측 세션 목록 사이드바 + 우측 채팅 + 학생 선택 모달.
+  if (coach) {
+    const currentSession = sessions.find(s => s.id === sessionId);
+    return (
+      <div style={{ display: 'flex', height: '100%', background: 'var(--bg-canvas)', position: 'relative', overflow: 'hidden' }}>
+        {/* 사이드바: 세션 목록 */}
+        <aside style={{
+          width: isMobile ? '85%' : 280, maxWidth: 340, flexShrink: 0,
+          background: 'var(--bg-surface)', borderRight: '1px solid var(--line-subtle)',
+          display: (isMobile && !sidebarOpen) ? 'none' : 'flex', flexDirection: 'column',
+          position: isMobile ? 'absolute' : 'relative', top: 0, left: 0, height: '100%', zIndex: 30,
+          boxShadow: isMobile ? '0 0 40px rgba(0,0,0,0.2)' : 'none',
+        }}>
+          <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid var(--line-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--fg-strong)' }}>대화 목록</div>
+            {isMobile && <IconButton icon={<IcX size={18}/>} onClick={() => setSidebarOpen(false)} ariaLabel="닫기"/>}
+          </div>
+          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Button variant="primary" size="sm" full leading={<IcPlus size={14}/>} onClick={() => setShowPicker(true)}>새 대화 (학생 선택)</Button>
+            <Button variant="outline" size="sm" full leading={<IcMessage size={14}/>} onClick={createFreeSession}>자유 대화 시작</Button>
+          </div>
+          <nav className="toss-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {sessions.length === 0 ? (
+              <div style={{ padding: 16, fontSize: 12, color: 'var(--fg-muted)', textAlign: 'center', lineHeight: 1.5 }} className="kr-heading">
+                대화를 시작하면 여기에 목록이 쌓여요.<br/>학생을 선택해 코칭을 시작하세요.
+              </div>
+            ) : sessions.map(s => {
+              const isActive = s.id === sessionId;
+              const label = s.title || s.subjectStudentName || '자유 대화';
+              const sub = s.subjectStudentName ? '학생: ' + s.subjectStudentName : (s.title === '자유 대화' || !s.subjectStudentId ? '자유 대화' : '');
+              return (
+                <div key={s.id} onClick={() => { setSessionId(s.id); if (isMobile) setSidebarOpen(false); }}
+                  style={{ padding: '10px 10px', borderRadius: 8, cursor: 'pointer',
+                    background: isActive ? 'var(--brand-50)' : 'transparent',
+                    borderLeft: isActive ? '3px solid var(--brand-500)' : '3px solid transparent',
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? 'var(--brand-700)' : 'var(--fg-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">{label}</div>
+                      {sub && <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginTop: 2 }}>{sub}{s.status === 'ended' ? ' · 종료' : ''}</div>}
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); renameSession(s.id, s.title); }} title="이름 변경" style={{ border: 'none', background: 'transparent', padding: 4, cursor: 'pointer', color: 'var(--fg-subtle)' }}><IcMore size={12}/></button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }} title="삭제" style={{ border: 'none', background: 'transparent', padding: 4, cursor: 'pointer', color: 'var(--fg-subtle)' }}><IcTrash size={12}/></button>
+                  </div>
+                </div>
+              );
+            })}
+          </nav>
+        </aside>
+        {isMobile && sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 29 }}/>}
+
+        {/* 본문: 채팅 */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: 'var(--bg-canvas)' }}>
+          <div style={{ padding: '10px 14px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--line-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isMobile && <IconButton icon={<IcMenu size={20}/>} onClick={() => setSidebarOpen(true)} ariaLabel="대화 목록"/>}
+            <BackButton onClick={() => go && go('dashboard')}/>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">
+                {currentSession ? (currentSession.title || currentSession.subjectStudentName || 'AI 상담 코칭') : 'AI 상담 코칭'}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--fg-subtle)' }}>{currentSession && currentSession.subjectStudentName ? `학생 컨텍스트(성적·단서·진로목표) 자동 주입` : '교사용 · 공공데이터 근거'}</div>
+            </div>
+            {sessionId && (
+              <IconButton icon={<IcDoc size={18}/>} ariaLabel="이 대화 리포트 생성" onClick={() => exportReport(sessionId)}/>
+            )}
+          </div>
+          <div ref={scrollRef} className="toss-scroll" style={{ flex: 1, padding: '12px 14px 8px', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {msgs.map((m, i) => <RagBubble key={i} msg={m}/>)}
+            {thinking && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <div style={{ width: 26, height: 26, borderRadius: 8, background: 'linear-gradient(135deg, #7B61FF 0%, #3182F6 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>AI</div>
+                <div style={{ padding: '12px 14px', background: 'var(--bg-surface)', borderRadius: '4px 14px 14px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-muted)' }} className="kr-heading">답변을 만들고 있어요…</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div style={{ padding: 12, borderTop: '1px solid var(--line-subtle)', background: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', background: 'var(--bg-muted)', borderRadius: 18, padding: '8px 8px 8px 14px' }}>
+              <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={1}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
+                placeholder={currentSession && currentSession.subjectStudentName ? `${currentSession.subjectStudentName} 학생에 대해 물어보세요` : '학생 지도에 대해 물어보세요'}
+                style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', resize: 'none', fontSize: 14, fontFamily: 'inherit', lineHeight: 1.5, color: 'var(--fg-strong)', maxHeight: 100, paddingTop: 6 }}/>
+              <button onClick={() => send(input)} disabled={!input.trim() || thinking} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: (input.trim() && !thinking) ? 'var(--brand-500)' : 'var(--line-strong)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (input.trim() && !thinking) ? 'pointer' : 'not-allowed', flexShrink: 0 }}><IcSend size={16}/></button>
+            </div>
+          </div>
+        </main>
+
+        {/* 학생 선택 모달 */}
+        {showPicker && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div onClick={() => setShowPicker(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.55)' }}/>
+            <div role="dialog" aria-modal="true" style={{ position: 'relative', width: 'min(420px, 100%)', maxHeight: '85%', background: 'var(--bg-elevated)', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-pop)' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg-strong)' }}>학생 선택</div>
+                <IconButton icon={<IcX size={18}/>} onClick={() => setShowPicker(false)} ariaLabel="닫기"/>
+              </div>
+              <div className="toss-scroll" style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
+                {roster.length === 0 ? (
+                  <div style={{ padding: 24, fontSize: 13, color: 'var(--fg-muted)', textAlign: 'center' }}>등록된 학급 학생이 없어요. 학생 관리에서 초대코드를 공유해보세요.</div>
+                ) : roster.map(st => (
+                  <button key={st.id} onClick={() => createSessionForStudent(st)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', borderRadius: 10 }}>
+                    <Avatar name={(st.name || '?').slice(0,1)} size={36}/>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }}>{st.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{st.grade || '학년 미정'} · AI 진행도 {st.aiProgress || 0}%</div>
+                    </div>
+                    <IcChevronRight size={14} color="var(--fg-subtle)"/>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 학생/일반 모드 — 기존 단일 채팅 UI
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-canvas)' }}>
       <div style={{ padding: '8px 12px 12px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--line-subtle)' }}>

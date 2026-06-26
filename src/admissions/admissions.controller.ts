@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
 import { JwtAuthGuard, type AuthedRequest } from '../auth/jwt.guard';
 import { AppError, ErrorCode } from '../common/errors';
@@ -312,11 +313,46 @@ export class AdmissionsController {
       }),
       body,
     );
+    // 진로목표는 학생이 언제든 추가/변경 — 사용자 요청: "워낙에 생각이 많기도 하고 언제든 바뀔 가능성".
+    // 무제한은 위험하니 합리적 상한(20개)만. 같은 (career,univ,dept) 중복은 차단.
+    const MAX_TARGETS = 20;
     const count = await this.prisma.careerTarget.count({ where: { userId: req.user.id } });
-    if (count >= 3) {
-      throw new AppError(ErrorCode.CONFLICT, '진로 목표는 최대 3개까지 등록할 수 있어요.');
+    if (count >= MAX_TARGETS) {
+      throw new AppError(ErrorCode.CONFLICT, `진로 목표는 최대 ${MAX_TARGETS}개까지 등록할 수 있어요. 오래된 항목을 정리한 뒤 다시 시도해주세요.`);
     }
+    const dup = await this.prisma.careerTarget.findFirst({
+      where: { userId: req.user.id, career: input.career, univ: input.univ ?? null, dept: input.dept ?? null },
+    });
+    if (dup) return { data: { ...dup, createdAt: dup.createdAt.toISOString(), duplicate: true } };
     const target = await this.prisma.careerTarget.create({ data: { userId: req.user.id, ...input } });
+
+    // 담임 교사 알림 — 같은 학교/학급 교사에게 "○○ 학생이 진로를 변경했어요"
+    // 베스트 에포트: 실패해도 본 요청 흐름은 막지 않음(catch 안에서 silent).
+    try {
+      const student = await this.prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true, school: true, classroom: true } });
+      if (student && student.school && student.classroom) {
+        const teachers = await this.prisma.user.findMany({
+          where: { role: 'teacher', school: student.school, classroom: student.classroom },
+          select: { id: true },
+        });
+        if (teachers.length) {
+          const label = [target.career, target.univ, target.dept].filter(Boolean).join(' · ');
+          await this.prisma.notification.createMany({
+            data: teachers.map((t) => ({
+              userId: t.id,
+              type: 'student.career_target_changed',
+              dedupeKey: `target:${target.id}`,
+              title: `${student.name} 학생의 진로 목표가 추가됐어요`,
+              body: label,
+              targetUrl: `/teacher/students/${req.user.id}`,
+              payload: { studentId: req.user.id, targetId: target.id, career: target.career, univ: target.univ, dept: target.dept } as Prisma.InputJsonValue,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+    } catch (e) { /* silent — 알림 실패가 본 흐름을 막지 않음 */ }
+
     return { data: { ...target, createdAt: target.createdAt.toISOString() } };
   }
 

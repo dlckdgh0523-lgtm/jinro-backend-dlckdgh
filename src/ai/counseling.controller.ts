@@ -14,6 +14,17 @@ const messageSchema = z.object({
   text: z.string().trim().min(1, '메시지를 입력해주세요').max(2_000, '메시지는 2000자 이하여야 해요'),
 });
 const idSchema = z.string().min(1).max(64);
+const createSessionSchema = z.object({
+  subjectStudentId: z.string().max(64).optional().nullable(),
+  title: z.string().max(80).optional().nullable(),
+}).partial();
+const patchSessionSchema = z.object({
+  title: z.string().max(80).optional().nullable(),
+  status: z.enum(['active', 'ended']).optional(),
+}).partial();
+const listSessionQuerySchema = z.object({
+  status: z.enum(['active', 'ended', 'all']).optional(),
+}).partial();
 
 @Controller('v1/ai-counseling')
 @UseGuards(JwtAuthGuard)
@@ -25,13 +36,36 @@ export class CounselingController {
 
   @Post('sessions')
   @HttpCode(201)
-  createSession(@Req() req: AuthedRequest) {
-    return this.counseling.createSession(req.user.id);
+  createSession(@Req() req: AuthedRequest, @Body() body: unknown) {
+    const parsed = parseOrThrow(createSessionSchema, body ?? {});
+    return this.counseling.createSession(req.user.id, parsed);
   }
 
   @Get('sessions/active')
   activeSession(@Req() req: AuthedRequest) {
     return this.counseling.activeSession(req.user.id);
+  }
+
+  /** 세션 목록 — 교사 대화창 사이드바용(학생별/자유 모두). */
+  @Get('sessions')
+  listSessions(@Req() req: AuthedRequest, @Query() query: Record<string, string>) {
+    const opts = parseOrThrow(listSessionQuerySchema, query ?? {});
+    return this.counseling.listSessions(req.user.id, opts);
+  }
+
+  /** 세션 제목 변경 / 종료. */
+  @Post('sessions/:id/patch')
+  @HttpCode(200)
+  patchSession(@Req() req: AuthedRequest, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = parseOrThrow(patchSessionSchema, body ?? {});
+    return this.counseling.updateSession(req.user.id, parseOrThrow(idSchema, id), parsed);
+  }
+
+  /** 세션 삭제 (메시지/시그널/리포트 cascade). */
+  @Post('sessions/:id/delete')
+  @HttpCode(200)
+  deleteSession(@Req() req: AuthedRequest, @Param('id') id: string) {
+    return this.counseling.deleteSession(req.user.id, parseOrThrow(idSchema, id));
   }
 
   @Get('sessions/:id/transcript')

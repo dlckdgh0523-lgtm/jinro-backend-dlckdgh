@@ -498,20 +498,130 @@ function AIChatRAG({ go, coach = false }) {
   const [thinking, setThinking] = React.useState(false);
   const [sessionId, setSessionId] = React.useState(null);
   const scrollRef = React.useRef(null);
+  const [sessions, setSessions] = React.useState([]);
+  const [showPicker, setShowPicker] = React.useState(false);
+  const [roster, setRoster] = React.useState([]);
+  const isMobile = useViewportMobile();
+  const [sidebarOpen, setSidebarOpen] = React.useState(!isMobile);
   React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, thinking]);
+  const refreshSessions = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch("/ai-counseling/sessions?status=all", { method: "GET" });
+      const list = r && r.data || [];
+      setSessions(list);
+      return list;
+    } catch (e) {
+      return [];
+    }
+  }, []);
+  const refreshRoster = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch("/teacher/students", { method: "GET" });
+      setRoster(r && r.data || []);
+    } catch (e) {
+      setRoster([]);
+    }
+  }, []);
   React.useEffect(() => {
     if (!window.__isLoggedIn || !window.__isLoggedIn()) return;
     (async () => {
-      try {
-        const active = await window.__apiFetch("/ai-counseling/sessions/active", { method: "GET" });
-        const sid = active && active.data && active.data.id || (await window.__apiFetch("/ai-counseling/sessions", { method: "POST" })).data.id;
-        setSessionId(sid);
-      } catch (e) {
+      if (coach) {
+        const list = await refreshSessions();
+        refreshRoster();
+        const first = list.find((s) => s.status === "active") || list[0];
+        if (first) setSessionId(first.id);
+      } else {
+        try {
+          const active = await window.__apiFetch("/ai-counseling/sessions/active", { method: "GET" });
+          const sid = active && active.data && active.data.id || (await window.__apiFetch("/ai-counseling/sessions", { method: "POST" })).data.id;
+          setSessionId(sid);
+        } catch (e) {
+        }
       }
     })();
-  }, []);
+  }, [coach, refreshSessions, refreshRoster]);
+  React.useEffect(() => {
+    if (!coach || !sessionId) return;
+    (async () => {
+      try {
+        const t = await window.__apiFetch("/ai-counseling/sessions/" + sessionId + "/transcript", { method: "GET" });
+        const loaded = (t && t.data && t.data.messages || []).map((m) => ({ role: m.role, text: m.text }));
+        setMsgs(loaded.length ? loaded : COACH_INITIAL);
+      } catch (e) {
+        setMsgs(COACH_INITIAL);
+      }
+    })();
+  }, [coach, sessionId]);
+  const createSessionForStudent = async (st) => {
+    try {
+      const r = await window.__apiFetch("/ai-counseling/sessions", {
+        method: "POST",
+        body: JSON.stringify({ subjectStudentId: st.id, title: `${st.name} \uCF54\uCE6D` })
+      });
+      const sid = r && r.data && r.data.id;
+      if (sid) {
+        setSessionId(sid);
+        refreshSessions();
+      }
+      setShowPicker(false);
+      if (isMobile) setSidebarOpen(false);
+    } catch (e) {
+      alert(e && e.body && e.body.message || "\uC138\uC158 \uC0DD\uC131 \uC2E4\uD328");
+    }
+  };
+  const createFreeSession = async () => {
+    try {
+      const r = await window.__apiFetch("/ai-counseling/sessions", {
+        method: "POST",
+        body: JSON.stringify({ title: "\uC790\uC720 \uB300\uD654" })
+      });
+      const sid = r && r.data && r.data.id;
+      if (sid) {
+        setSessionId(sid);
+        refreshSessions();
+      }
+      setShowPicker(false);
+      if (isMobile) setSidebarOpen(false);
+    } catch (e) {
+      alert("\uC138\uC158 \uC0DD\uC131 \uC2E4\uD328");
+    }
+  };
+  const deleteSession = async (sid) => {
+    if (!confirm("\uC774 \uB300\uD654\uB97C \uC0AD\uC81C\uD560\uAE4C\uC694? \uBA54\uC2DC\uC9C0\uC640 \uB9AC\uD3EC\uD2B8\uAC00 \uD568\uAED8 \uC0AD\uC81C\uB3FC\uC694.")) return;
+    try {
+      await window.__apiFetch("/ai-counseling/sessions/" + sid + "/delete", { method: "POST" });
+      const list = await refreshSessions();
+      if (sessionId === sid) setSessionId(list[0] ? list[0].id : null);
+    } catch (e) {
+      alert("\uC0AD\uC81C \uC2E4\uD328");
+    }
+  };
+  const renameSession = async (sid, currentTitle) => {
+    const title = prompt("\uB300\uD654 \uC81C\uBAA9\uC744 \uC785\uB825\uD558\uC138\uC694", currentTitle || "");
+    if (title === null) return;
+    try {
+      await window.__apiFetch("/ai-counseling/sessions/" + sid + "/patch", {
+        method: "POST",
+        body: JSON.stringify({ title })
+      });
+      refreshSessions();
+    } catch (e) {
+      alert("\uBCC0\uACBD \uC2E4\uD328");
+    }
+  };
+  const exportReport = async (sid) => {
+    try {
+      const r = await window.__apiFetch("/ai-counseling/sessions/" + sid + "/report", { method: "POST" });
+      const reportId = r && r.data && r.data.reportId;
+      if (reportId) {
+        if (typeof window.showToast === "function") window.showToast("\uB9AC\uD3EC\uD2B8\uB97C \uB9CC\uB4E4\uACE0 \uC788\uC5B4\uC694. \uC7A0\uC2DC \uD6C4 \uC54C\uB9BC\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694.", "success");
+      }
+    } catch (e) {
+      alert(e && e.body && e.body.message || "\uB9AC\uD3EC\uD2B8 \uC0DD\uC131\uC5D0 \uB2E8\uC11C\uAC00 \uBD80\uC871\uD558\uAC70\uB098 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694.");
+    }
+  };
   const send = async (text) => {
     if (!text.trim() || thinking) return;
     if (!window.__isLoggedIn || !window.__isLoggedIn()) {
@@ -522,8 +632,13 @@ function AIChatRAG({ go, coach = false }) {
     let sid = sessionId;
     if (!sid) {
       try {
-        const active = await window.__apiFetch("/ai-counseling/sessions/active", { method: "GET" });
-        sid = active && active.data && active.data.id || (await window.__apiFetch("/ai-counseling/sessions", { method: "POST" })).data.id;
+        if (coach) {
+          const r = await window.__apiFetch("/ai-counseling/sessions", { method: "POST", body: JSON.stringify({ title: "\uC790\uC720 \uB300\uD654" }) });
+          sid = r.data.id;
+        } else {
+          const active = await window.__apiFetch("/ai-counseling/sessions/active", { method: "GET" });
+          sid = active && active.data && active.data.id || (await window.__apiFetch("/ai-counseling/sessions", { method: "POST" })).data.id;
+        }
         setSessionId(sid);
       } catch (e) {
         setMsgs((m) => [...m, { role: "user", text }, { role: "ai", text: "\uC0C1\uB2F4\uC744 \uC2DC\uC791\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694." }]);
@@ -531,34 +646,84 @@ function AIChatRAG({ go, coach = false }) {
         return;
       }
     }
-    setMsgs((m) => [...m, { role: "user", text }, { role: "ai", text: "" }]);
+    setMsgs((m) => [...m, { role: "user", text }]);
     setInput("");
     setThinking(true);
-    await window.__apiStream("/ai-counseling/sessions/" + sid + "/messages", { text }, {
-      onToken: (delta) => {
-        setThinking(false);
-        setMsgs((m) => {
-          const c = [...m];
-          c[c.length - 1] = { role: "ai", text: (c[c.length - 1].text || "") + delta };
-          return c;
-        });
-      },
-      onDone: () => {
-        setThinking(false);
-      },
-      onError: (code, message) => {
-        setThinking(false);
-        setMsgs((m) => {
-          const c = [...m];
-          const last = c[c.length - 1];
-          const partial = last && last.text ? last.text : "";
-          c[c.length - 1] = { role: "ai", text: partial || message || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694." };
-          return c;
-        });
-      }
-    });
-    setThinking(false);
+    try {
+      const res = await window.__apiFetch("/ai-counseling/sessions/" + sid + "/messages?stream=false", {
+        method: "POST",
+        body: JSON.stringify({ text })
+      });
+      const aiText = res && res.data && res.data.message && res.data.message.text || "\uC751\uB2F5\uC744 \uBC1B\uC9C0 \uBABB\uD588\uC5B4\uC694.";
+      setMsgs((m) => [...m, { role: "ai", text: aiText }]);
+    } catch (e) {
+      const msg = e && e.body && (e.body.message || e.body.error && e.body.error.message) || "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694.";
+      setMsgs((m) => [...m, { role: "ai", text: msg }]);
+    } finally {
+      setThinking(false);
+    }
   };
+  if (coach) {
+    const currentSession = sessions.find((s) => s.id === sessionId);
+    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", height: "100%", background: "var(--bg-canvas)", position: "relative", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("aside", { style: {
+      width: isMobile ? "85%" : 280,
+      maxWidth: 340,
+      flexShrink: 0,
+      background: "var(--bg-surface)",
+      borderRight: "1px solid var(--line-subtle)",
+      display: isMobile && !sidebarOpen ? "none" : "flex",
+      flexDirection: "column",
+      position: isMobile ? "absolute" : "relative",
+      top: 0,
+      left: 0,
+      height: "100%",
+      zIndex: 30,
+      boxShadow: isMobile ? "0 0 40px rgba(0,0,0,0.2)" : "none"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 14px 10px", borderBottom: "1px solid var(--line-subtle)", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, fontSize: 14, fontWeight: 800, color: "var(--fg-strong)" } }, "\uB300\uD654 \uBAA9\uB85D"), isMobile && /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 18 }), onClick: () => setSidebarOpen(false), ariaLabel: "\uB2EB\uAE30" })), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 } }, /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "sm", full: true, leading: /* @__PURE__ */ React.createElement(IcPlus, { size: 14 }), onClick: () => setShowPicker(true) }, "\uC0C8 \uB300\uD654 (\uD559\uC0DD \uC120\uD0DD)"), /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", full: true, leading: /* @__PURE__ */ React.createElement(IcMessage, { size: 14 }), onClick: createFreeSession }, "\uC790\uC720 \uB300\uD654 \uC2DC\uC791")), /* @__PURE__ */ React.createElement("nav", { className: "toss-scroll", style: { flex: 1, overflowY: "auto", padding: "4px 6px 10px", display: "flex", flexDirection: "column", gap: 2 } }, sessions.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 16, fontSize: 12, color: "var(--fg-muted)", textAlign: "center", lineHeight: 1.5 }, className: "kr-heading" }, "\uB300\uD654\uB97C \uC2DC\uC791\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uBAA9\uB85D\uC774 \uC313\uC5EC\uC694.", /* @__PURE__ */ React.createElement("br", null), "\uD559\uC0DD\uC744 \uC120\uD0DD\uD574 \uCF54\uCE6D\uC744 \uC2DC\uC791\uD558\uC138\uC694.") : sessions.map((s) => {
+      const isActive = s.id === sessionId;
+      const label = s.title || s.subjectStudentName || "\uC790\uC720 \uB300\uD654";
+      const sub = s.subjectStudentName ? "\uD559\uC0DD: " + s.subjectStudentName : s.title === "\uC790\uC720 \uB300\uD654" || !s.subjectStudentId ? "\uC790\uC720 \uB300\uD654" : "";
+      return /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          key: s.id,
+          onClick: () => {
+            setSessionId(s.id);
+            if (isMobile) setSidebarOpen(false);
+          },
+          style: {
+            padding: "10px 10px",
+            borderRadius: 8,
+            cursor: "pointer",
+            background: isActive ? "var(--brand-50)" : "transparent",
+            borderLeft: isActive ? "3px solid var(--brand-500)" : "3px solid transparent"
+          }
+        },
+        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: isActive ? "var(--brand-700)" : "var(--fg-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, label), sub && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-muted)", marginTop: 2 } }, sub, s.status === "ended" ? " \xB7 \uC885\uB8CC" : "")), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
+          e.stopPropagation();
+          renameSession(s.id, s.title);
+        }, title: "\uC774\uB984 \uBCC0\uACBD", style: { border: "none", background: "transparent", padding: 4, cursor: "pointer", color: "var(--fg-subtle)" } }, /* @__PURE__ */ React.createElement(IcMore, { size: 12 })), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
+          e.stopPropagation();
+          deleteSession(s.id);
+        }, title: "\uC0AD\uC81C", style: { border: "none", background: "transparent", padding: 4, cursor: "pointer", color: "var(--fg-subtle)" } }, /* @__PURE__ */ React.createElement(IcTrash, { size: 12 })))
+      );
+    }))), isMobile && sidebarOpen && /* @__PURE__ */ React.createElement("div", { onClick: () => setSidebarOpen(false), style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.45)", zIndex: 29 } }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 14px", background: "var(--bg-surface)", borderBottom: "1px solid var(--line-subtle)", display: "flex", alignItems: "center", gap: 8 } }, isMobile && /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcMenu, { size: 20 }), onClick: () => setSidebarOpen(true), ariaLabel: "\uB300\uD654 \uBAA9\uB85D" }), /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go && go("dashboard") }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, currentSession ? currentSession.title || currentSession.subjectStudentName || "AI \uC0C1\uB2F4 \uCF54\uCE6D" : "AI \uC0C1\uB2F4 \uCF54\uCE6D"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-subtle)" } }, currentSession && currentSession.subjectStudentName ? `\uD559\uC0DD \uCEE8\uD14D\uC2A4\uD2B8(\uC131\uC801\xB7\uB2E8\uC11C\xB7\uC9C4\uB85C\uBAA9\uD45C) \uC790\uB3D9 \uC8FC\uC785` : "\uAD50\uC0AC\uC6A9 \xB7 \uACF5\uACF5\uB370\uC774\uD130 \uADFC\uAC70")), sessionId && /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcDoc, { size: 18 }), ariaLabel: "\uC774 \uB300\uD654 \uB9AC\uD3EC\uD2B8 \uC0DD\uC131", onClick: () => exportReport(sessionId) })), /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "toss-scroll", style: { flex: 1, padding: "12px 14px 8px", overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 10 } }, msgs.map((m, i) => /* @__PURE__ */ React.createElement(RagBubble, { key: i, msg: m })), thinking && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 26, height: 26, borderRadius: 8, background: "linear-gradient(135deg, #7B61FF 0%, #3182F6 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 } }, "AI"), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 14px", background: "var(--bg-surface)", borderRadius: "4px 14px 14px 14px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--fg-muted)" }, className: "kr-heading" }, "\uB2F5\uBCC0\uC744 \uB9CC\uB4E4\uACE0 \uC788\uC5B4\uC694\u2026")))), /* @__PURE__ */ React.createElement("div", { style: { padding: 12, borderTop: "1px solid var(--line-subtle)", background: "var(--bg-surface)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "flex-end", background: "var(--bg-muted)", borderRadius: 18, padding: "8px 8px 8px 14px" } }, /* @__PURE__ */ React.createElement(
+      "textarea",
+      {
+        value: input,
+        onChange: (e) => setInput(e.target.value),
+        rows: 1,
+        onKeyDown: (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            send(input);
+          }
+        },
+        placeholder: currentSession && currentSession.subjectStudentName ? `${currentSession.subjectStudentName} \uD559\uC0DD\uC5D0 \uB300\uD574 \uBB3C\uC5B4\uBCF4\uC138\uC694` : "\uD559\uC0DD \uC9C0\uB3C4\uC5D0 \uB300\uD574 \uBB3C\uC5B4\uBCF4\uC138\uC694",
+        style: { flex: 1, border: "none", background: "transparent", outline: "none", resize: "none", fontSize: 14, fontFamily: "inherit", lineHeight: 1.5, color: "var(--fg-strong)", maxHeight: 100, paddingTop: 6 }
+      }
+    ), /* @__PURE__ */ React.createElement("button", { onClick: () => send(input), disabled: !input.trim() || thinking, style: { width: 36, height: 36, borderRadius: "50%", border: "none", background: input.trim() && !thinking ? "var(--brand-500)" : "var(--line-strong)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() && !thinking ? "pointer" : "not-allowed", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(IcSend, { size: 16 }))))), showPicker && /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { onClick: () => setShowPicker(false), style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.55)" } }), /* @__PURE__ */ React.createElement("div", { role: "dialog", "aria-modal": "true", style: { position: "relative", width: "min(420px, 100%)", maxHeight: "85%", background: "var(--bg-elevated)", borderRadius: 18, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-pop)" } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px", borderBottom: "1px solid var(--line-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--fg-strong)" } }, "\uD559\uC0DD \uC120\uD0DD"), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 18 }), onClick: () => setShowPicker(false), ariaLabel: "\uB2EB\uAE30" })), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflowY: "auto", padding: 6 } }, roster.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 24, fontSize: 13, color: "var(--fg-muted)", textAlign: "center" } }, "\uB4F1\uB85D\uB41C \uD559\uAE09 \uD559\uC0DD\uC774 \uC5C6\uC5B4\uC694. \uD559\uC0DD \uAD00\uB9AC\uC5D0\uC11C \uCD08\uB300\uCF54\uB4DC\uB97C \uACF5\uC720\uD574\uBCF4\uC138\uC694.") : roster.map((st) => /* @__PURE__ */ React.createElement("button", { key: st.id, onClick: () => createSessionForStudent(st), style: { width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", border: "none", background: "transparent", cursor: "pointer", textAlign: "left", borderRadius: 10 } }, /* @__PURE__ */ React.createElement(Avatar, { name: (st.name || "?").slice(0, 1), size: 36 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)" } }, st.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" } }, st.grade || "\uD559\uB144 \uBBF8\uC815", " \xB7 AI \uC9C4\uD589\uB3C4 ", st.aiProgress || 0, "%")), /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14, color: "var(--fg-subtle)" })))))));
+  }
   return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 12px 12px", background: "var(--bg-surface)", borderBottom: "1px solid var(--line-subtle)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go && go("dashboard") }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--fg-strong)" } }, coach ? "AI \uC0C1\uB2F4 \uCF54\uCE6D" : "AI \uB3C4\uC6C0\uB9D0"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-subtle)" } }, coach ? "\uAD50\uC0AC\uC6A9 \xB7 \uACF5\uACF5\uB370\uC774\uD130 \uADFC\uAC70" : "RAG \xB7 \uACF5\uC2DD \uC790\uB8CC \uAE30\uBC18")), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcDownload, { size: 20 }), ariaLabel: "\uB300\uD654 PDF \uC800\uC7A5", onClick: () => exportReportPDF("AI \uB3C4\uC6C0\uB9D0 \uB300\uD654", ["\uAD6C\uBD84", "\uB0B4\uC6A9"], msgs.map((m) => [m.role === "user" ? "\uD559\uC0DD" : "AI", m.text + (m.sources ? "\n[\uCD9C\uCC98] " + m.sources.map((s) => s.title).join(", ") : "")]), { "\uC720\uD615": "RAG \uB3C4\uC6C0\uB9D0" }) }))), /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "toss-scroll", style: { flex: 1, padding: "12px 14px 8px", overflow: "auto", display: "flex", flexDirection: "column", gap: 10 } }, msgs.map((m, i) => /* @__PURE__ */ React.createElement(RagBubble, { key: i, msg: m })), thinking && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 26, height: 26, borderRadius: 8, background: "linear-gradient(135deg, #7B61FF 0%, #3182F6 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 } }, "AI"), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 14px", background: "var(--bg-surface)", borderRadius: "4px 14px 14px 14px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(IcSearch, { size: 14, color: "var(--accent-purple)" }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--fg-muted)" }, className: "kr-heading" }, "\uAD00\uB828 \uC790\uB8CC\uB97C \uCC3E\uACE0 \uC788\uC5B4\uC694..."))), msgs.length === 1 && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 4px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--fg-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 } }, "\uC774\uB7F0 \uAC78 \uBB3C\uC5B4\uBCF4\uC138\uC694"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, (coach ? COACH_SUGGEST : RAG_SUGGEST).map((s) => /* @__PURE__ */ React.createElement("button", { key: s, onClick: () => send(s), style: {
     textAlign: "left",
     padding: "12px 14px",

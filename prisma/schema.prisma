@@ -399,11 +399,18 @@ model CounselingSession {
   startedAt DateTime      @default(now())
   endedAt   DateTime?
 
+  // 교사 코칭 모드 — 특정 학생을 주제로 한 세션. 학생 무관(자유 대화)이면 null.
+  // 시스템 프롬프트에 그 학생의 성적/AI 단서/진로목표 자동 주입.
+  subjectStudentId String?
+  // 교사가 대화창 목록에서 식별하는 제목(예: "김민준 진로 코칭"). null이면 학생명 또는 자동 생성.
+  title            String?
+
   messages CounselingMessage[]
   signals  CounselingSignal[]
   reports  Report[]
 
   @@index([userId, status])
+  @@index([userId, subjectStudentId])
 }
 
 model CounselingMessage {
