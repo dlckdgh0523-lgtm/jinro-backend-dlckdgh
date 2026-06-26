@@ -81,11 +81,13 @@ function parseReportJson(text: string): Record<string, unknown> | null {
   return null;
 }
 
-/** AI가 응답 끝에 함께 출력하는 메타블록의 스키마. 추가 LLM 호출 없이 단서·종료 판단을 받는다. */
+/** AI가 응답 끝에 함께 출력하는 메타블록의 스키마. 추가 LLM 호출 없이 단서·종료·진로목표 제안을 받는다. */
 export interface AiMeta {
   signals: { tag: '흥미' | '강점' | '가치' | '맥락'; text: string; confidence?: 'high' | 'mid' | 'low' }[];
   shouldFinalize: boolean;
   finalizeReason?: string;
+  /** AI가 학생이 마음에 들어한다고 판단한 진로 목표 후보 (학생 1클릭으로 저장). 미제안 시 null. */
+  proposedTarget?: { career?: string; univ?: string; dept?: string; reason?: string } | null;
 }
 
 /**
@@ -100,10 +102,21 @@ export function parseAiMeta(text: string): AiMeta | null {
     const signals = Array.isArray(obj.signals) ? obj.signals.filter((s) =>
       s && typeof s.text === 'string' && s.text.length > 0 && ['흥미','강점','가치','맥락'].includes(s.tag as string),
     ).map((s) => ({ tag: s.tag, text: String(s.text).slice(0, 200), confidence: (s.confidence ?? 'mid') as 'high' | 'mid' | 'low' })) : [];
+    // proposedTarget 파싱 — 객체이고 어느 한 필드라도 있으면 채택
+    let proposedTarget: AiMeta['proposedTarget'] = null;
+    const pt = obj.proposedTarget;
+    if (pt && typeof pt === 'object') {
+      const career = typeof pt.career === 'string' ? pt.career.slice(0, 80) : undefined;
+      const univ = typeof pt.univ === 'string' ? pt.univ.slice(0, 80) : undefined;
+      const dept = typeof pt.dept === 'string' ? pt.dept.slice(0, 80) : undefined;
+      const reason = typeof pt.reason === 'string' ? pt.reason.slice(0, 200) : undefined;
+      if (career || univ || dept) proposedTarget = { career, univ, dept, reason };
+    }
     return {
       signals: signals as AiMeta['signals'],
       shouldFinalize: obj.shouldFinalize === true,
       finalizeReason: typeof obj.finalizeReason === 'string' ? obj.finalizeReason.slice(0, 200) : undefined,
+      proposedTarget,
     };
   } catch {
     return null;
@@ -490,12 +503,16 @@ export class CounselingService {
       const metaGuide =
         '[메타블록 지침 — 학생에게 보이지 않는 내부 신호, 응답 본문 뒤에 정확히 한 번만 출력하라] ' +
         '답변을 모두 마친 후 마지막 줄에 정확히 다음 형식의 메타블록을 한 번만 출력하라: ' +
-        '<meta>{"signals":[{"tag":"흥미|강점|가치|맥락","text":"...80자 이내","confidence":"high|mid|low"}],"shouldFinalize":false,"finalizeReason":""}</meta> ' +
+        '<meta>{"signals":[{"tag":"흥미|강점|가치|맥락","text":"...80자 이내","confidence":"high|mid|low"}],"shouldFinalize":false,"finalizeReason":"","proposedTarget":null}</meta> ' +
         '· signals: 이번 학생 발화에서 새로 파악된 단서(없으면 빈 배열). 학생이 말한 내용을 기반으로만 — 추측 금지. ' +
         '· shouldFinalize: 다음 중 하나라도 충족되면 true, 아니면 false. (a) 학생이 "리포트", "정리해줘", "마무리", "이제 그만" 같은 종결 의사를 직접 표현했다, ' +
         '(b) 현재 단계가 prepare이고 단서가 4개 이상이며 학생에게 리포트를 제안했고 학생이 긍정했다, ' +
         '(c) 같은 주제를 3턴 이상 맴돌고 있어 리포트로 정리하는 게 학생에게 더 유익하다. 애매하면 false. ' +
         '· finalizeReason: shouldFinalize=true일 때 한 줄 사유(예: "학생이 리포트를 요청했고 단서가 충분히 누적됨"). ' +
+        '· proposedTarget: 학생이 이번 대화에서 특정 진로/대학/학과를 마음에 들어 한다고 명확히 판단되면 {career?, univ?, dept?, reason?} 객체로 제안하라(없으면 null). ' +
+        '  학생이 한 번 클릭하면 진로 목표로 저장된다 — 그러니 학생이 "관심 있어요", "가고 싶어요", "좋아요" 같이 직접 긍정 표현했을 때만 제안. 추측·강요 금지. ' +
+        '  career는 직업/직군(예: "일러스트레이터", "UX 디자이너"), univ/dept는 대학/학과(예: "홍익대학교", "미술학과"). 학생이 대학명만 말하고 학과는 안 정했다면 univ만, 직업만 말했다면 career만. ' +
+        '  같은 목표를 이미 제안한 적 있으면 다시 제안하지 말 것. ' +
         '메타블록은 반드시 유효한 JSON 한 줄이어야 하며, 본문에는 절대 인용/노출 금지.';
       const systemWithState = isTeacher
         ? TEACHER_COACH_PROMPT
@@ -585,6 +602,8 @@ export class CounselingService {
         metaSignals: (meta?.signals ?? []).map((s, i) => ({ ...s, sourceMessageId: userMsg.id, id: `${userMsg.id}:m${i}` })),
         shouldFinalize: !!meta?.shouldFinalize,
         finalizeReason: meta?.finalizeReason ?? null,
+        // AI가 제안한 진로 목표 후보 — 프론트가 "[홍익대 미술학과] 진로 목표로 저장" 1클릭 버튼으로 렌더.
+        proposedTarget: meta?.proposedTarget ?? null,
         usage,
         completeness: prog.completeness,
         stage: prog.stage,
@@ -617,7 +636,7 @@ export class CounselingService {
         result = p;
       },
     });
-    const done = result as unknown as { messageId: string; signals: unknown[]; metaSignals?: unknown[]; shouldFinalize?: boolean; finalizeReason?: string | null; usage: unknown; completeness: number; stage?: string };
+    const done = result as unknown as { messageId: string; signals: unknown[]; metaSignals?: unknown[]; shouldFinalize?: boolean; finalizeReason?: string | null; proposedTarget?: unknown; usage: unknown; completeness: number; stage?: string };
     return {
       data: {
         message: { id: done.messageId, role: 'ai', text: full },
@@ -626,6 +645,7 @@ export class CounselingService {
         metaSignals: done.metaSignals ?? [],
         shouldFinalize: !!done.shouldFinalize,
         finalizeReason: done.finalizeReason ?? null,
+        proposedTarget: done.proposedTarget ?? null,
         completeness: done.completeness,
         stage: done.stage,
         usage: done.usage,

@@ -195,6 +195,22 @@ function TeacherSidebar({ activeId, onChange }) {
 
 function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
   const isMobile = useViewportMobile();
+  // 알림 미읽음 — 실 데이터(GET /notifications?unreadOnly=true). 60s 폴링. 학생 NotifBell과 동일 패턴.
+  const [unread, setUnread] = React.useState(0);
+  React.useEffect(() => {
+    let cancel = false;
+    const fetchUnread = async () => {
+      try {
+        const r = await window.__apiFetch('/notifications?unreadOnly=true&limit=50', { method: 'GET' });
+        if (cancel) return;
+        const list = (r && (Array.isArray(r.data) ? r.data : (r.data || []))) || [];
+        setUnread(list.length || 0);
+      } catch (e) { /* 무시 — badge만 0 */ }
+    };
+    fetchUnread();
+    const t = setInterval(fetchUnread, 60_000);
+    return () => { cancel = true; clearInterval(t); };
+  }, []);
   return (
     <div style={{
       display: 'flex', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between',
@@ -209,13 +225,13 @@ function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
           {subtitle && <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 2 }} className="kr-heading">{subtitle}</div>}
         </div>
         {/* 모바일에선 알림 벨만 제목과 같은 줄에 (오른쪽) */}
-        {isMobile && <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={3} ariaLabel="알림"/>}
+        {isMobile && <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={unread || null} ariaLabel="알림"/>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
         {action}
         {help && typeof HelpButton !== 'undefined' && <HelpButton pageId={help}/>}
         {!isMobile && <Chip tone="info" size="md" leading={<IcSparkles size={11}/>}>무료 체험 18일 남음</Chip>}
-        {!isMobile && <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={3} ariaLabel="알림"/>}
+        {!isMobile && <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={unread || null} ariaLabel="알림"/>}
       </div>
     </div>
   );

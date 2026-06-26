@@ -271,7 +271,8 @@ function AICounseling({ go, openSignals }) {
       const meta = data ? {
         signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
         shouldFinalize: !!data.shouldFinalize,
-        finalizeReason: data.finalizeReason || null
+        finalizeReason: data.finalizeReason || null,
+        proposedTarget: data.proposedTarget || null
       } : null;
       setMsgs((m) => [...m, meta ? { role: "ai", text: aiText, meta } : { role: "ai", text: aiText }]);
     } catch (e) {
@@ -361,6 +362,8 @@ function AICounseling({ go, openSignals }) {
       const options = isLastAi && !thinking ? parseQuickReplies(m.text).options : [];
       const metaSignals = m.meta && Array.isArray(m.meta.signals) ? m.meta.signals : [];
       const willFinalize = !!(m.meta && m.meta.shouldFinalize);
+      const proposedTarget = m.meta && m.meta.proposedTarget || null;
+      const targetSaved = !!(m.meta && m.meta._targetSaved);
       return /* @__PURE__ */ React.createElement(React.Fragment, { key: i }, /* @__PURE__ */ React.createElement(ChatBubble, { msg: m }), metaSignals.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginLeft: 32, marginTop: 2 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--fg-subtle)", alignSelf: "center", display: "inline-flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 11, color: "var(--accent-purple)" }), " \uBC29\uAE08 \uD30C\uC545\uD55C \uB2E8\uC11C"), metaSignals.map((s, j) => /* @__PURE__ */ React.createElement("span", { key: j, style: {
         background: "var(--accent-purple-bg, #F1ECFF)",
         color: "var(--accent-purple, #7B61FF)",
@@ -368,7 +371,25 @@ function AICounseling({ go, openSignals }) {
         padding: "3px 9px",
         fontSize: 11,
         fontWeight: 700
-      } }, s.tag, " \xB7 ", (s.text || "").slice(0, 30)))), willFinalize && /* @__PURE__ */ React.createElement("div", { style: { marginLeft: 32, marginTop: 4, padding: "8px 12px", borderRadius: 10, background: "var(--brand-50)", border: "1px solid var(--brand-200, var(--line))", fontSize: 12, color: "var(--brand-700)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start" } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 12 }), " AI\uAC00 \uC9C4\uB85C \uB9AC\uD3EC\uD2B8\uB97C \uC900\uBE44\uD558\uACE0 \uC788\uC5B4\uC694"), options.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginLeft: 32, marginTop: 2 } }, options.map((opt, j) => /* @__PURE__ */ React.createElement("button", { key: j, onClick: () => send(opt), disabled: thinking, style: {
+      } }, s.tag, " \xB7 ", (s.text || "").slice(0, 30)))), willFinalize && /* @__PURE__ */ React.createElement("div", { style: { marginLeft: 32, marginTop: 4, padding: "8px 12px", borderRadius: 10, background: "var(--brand-50)", border: "1px solid var(--brand-200, var(--line))", fontSize: 12, color: "var(--brand-700)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start" } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 12 }), " AI\uAC00 \uC9C4\uB85C \uB9AC\uD3EC\uD2B8\uB97C \uC900\uBE44\uD558\uACE0 \uC788\uC5B4\uC694"), proposedTarget && /* @__PURE__ */ React.createElement("div", { style: { marginLeft: 32, marginTop: 4, padding: "10px 12px", borderRadius: 12, background: "var(--bg-surface)", border: "1px solid var(--brand-200, var(--line))", display: "flex", flexDirection: "column", gap: 6, alignSelf: "flex-start", maxWidth: 320 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcTarget, { size: 11, color: "var(--brand-600)" }), " \uC9C4\uB85C \uBAA9\uD45C\uB85C \uC800\uC7A5\uD560\uAE4C\uC694?"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, [proposedTarget.career, proposedTarget.univ, proposedTarget.dept].filter(Boolean).join(" \xB7 ")), proposedTarget.reason && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", lineHeight: 1.5 }, className: "kr-heading" }, proposedTarget.reason), targetSaved ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--success)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 12 }), " \uC9C4\uB85C \uBAA9\uD45C\uC5D0 \uC800\uC7A5\uB410\uC5B4\uC694") : /* @__PURE__ */ React.createElement("button", { onClick: async () => {
+        try {
+          await window.__apiFetch("/career/target", {
+            method: "POST",
+            body: JSON.stringify({
+              career: proposedTarget.career || "",
+              univ: proposedTarget.univ || "",
+              dept: proposedTarget.dept || "",
+              reason: proposedTarget.reason || ""
+            })
+          });
+          setMsgs((ms) => ms.map((mm, idx) => idx === i ? { ...mm, meta: { ...mm.meta, _targetSaved: true } } : mm));
+          if (sessionId) refreshProgress(sessionId);
+          if (typeof window.showToast === "function") window.showToast("\uC9C4\uB85C \uBAA9\uD45C\uB85C \uC800\uC7A5\uB410\uC5B4\uC694", "success");
+        } catch (e) {
+          const msg = e && e.body && (e.body.message || e.body.error && e.body.error.message) || "\uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.";
+          alert(msg);
+        }
+      }, style: { alignSelf: "flex-start", padding: "6px 12px", borderRadius: 8, border: "none", background: "var(--brand-500)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcTarget, { size: 12 }), " \uC9C4\uB85C \uBAA9\uD45C\uB85C \uC800\uC7A5")), options.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginLeft: 32, marginTop: 2 } }, options.map((opt, j) => /* @__PURE__ */ React.createElement("button", { key: j, onClick: () => send(opt), disabled: thinking, style: {
         border: "1px solid var(--brand-200, var(--line))",
         background: "var(--brand-50, var(--bg-surface))",
         borderRadius: 999,

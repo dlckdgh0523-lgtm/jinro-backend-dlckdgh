@@ -437,6 +437,7 @@ function AICounseling({ go, openSignals }) {
         signals: Array.isArray(data.metaSignals) ? data.metaSignals : [],
         shouldFinalize: !!data.shouldFinalize,
         finalizeReason: data.finalizeReason || null,
+        proposedTarget: data.proposedTarget || null,
       } : null;
       setMsgs(m => [...m, meta ? { role: 'ai', text: aiText, meta } : { role: 'ai', text: aiText }]);
     } catch (e) {
@@ -567,6 +568,8 @@ function AICounseling({ go, openSignals }) {
             const options = isLastAi && !thinking ? parseQuickReplies(m.text).options : [];
             const metaSignals = (m.meta && Array.isArray(m.meta.signals)) ? m.meta.signals : [];
             const willFinalize = !!(m.meta && m.meta.shouldFinalize);
+            const proposedTarget = (m.meta && m.meta.proposedTarget) || null;
+            const targetSaved = !!(m.meta && m.meta._targetSaved);
             return (
               <React.Fragment key={i}>
                 <ChatBubble msg={m}/>
@@ -588,6 +591,46 @@ function AICounseling({ go, openSignals }) {
                 {willFinalize && (
                   <div style={{ marginLeft: 32, marginTop: 4, padding: '8px 12px', borderRadius: 10, background: 'var(--brand-50)', border: '1px solid var(--brand-200, var(--line))', fontSize: 12, color: 'var(--brand-700)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
                     <IcSparkles size={12}/> AI가 진로 리포트를 준비하고 있어요
+                  </div>
+                )}
+                {/* AI가 제안한 진로 목표 — 학생 1클릭으로 저장 (stage가 recommend→prepare로 자동 전이) */}
+                {proposedTarget && (
+                  <div style={{ marginLeft: 32, marginTop: 4, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-surface)', border: '1px solid var(--brand-200, var(--line))', display: 'flex', flexDirection: 'column', gap: 6, alignSelf: 'flex-start', maxWidth: 320 }}>
+                    <div style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <IcTarget size={11} color="var(--brand-600)"/> 진로 목표로 저장할까요?
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">
+                      {[proposedTarget.career, proposedTarget.univ, proposedTarget.dept].filter(Boolean).join(' · ')}
+                    </div>
+                    {proposedTarget.reason && <div style={{ fontSize: 11, color: 'var(--fg-muted)', lineHeight: 1.5 }} className="kr-heading">{proposedTarget.reason}</div>}
+                    {targetSaved ? (
+                      <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <IcCheckCircle size={12}/> 진로 목표에 저장됐어요
+                      </div>
+                    ) : (
+                      <button onClick={async () => {
+                        try {
+                          await window.__apiFetch('/career/target', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                              career: proposedTarget.career || '',
+                              univ: proposedTarget.univ || '',
+                              dept: proposedTarget.dept || '',
+                              reason: proposedTarget.reason || '',
+                            }),
+                          });
+                          // 저장 성공 → 메시지 meta에 플래그 + progress refresh → stage가 prepare로 자동 전이
+                          setMsgs(ms => ms.map((mm, idx) => idx === i ? { ...mm, meta: { ...mm.meta, _targetSaved: true } } : mm));
+                          if (sessionId) refreshProgress(sessionId);
+                          if (typeof window.showToast === 'function') window.showToast('진로 목표로 저장됐어요', 'success');
+                        } catch (e) {
+                          const msg = (e && e.body && (e.body.message || (e.body.error && e.body.error.message))) || '저장에 실패했어요. 잠시 후 다시 시도해주세요.';
+                          alert(msg);
+                        }
+                      }} style={{ alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--brand-500)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <IcTarget size={12}/> 진로 목표로 저장
+                      </button>
+                    )}
                   </div>
                 )}
                 {options.length > 0 && (

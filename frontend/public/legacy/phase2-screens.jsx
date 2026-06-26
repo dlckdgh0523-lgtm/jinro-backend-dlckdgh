@@ -698,6 +698,7 @@ function CareerTargets({ go }) {
 // 6. COMPLETION STATUS (teacher view)
 // ────────────────────────────────────────────────────────
 function CompletionStatus({ go }) {
+  const isMobile = useViewportMobile();
   // 실 데이터 — /v1/teacher/students 의 이번 주 학습(studyDone/studyTotal).
   const [roster, setRoster] = React.useState(null);
   React.useEffect(() => {
@@ -725,8 +726,8 @@ function CompletionStatus({ go }) {
       <TeacherTopbar title="학생 학습 완료 현황" subtitle="이번 주 학습 계획 진행률 · 실시간 업데이트"
         action={<><Button variant="outline" size="sm" leading={<IcDownload size={14}/>} onClick={() => downloadCSV('학습완료현황', ['이름','완료','전체','완료율','마지막활동'], students.map(s => [s.name, s.done, s.total, `${s.total?Math.round(s.done/s.total*100):0}%`, s.lastActive]))}>CSV 내보내기</Button><Button variant="outline" size="sm" leading={<IcDoc size={14}/>} onClick={() => exportReportPDF('학습 완료 현황', ['이름','완료','완료율','마지막 활동'], students.map(s => [s.name, `${s.done}/${s.total}`, `${s.total?Math.round(s.done/s.total*100):0}%`, s.lastActive]), { '학급': '2-3' })}>PDF 내보내기</Button></>}
       />
-      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: 28, background: 'var(--bg-canvas)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div className="toss-scroll" style={{ flex: 1, overflow: 'auto', padding: isMobile ? 14 : 28, background: 'var(--bg-canvas)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 12, marginBottom: 16 }}>
           <MetricCard label="학급 평균 완료율" value={`${classAvg}%`} delta="+8 지난주" deltaTone="success" icon={<IcCheck size={16}/>}/>
           <MetricCard label="100% 완료" value={`${completed}명`} delta="잘하는 학생" deltaTone="success" icon={<IcStar size={16}/>}/>
           <MetricCard label="진행 중" value={`${students.length - completed - risk}명`} delta="정상 페이스" deltaTone="info" icon={<IcZap size={16}/>}/>

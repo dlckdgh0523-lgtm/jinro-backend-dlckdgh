@@ -164,6 +164,25 @@ function TeacherSidebar({ activeId, onChange }) {
 }
 function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
   const isMobile = useViewportMobile();
+  const [unread, setUnread] = React.useState(0);
+  React.useEffect(() => {
+    let cancel = false;
+    const fetchUnread = async () => {
+      try {
+        const r = await window.__apiFetch("/notifications?unreadOnly=true&limit=50", { method: "GET" });
+        if (cancel) return;
+        const list = r && (Array.isArray(r.data) ? r.data : r.data || []) || [];
+        setUnread(list.length || 0);
+      } catch (e) {
+      }
+    };
+    fetchUnread();
+    const t = setInterval(fetchUnread, 6e4);
+    return () => {
+      cancel = true;
+      clearInterval(t);
+    };
+  }, []);
   return /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex",
     alignItems: isMobile ? "stretch" : "center",
@@ -173,7 +192,7 @@ function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
     padding: isMobile ? "14px 16px" : "16px 28px",
     borderBottom: "1px solid var(--line-subtle)",
     background: "var(--bg-surface)"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--fg-strong)", letterSpacing: "-0.4px" }, className: "kr-heading" }, title), subtitle && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", marginTop: 2 }, className: "kr-heading" }, subtitle)), isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: 3, ariaLabel: "\uC54C\uB9BC" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end" } }, action, help && typeof HelpButton !== "undefined" && /* @__PURE__ */ React.createElement(HelpButton, { pageId: help }), !isMobile && /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "md", leading: /* @__PURE__ */ React.createElement(IcSparkles, { size: 11 }) }, "\uBB34\uB8CC \uCCB4\uD5D8 18\uC77C \uB0A8\uC74C"), !isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: 3, ariaLabel: "\uC54C\uB9BC" })));
+  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--fg-strong)", letterSpacing: "-0.4px" }, className: "kr-heading" }, title), subtitle && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", marginTop: 2 }, className: "kr-heading" }, subtitle)), isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: unread || null, ariaLabel: "\uC54C\uB9BC" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end" } }, action, help && typeof HelpButton !== "undefined" && /* @__PURE__ */ React.createElement(HelpButton, { pageId: help }), !isMobile && /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "md", leading: /* @__PURE__ */ React.createElement(IcSparkles, { size: 11 }) }, "\uBB34\uB8CC \uCCB4\uD5D8 18\uC77C \uB0A8\uC74C"), !isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: unread || null, ariaLabel: "\uC54C\uB9BC" })));
 }
 function TeacherDashboard({ go, openNotif }) {
   var _a;
