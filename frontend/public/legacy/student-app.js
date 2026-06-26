@@ -655,14 +655,48 @@ function CareerReport({ go }) {
   const [progress, setProgress] = React.useState(0);
   const [stage, setStage] = React.useState(null);
   const [targets, setTargets] = React.useState([]);
+  const [pdfBusy, setPdfBusy] = React.useState(false);
+  const [activeSessionId, setActiveSessionId] = React.useState(null);
   const SIGNAL_TONE = { "\uD765\uBBF8": "brand", "\uAC15\uC810": "mint", "\uAC00\uCE58": "purple", "\uB9E5\uB77D": "info" };
   const STAGE_LABEL = { explore: "\uD0D0\uC0C9", profile: "\uD30C\uC545", recommend: "\uCD94\uCC9C", prepare: "\uC900\uBE44" };
+  const downloadPdf = async () => {
+    if (!activeSessionId) {
+      alert("\uC0DD\uC131\uB41C \uB9AC\uD3EC\uD2B8\uAC00 \uC5C6\uC5B4\uC694. AI \uC0C1\uB2F4\uC744 \uBA3C\uC800 \uC9C4\uD589\uD574\uC8FC\uC138\uC694.");
+      return;
+    }
+    setPdfBusy(true);
+    try {
+      const r = await window.__apiFetch("/reports", { method: "POST", body: JSON.stringify({ sessionId: activeSessionId }) });
+      const reportId = r && r.data && r.data.reportId;
+      if (!reportId) throw new Error("reportId \uC5C6\uC74C");
+      const start = Date.now();
+      let pdfUrl = null;
+      while (Date.now() - start < 6e4) {
+        const d = await window.__apiFetch("/reports/" + reportId, { method: "GET" });
+        const status = d && d.data && d.data.status;
+        if (status === "done" && d.data.pdfUrl) {
+          pdfUrl = d.data.pdfUrl;
+          break;
+        }
+        if (status === "failed") throw new Error("\uB9AC\uD3EC\uD2B8 \uC0DD\uC131 \uC2E4\uD328");
+        await new Promise((res) => setTimeout(res, 2e3));
+      }
+      if (!pdfUrl) throw new Error("\uB9AC\uD3EC\uD2B8 \uC900\uBE44 \uC2DC\uAC04 \uCD08\uACFC \u2014 \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694");
+      window.open(pdfUrl, "_blank");
+    } catch (e) {
+      const msg = e && e.body && (e.body.message || e.body.error && e.body.error.message) || e.message || "\uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328";
+      alert(msg);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
   React.useEffect(() => {
     (async () => {
       try {
         const active = await window.__apiFetch("/ai-counseling/sessions/active", { method: "GET" }).catch(() => null);
         const sid = active && active.data && active.data.id;
         if (sid) {
+          setActiveSessionId(sid);
           const prog = await window.__apiFetch("/ai-counseling/sessions/" + sid + "/progress", { method: "GET" }).catch(() => null);
           if (prog && prog.data) {
             setSignals(prog.data.signals || []);
@@ -683,9 +717,10 @@ function CareerReport({ go }) {
     {
       help: "career-report",
       title: "AI \uC9C4\uB85C \uB9AC\uD3EC\uD2B8",
-      leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go("dashboard") })
+      leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go("dashboard") }),
+      trailing: /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcDownload, { size: 20 }), ariaLabel: "PDF\uB85C \uBC1B\uAE30", onClick: downloadPdf, disabled: pdfBusy || signals.length < 5 })
     }
-  ), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px" } }, loading ? /* @__PURE__ */ React.createElement(Card, { padding: 20 }, /* @__PURE__ */ React.createElement(Skeleton, { height: 80 })) : !hasData ? /* @__PURE__ */ React.createElement(
+  ), pdfBusy && /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 16px", background: "var(--brand-50)", fontSize: 12, color: "var(--brand-700)", textAlign: "center" } }, "\uB9AC\uD3EC\uD2B8\uB97C \uB9CC\uB4E4\uACE0 \uC788\uC5B4\uC694. \uC644\uC131\uB418\uBA74 \uC0C8 \uD0ED\uC73C\uB85C \uC5F4\uB824\uC694 (\uCD5C\uB300 1\uBD84)\u2026"), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px" } }, loading ? /* @__PURE__ */ React.createElement(Card, { padding: 20 }, /* @__PURE__ */ React.createElement(Skeleton, { height: 80 })) : !hasData ? /* @__PURE__ */ React.createElement(
     EmptyState,
     {
       icon: /* @__PURE__ */ React.createElement(IcSparkles, { size: 22 }),

@@ -31,6 +31,41 @@ function AdmissionsHub({ go }) {
     try { const seed = window.__admissionsQuery; if (seed) { delete window.__admissionsQuery; return String(seed); } } catch (e) {}
     return '';
   });
+  // 즐겨찾기(=입시 희망) 학과 — 대학 메뉴 진입 시 상단에 노출 + 별 해제 시 즉시 빠짐
+  const [favTargets, setFavTargets] = React.useState([]);
+  const refreshFavs = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch('/career/targets', { method: 'GET' });
+      const list = (r && r.data) || [];
+      // univ가 있는 항목만 = 학과 즐겨찾기 + 진로목표(대학과 함께 저장된 것)
+      setFavTargets(list.filter(t => t.univ));
+    } catch (e) { setFavTargets([]); }
+  }, []);
+  React.useEffect(() => { refreshFavs(); }, [refreshFavs]);
+  // visibilitychange/focus — 대학 상세에서 별 해제하고 돌아오면 즉시 반영
+  React.useEffect(() => {
+    const on = () => { if (!document.hidden) refreshFavs(); };
+    document.addEventListener('visibilitychange', on);
+    window.addEventListener('focus', on);
+    return () => { document.removeEventListener('visibilitychange', on); window.removeEventListener('focus', on); };
+  }, [refreshFavs]);
+  const openUniv = async (name) => {
+    // 대학 id 모르면 이름으로 검색 → 첫 결과 사용
+    try {
+      const r = await window.__apiFetch('/admissions/universities?q=' + encodeURIComponent(name) + '&limit=1', { method: 'GET' });
+      const u = (r && r.data && r.data[0]) || null;
+      if (u) { window.__selectedUnivId = u.id; window.__selectedUnivName = u.name; go('admissions-univ'); return; }
+    } catch (e) {}
+    alert('대학을 찾지 못했어요. 검색에서 직접 찾아주세요.');
+  };
+  const removeFav = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await window.__apiFetch('/career/targets/' + id, { method: 'DELETE' });
+      setFavTargets(prev => prev.filter(t => t.id !== id));
+      if (typeof window.showToast === 'function') window.showToast('입시 희망에서 빠졌어요', 'info');
+    } catch (er) { alert((er && er.body && (er.body.message || (er.body.error && er.body.error.message))) || '해제 실패'); }
+  };
   const [region, setRegion] = React.useState('전체');
   const [type, setType] = React.useState('전체');
   const [page, setPage] = React.useState(1);
@@ -101,6 +136,38 @@ function AdmissionsHub({ go }) {
         <ForeignUnivScreen go={go} embedded/>
       ) : (
       <>
+      {/* 입시 희망 학과 — 즐겨찾기한 학과들 가로 스크롤 카드로 상단 노출 (사용자 요청) */}
+      {favTargets.length > 0 && (
+        <div style={{ padding: '12px 16px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--fg-strong)' }}>⭐ 내 입시 희망</span>
+            <span style={{ fontSize: 11, color: 'var(--fg-subtle)' }}>{favTargets.length}개</span>
+          </div>
+          <div className="toss-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
+            {favTargets.map(t => (
+              <div key={t.id} onClick={() => t.univ && openUniv(t.univ)} style={{
+                flexShrink: 0, minWidth: 180, maxWidth: 240,
+                padding: '10px 12px', borderRadius: 12,
+                background: 'var(--bg-surface)', border: '1px solid var(--brand-200, var(--line))',
+                cursor: t.univ ? 'pointer' : 'default', position: 'relative',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: 'var(--fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">{t.univ}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">
+                      {t.dept || t.career}
+                    </div>
+                    {t.track && <div style={{ fontSize: 10, color: 'var(--fg-subtle)', marginTop: 2 }}>{t.track}</div>}
+                  </div>
+                  <button onClick={(e) => removeFav(t.id, e)} title="입시 희망에서 빼기" aria-label="입시 희망에서 빼기"
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, color: '#F59E0B', fontSize: 18, lineHeight: 1, flexShrink: 0 }}>★</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: '12px 16px 0' }}>
         <TextInput value={q} onChange={onQ} placeholder="대학명 검색 (예: 서울대)" leading={<IcSearch size={16}/>}/>
       </div>
@@ -209,27 +276,42 @@ function UniversityDetail({ go }) {
   const [depts, setDepts] = React.useState(null);    // null=loading
   const [deptMeta, setDeptMeta] = React.useState(null);
   const [q, setQ] = React.useState('');
-  // 학과 즐겨찾기(=입시 희망) — careerTarget 재활용. 이미 저장한 학과는 별이 채워짐.
-  const [favs, setFavs] = React.useState(new Set());
+  // 학과 즐겨찾기(=입시 희망) — careerTarget 재활용. key→target.id 매핑 보관해서 해제도 한 클릭으로.
+  const [favMap, setFavMap] = React.useState({}); // { "univ|dept": targetId }
   const refreshFavs = React.useCallback(async () => {
     try {
       const r = await window.__apiFetch('/career/targets', { method: 'GET' });
       const list = (r && r.data) || [];
-      setFavs(new Set(list.filter(t => t.univ).map(t => `${t.univ}|${t.dept || ''}`)));
-    } catch (e) { setFavs(new Set()); }
+      const m = {};
+      list.filter(t => t.univ).forEach(t => { m[`${t.univ}|${t.dept || ''}`] = t.id; });
+      setFavMap(m);
+    } catch (e) { setFavMap({}); }
   }, []);
   React.useEffect(() => { refreshFavs(); }, [refreshFavs]);
   const toggleFav = async (dept, e) => {
     e.stopPropagation();
     const univ = (detail && detail.name) || univName;
     const key = `${univ}|${dept.name}`;
-    if (favs.has(key)) return; // 이미 저장됨. 해제는 진로 목표 화면에서.
+    const existingId = favMap[key];
+    if (existingId) {
+      // 별 해제 — DELETE 호출, 상단·이 화면에서 모두 빠짐
+      try {
+        await window.__apiFetch('/career/targets/' + existingId, { method: 'DELETE' });
+        setFavMap(prev => { const c = { ...prev }; delete c[key]; return c; });
+        if (typeof window.showToast === 'function') window.showToast(`${dept.name} 입시 희망에서 빠졌어요`, 'info');
+      } catch (er) {
+        alert((er && er.body && (er.body.message || (er.body.error && er.body.error.message))) || '해제 실패');
+      }
+      return;
+    }
+    // 별 추가
     try {
-      await window.__apiFetch('/career/target', { method: 'POST', body: JSON.stringify({
+      const r = await window.__apiFetch('/career/target', { method: 'POST', body: JSON.stringify({
         career: dept.name, univ, dept: dept.name, track: dept.track || undefined,
         reason: '입시 희망 학과 (즐겨찾기)',
       }) });
-      setFavs(prev => new Set(prev).add(key));
+      const newId = r && r.data && r.data.id;
+      if (newId) setFavMap(prev => ({ ...prev, [key]: newId }));
       if (typeof window.showToast === 'function') window.showToast(`${univ} ${dept.name} 입시 희망에 추가됐어요`, 'success');
     } catch (er) {
       const msg = (er && er.body && (er.body.message || (er.body.error && er.body.error.message))) || '저장 실패';
@@ -312,7 +394,7 @@ function UniversityDetail({ go }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filtered.slice(0, 200).map(d => {
               const univ = (detail && detail.name) || univName;
-              const saved = favs.has(`${univ}|${d.name}`);
+              const saved = !!favMap[`${univ}|${d.name}`];
               return (
                 <Card key={d.id} padding={14}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -324,10 +406,10 @@ function UniversityDetail({ go }) {
                       <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{[d.college, d.track, d.degree].filter(Boolean).join(' · ')}</div>
                     </div>
                     {d.track && <Chip tone={d.track === '예체능' ? 'warning' : d.track === '자연' ? 'success' : 'brand'} size="sm">{d.track}</Chip>}
-                    {/* 입시 희망(즐겨찾기) — 한 번 클릭하면 진로 목표에 저장. 저장된 학과는 노랑별 + "저장됨". */}
-                    <button onClick={(e) => toggleFav(d, e)} title={saved ? '입시 희망에 저장됨' : '입시 희망에 추가'}
-                      aria-label={saved ? '입시 희망에 저장됨' : '입시 희망에 추가'}
-                      style={{ border: 'none', background: 'transparent', cursor: saved ? 'default' : 'pointer', padding: 6, color: saved ? '#F59E0B' : 'var(--fg-subtle)', flexShrink: 0, fontSize: 18, lineHeight: 1 }}>
+                    {/* 입시 희망(즐겨찾기) — 클릭 토글: 빈별→추가, 노란별→해제. 해제 즉시 상단·이 화면에서 빠짐. */}
+                    <button onClick={(e) => toggleFav(d, e)} title={saved ? '입시 희망에서 빼기' : '입시 희망에 추가'}
+                      aria-label={saved ? '입시 희망에서 빼기' : '입시 희망에 추가'}
+                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 6, color: saved ? '#F59E0B' : 'var(--fg-subtle)', flexShrink: 0, fontSize: 18, lineHeight: 1 }}>
                       {saved ? '★' : '☆'}
                     </button>
                   </div>

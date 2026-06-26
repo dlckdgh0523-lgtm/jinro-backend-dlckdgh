@@ -22,6 +22,54 @@ function AdmissionsHub({ go }) {
     }
     return "";
   });
+  const [favTargets, setFavTargets] = React.useState([]);
+  const refreshFavs = React.useCallback(async () => {
+    try {
+      const r = await window.__apiFetch("/career/targets", { method: "GET" });
+      const list = r && r.data || [];
+      setFavTargets(list.filter((t) => t.univ));
+    } catch (e) {
+      setFavTargets([]);
+    }
+  }, []);
+  React.useEffect(() => {
+    refreshFavs();
+  }, [refreshFavs]);
+  React.useEffect(() => {
+    const on = () => {
+      if (!document.hidden) refreshFavs();
+    };
+    document.addEventListener("visibilitychange", on);
+    window.addEventListener("focus", on);
+    return () => {
+      document.removeEventListener("visibilitychange", on);
+      window.removeEventListener("focus", on);
+    };
+  }, [refreshFavs]);
+  const openUniv = async (name) => {
+    try {
+      const r = await window.__apiFetch("/admissions/universities?q=" + encodeURIComponent(name) + "&limit=1", { method: "GET" });
+      const u = r && r.data && r.data[0] || null;
+      if (u) {
+        window.__selectedUnivId = u.id;
+        window.__selectedUnivName = u.name;
+        go("admissions-univ");
+        return;
+      }
+    } catch (e) {
+    }
+    alert("\uB300\uD559\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC5B4\uC694. \uAC80\uC0C9\uC5D0\uC11C \uC9C1\uC811 \uCC3E\uC544\uC8FC\uC138\uC694.");
+  };
+  const removeFav = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await window.__apiFetch("/career/targets/" + id, { method: "DELETE" });
+      setFavTargets((prev) => prev.filter((t) => t.id !== id));
+      if (typeof window.showToast === "function") window.showToast("\uC785\uC2DC \uD76C\uB9DD\uC5D0\uC11C \uBE60\uC84C\uC5B4\uC694", "info");
+    } catch (er) {
+      alert(er && er.body && (er.body.message || er.body.error && er.body.error.message) || "\uD574\uC81C \uC2E4\uD328");
+    }
+  };
   const [region, setRegion] = React.useState("\uC804\uCCB4");
   const [type, setType] = React.useState("\uC804\uCCB4");
   const [page, setPage] = React.useState(1);
@@ -99,7 +147,26 @@ function AdmissionsHub({ go }) {
     fontWeight: tab === t.id ? 700 : 500,
     color: tab === t.id ? "var(--brand-600)" : "var(--fg-muted)",
     borderBottom: tab === t.id ? "2px solid var(--brand-500)" : "2px solid transparent"
-  } }, t.label))), tab === "overseas" ? /* @__PURE__ */ React.createElement(ForeignUnivScreen, { go, embedded: true }) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0" } }, /* @__PURE__ */ React.createElement(TextInput, { value: q, onChange: onQ, placeholder: "\uB300\uD559\uBA85 \uAC80\uC0C9 (\uC608: \uC11C\uC6B8\uB300)", leading: /* @__PURE__ */ React.createElement(IcSearch, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 10 } }, /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC9C0\uC5ED", items: REGIONS, active: region, onChange: onRegion }), /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC720\uD615", items: UNIV_TYPES, active: type, onChange: onType })), /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 16px 24px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--fg-muted)" } }, unis === null ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : total != null ? `\uCD1D ${total}\uAC1C \xB7 ${page}/${totalPages}\uD398\uC774\uC9C0` : `${(unis || []).length}\uAC1C`)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, unis === null ? [0, 1, 2, 3].map((i) => /* @__PURE__ */ React.createElement(Card, { key: i, padding: 14 }, /* @__PURE__ */ React.createElement(Skeleton, { height: 48 }))) : unis.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 24, textAlign: "center", color: "var(--fg-muted)", fontSize: 13 } }, "\uC870\uAC74\uC5D0 \uB9DE\uB294 \uB300\uD559\uC774 \uC5C6\uC5B4\uC694. \uC9C0\uC5ED\xB7\uC720\uD615\xB7\uAC80\uC0C9\uC5B4\uB97C \uBC14\uAFD4\uBCF4\uC138\uC694.") : unis.map((u) => /* @__PURE__ */ React.createElement(UnivCard, { key: u.id, u, onClick: () => {
+  } }, t.label))), tab === "overseas" ? /* @__PURE__ */ React.createElement(ForeignUnivScreen, { go, embedded: true }) : /* @__PURE__ */ React.createElement(React.Fragment, null, favTargets.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 8px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "var(--fg-strong)" } }, "\u2B50 \uB0B4 \uC785\uC2DC \uD76C\uB9DD"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--fg-subtle)" } }, favTargets.length, "\uAC1C")), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { display: "flex", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 4 } }, favTargets.map((t) => /* @__PURE__ */ React.createElement("div", { key: t.id, onClick: () => t.univ && openUniv(t.univ), style: {
+    flexShrink: 0,
+    minWidth: 180,
+    maxWidth: 240,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "var(--bg-surface)",
+    border: "1px solid var(--brand-200, var(--line))",
+    cursor: t.univ ? "pointer" : "default",
+    position: "relative"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, t.univ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, t.dept || t.career), t.track && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-subtle)", marginTop: 2 } }, t.track)), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: (e) => removeFav(t.id, e),
+      title: "\uC785\uC2DC \uD76C\uB9DD\uC5D0\uC11C \uBE7C\uAE30",
+      "aria-label": "\uC785\uC2DC \uD76C\uB9DD\uC5D0\uC11C \uBE7C\uAE30",
+      style: { border: "none", background: "transparent", cursor: "pointer", padding: 2, color: "#F59E0B", fontSize: 18, lineHeight: 1, flexShrink: 0 }
+    },
+    "\u2605"
+  )))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0" } }, /* @__PURE__ */ React.createElement(TextInput, { value: q, onChange: onQ, placeholder: "\uB300\uD559\uBA85 \uAC80\uC0C9 (\uC608: \uC11C\uC6B8\uB300)", leading: /* @__PURE__ */ React.createElement(IcSearch, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 10 } }, /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC9C0\uC5ED", items: REGIONS, active: region, onChange: onRegion }), /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC720\uD615", items: UNIV_TYPES, active: type, onChange: onType })), /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 16px 24px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--fg-muted)" } }, unis === null ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : total != null ? `\uCD1D ${total}\uAC1C \xB7 ${page}/${totalPages}\uD398\uC774\uC9C0` : `${(unis || []).length}\uAC1C`)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, unis === null ? [0, 1, 2, 3].map((i) => /* @__PURE__ */ React.createElement(Card, { key: i, padding: 14 }, /* @__PURE__ */ React.createElement(Skeleton, { height: 48 }))) : unis.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 24, textAlign: "center", color: "var(--fg-muted)", fontSize: 13 } }, "\uC870\uAC74\uC5D0 \uB9DE\uB294 \uB300\uD559\uC774 \uC5C6\uC5B4\uC694. \uC9C0\uC5ED\xB7\uC720\uD615\xB7\uAC80\uC0C9\uC5B4\uB97C \uBC14\uAFD4\uBCF4\uC138\uC694.") : unis.map((u) => /* @__PURE__ */ React.createElement(UnivCard, { key: u.id, u, onClick: () => {
     window.__selectedUnivId = u.id;
     window.__selectedUnivName = u.name;
     go("admissions-univ");
@@ -158,14 +225,18 @@ function UniversityDetail({ go }) {
   const [depts, setDepts] = React.useState(null);
   const [deptMeta, setDeptMeta] = React.useState(null);
   const [q, setQ] = React.useState("");
-  const [favs, setFavs] = React.useState(/* @__PURE__ */ new Set());
+  const [favMap, setFavMap] = React.useState({});
   const refreshFavs = React.useCallback(async () => {
     try {
       const r = await window.__apiFetch("/career/targets", { method: "GET" });
       const list = r && r.data || [];
-      setFavs(new Set(list.filter((t) => t.univ).map((t) => `${t.univ}|${t.dept || ""}`)));
+      const m = {};
+      list.filter((t) => t.univ).forEach((t) => {
+        m[`${t.univ}|${t.dept || ""}`] = t.id;
+      });
+      setFavMap(m);
     } catch (e) {
-      setFavs(/* @__PURE__ */ new Set());
+      setFavMap({});
     }
   }, []);
   React.useEffect(() => {
@@ -175,16 +246,31 @@ function UniversityDetail({ go }) {
     e.stopPropagation();
     const univ = detail && detail.name || univName;
     const key = `${univ}|${dept.name}`;
-    if (favs.has(key)) return;
+    const existingId = favMap[key];
+    if (existingId) {
+      try {
+        await window.__apiFetch("/career/targets/" + existingId, { method: "DELETE" });
+        setFavMap((prev) => {
+          const c = { ...prev };
+          delete c[key];
+          return c;
+        });
+        if (typeof window.showToast === "function") window.showToast(`${dept.name} \uC785\uC2DC \uD76C\uB9DD\uC5D0\uC11C \uBE60\uC84C\uC5B4\uC694`, "info");
+      } catch (er) {
+        alert(er && er.body && (er.body.message || er.body.error && er.body.error.message) || "\uD574\uC81C \uC2E4\uD328");
+      }
+      return;
+    }
     try {
-      await window.__apiFetch("/career/target", { method: "POST", body: JSON.stringify({
+      const r = await window.__apiFetch("/career/target", { method: "POST", body: JSON.stringify({
         career: dept.name,
         univ,
         dept: dept.name,
         track: dept.track || void 0,
         reason: "\uC785\uC2DC \uD76C\uB9DD \uD559\uACFC (\uC990\uACA8\uCC3E\uAE30)"
       }) });
-      setFavs((prev) => new Set(prev).add(key));
+      const newId = r && r.data && r.data.id;
+      if (newId) setFavMap((prev) => ({ ...prev, [key]: newId }));
       if (typeof window.showToast === "function") window.showToast(`${univ} ${dept.name} \uC785\uC2DC \uD76C\uB9DD\uC5D0 \uCD94\uAC00\uB410\uC5B4\uC694`, "success");
     } catch (er) {
       const msg = er && er.body && (er.body.message || er.body.error && er.body.error.message) || "\uC800\uC7A5 \uC2E4\uD328";
@@ -215,14 +301,14 @@ function UniversityDetail({ go }) {
   const filtered = (depts || []).filter((d) => !q || (d.name || "").includes(q));
   return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg-canvas)", minHeight: "100%" } }, /* @__PURE__ */ React.createElement(ScreenHeader, { title: "\uB300\uD559", leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go("admissions-hub") }) }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 8px" } }, /* @__PURE__ */ React.createElement(Card, { padding: 20 }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 56, height: 56, borderRadius: 14, background: "var(--brand-500)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15 } }, (detail && detail.name || univName).slice(0, 2)), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 800, color: "var(--fg-strong)" } }, detail && detail.name || univName), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)" } }, detail && detail.region || ""))), adm && adm.confidence === "confirmed" ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line-subtle)" } }, adm.ratio && /* @__PURE__ */ React.createElement(Chip, { tone: "brand", size: "sm" }, "\uACBD\uC7C1\uB960 ", adm.ratio), adm.freshmanFillRate != null && /* @__PURE__ */ React.createElement(Chip, { tone: "success", size: "sm" }, "\uCDA9\uC6D0\uC728 ", adm.freshmanFillRate, "%"), adm.finalRegistrationRate != null && /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, "\uB4F1\uB85D\uB960 ", adm.finalRegistrationRate, "%"), emp && emp.confidence === "confirmed" && emp.avgRate != null && /* @__PURE__ */ React.createElement(Chip, { tone: "warning", size: "sm" }, "\uCDE8\uC5C5\uB960 ", emp.avgRate, "%"), exch && exch.confidence === "confirmed" && exch.total > 0 && /* @__PURE__ */ React.createElement(Chip, { tone: "purple", size: "sm" }, "\uAD50\uD658\uD559\uC0DD ", exch.total, "\uBA85"), adm.svyYr && /* @__PURE__ */ React.createElement(Chip, { tone: "neutral", size: "sm" }, adm.svyYr, " \uACF5\uC2DC")) : /* @__PURE__ */ React.createElement("div", { style: { paddingTop: 12, borderTop: "1px solid var(--line-subtle)", fontSize: 12, color: "var(--fg-muted)" } }, "\uC785\uC2DC \uACBD\uC7C1\uB960 \uB370\uC774\uD130\uB294 \uC900\uBE44 \uC911\uC774\uC5D0\uC694."))), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0" } }, /* @__PURE__ */ React.createElement(TextInput, { value: q, onChange: setQ, placeholder: "\uD559\uACFC\uBA85\uC73C\uB85C \uAC80\uC0C9", leading: /* @__PURE__ */ React.createElement(IcSearch, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 16px 24px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)", marginBottom: 6 } }, "\uAC1C\uC124 \uD559\uACFC ", depts === null ? "" : filtered.length), deptMeta && deptMeta.note && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", marginBottom: 10 } }, deptMeta.note), depts === null ? [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement(Card, { key: i, padding: 14, style: { marginBottom: 6 } }, /* @__PURE__ */ React.createElement(Skeleton, { height: 32 }))) : depts.length === 0 ? /* @__PURE__ */ React.createElement(Card, { padding: 20 }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", lineHeight: 1.6 } }, "\uC774 \uB300\uD559\uC740 \uD559\uACFC \uB370\uC774\uD130\uAC00 \uC544\uC9C1 \uB9E4\uCE6D\uB418\uC9C0 \uC54A\uC558\uC5B4\uC694. \uC2E0\uC0DD \uB300\uD559\xB7\uBD84\uAD50\xB7\uB300\uD559\uC6D0 \uC911\uC2EC \uB300\uD559\uC774\uAC70\uB098 \uACF5\uC2DC\uC5D0 \uB2E4\uB978 \uC774\uB984\uC73C\uB85C \uB4F1\uB85D\uB410\uC744 \uC218 \uC788\uC5B4\uC694. \uB300\uD559 \uC785\uD559\uCC98\uC5D0\uC11C \uCD5C\uC2E0 \uBAA8\uC9D1\uC694\uAC15\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694.")) : filtered.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcSearch, { size: 20 }), title: "\uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC5B4\uC694", body: "\uB2E4\uB978 \uD0A4\uC6CC\uB4DC\uB85C \uAC80\uC0C9\uD574\uBCF4\uC138\uC694." }) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, filtered.slice(0, 200).map((d) => {
     const univ = detail && detail.name || univName;
-    const saved = favs.has(`${univ}|${d.name}`);
+    const saved = !!favMap[`${univ}|${d.name}`];
     return /* @__PURE__ */ React.createElement(Card, { key: d.id, padding: 14 }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 32, height: 32, borderRadius: 10, background: "var(--bg-muted)", display: "flex", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(IcGraduation, { size: 16, color: "var(--fg-muted)" })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)" } }, d.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" } }, [d.college, d.track, d.degree].filter(Boolean).join(" \xB7 "))), d.track && /* @__PURE__ */ React.createElement(Chip, { tone: d.track === "\uC608\uCCB4\uB2A5" ? "warning" : d.track === "\uC790\uC5F0" ? "success" : "brand", size: "sm" }, d.track), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: (e) => toggleFav(d, e),
-        title: saved ? "\uC785\uC2DC \uD76C\uB9DD\uC5D0 \uC800\uC7A5\uB428" : "\uC785\uC2DC \uD76C\uB9DD\uC5D0 \uCD94\uAC00",
-        "aria-label": saved ? "\uC785\uC2DC \uD76C\uB9DD\uC5D0 \uC800\uC7A5\uB428" : "\uC785\uC2DC \uD76C\uB9DD\uC5D0 \uCD94\uAC00",
-        style: { border: "none", background: "transparent", cursor: saved ? "default" : "pointer", padding: 6, color: saved ? "#F59E0B" : "var(--fg-subtle)", flexShrink: 0, fontSize: 18, lineHeight: 1 }
+        title: saved ? "\uC785\uC2DC \uD76C\uB9DD\uC5D0\uC11C \uBE7C\uAE30" : "\uC785\uC2DC \uD76C\uB9DD\uC5D0 \uCD94\uAC00",
+        "aria-label": saved ? "\uC785\uC2DC \uD76C\uB9DD\uC5D0\uC11C \uBE7C\uAE30" : "\uC785\uC2DC \uD76C\uB9DD\uC5D0 \uCD94\uAC00",
+        style: { border: "none", background: "transparent", cursor: "pointer", padding: 6, color: saved ? "#F59E0B" : "var(--fg-subtle)", flexShrink: 0, fontSize: 18, lineHeight: 1 }
       },
       saved ? "\u2605" : "\u2606"
     )));

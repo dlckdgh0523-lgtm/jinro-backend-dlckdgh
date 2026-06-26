@@ -970,8 +970,38 @@ function CareerReport({ go }) {
   const [progress, setProgress] = React.useState(0);
   const [stage, setStage] = React.useState(null);
   const [targets, setTargets] = React.useState([]);
+  // 리포트 PDF 다운로드 — 현재 활성 세션 기준. 생성중→완료 polling으로 pdfUrl 받아 새 탭으로 열기(iOS 호환).
+  const [pdfBusy, setPdfBusy] = React.useState(false);
+  const [activeSessionId, setActiveSessionId] = React.useState(null);
   const SIGNAL_TONE = { '흥미': 'brand', '강점': 'mint', '가치': 'purple', '맥락': 'info' };
   const STAGE_LABEL = { explore: '탐색', profile: '파악', recommend: '추천', prepare: '준비' };
+
+  const downloadPdf = async () => {
+    if (!activeSessionId) { alert('생성된 리포트가 없어요. AI 상담을 먼저 진행해주세요.'); return; }
+    setPdfBusy(true);
+    try {
+      // 리포트 enqueue — 이미 같은 세션 리포트가 있으면 백엔드 멱등키로 같은 jobId 반환
+      const r = await window.__apiFetch('/reports', { method: 'POST', body: JSON.stringify({ sessionId: activeSessionId }) });
+      const reportId = r && r.data && r.data.reportId;
+      if (!reportId) throw new Error('reportId 없음');
+      // 폴링 — 최대 60초
+      const start = Date.now();
+      let pdfUrl = null;
+      while (Date.now() - start < 60_000) {
+        const d = await window.__apiFetch('/reports/' + reportId, { method: 'GET' });
+        const status = d && d.data && d.data.status;
+        if (status === 'done' && d.data.pdfUrl) { pdfUrl = d.data.pdfUrl; break; }
+        if (status === 'failed') throw new Error('리포트 생성 실패');
+        await new Promise(res => setTimeout(res, 2000));
+      }
+      if (!pdfUrl) throw new Error('리포트 준비 시간 초과 — 잠시 후 다시 시도해주세요');
+      // iOS 사파리는 a.download 무시 → window.open 새 탭이 가장 안전. 데스크톱도 동일하게 작동.
+      window.open(pdfUrl, '_blank');
+    } catch (e) {
+      const msg = (e && e.body && (e.body.message || (e.body.error && e.body.error.message))) || e.message || '다운로드 실패';
+      alert(msg);
+    } finally { setPdfBusy(false); }
+  };
 
   React.useEffect(() => {
     (async () => {
@@ -979,6 +1009,7 @@ function CareerReport({ go }) {
         const active = await window.__apiFetch('/ai-counseling/sessions/active', { method: 'GET' }).catch(() => null);
         const sid = active && active.data && active.data.id;
         if (sid) {
+          setActiveSessionId(sid);
           const prog = await window.__apiFetch('/ai-counseling/sessions/' + sid + '/progress', { method: 'GET' }).catch(() => null);
           if (prog && prog.data) { setSignals(prog.data.signals || []); setProgress(prog.data.completeness || 0); setStage(prog.data.stage || null); }
         }
@@ -997,7 +1028,13 @@ function CareerReport({ go }) {
         help="career-report"
         title="AI 진로 리포트"
         leading={<BackButton onClick={() => go('dashboard')}/>}
+        trailing={<IconButton icon={<IcDownload size={20}/>} ariaLabel="PDF로 받기" onClick={downloadPdf} disabled={pdfBusy || signals.length < 5}/>}
       />
+      {pdfBusy && (
+        <div style={{ padding: '8px 16px', background: 'var(--brand-50)', fontSize: 12, color: 'var(--brand-700)', textAlign: 'center' }}>
+          리포트를 만들고 있어요. 완성되면 새 탭으로 열려요 (최대 1분)…
+        </div>
+      )}
       <div style={{ padding: '0 16px 24px' }}>
         {loading ? (
           <Card padding={20}><Skeleton height={80}/></Card>

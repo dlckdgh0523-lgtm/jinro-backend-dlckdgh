@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../db/prisma.service';
@@ -360,6 +360,19 @@ export class AdmissionsController {
   async listTargets(@Req() req: AuthedRequest) {
     const targets = await this.prisma.careerTarget.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'asc' } });
     return { data: targets.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })) };
+  }
+
+  // 진로 목표·즐겨찾기 학과 해제 — 본인 소유만 삭제.
+  // 사용자 요청: 별 해제 시 상단에서 빠져야 함.
+  @Delete('career/targets/:id')
+  @HttpCode(200)
+  async deleteTarget(@Req() req: AuthedRequest, @Param('id') id: string) {
+    const target = await this.prisma.careerTarget.findUnique({ where: { id: parseOrThrow(z.string().max(64), id) } });
+    if (!target || target.userId !== req.user.id) {
+      throw new AppError(ErrorCode.NOT_FOUND, '항목을 찾을 수 없어요.');
+    }
+    await this.prisma.careerTarget.delete({ where: { id: target.id } });
+    return { data: { ok: true } };
   }
 
   // AI 추천 트리거 — 적재 데이터 기반 retriever 추천 (가벼운 동기 응답)
