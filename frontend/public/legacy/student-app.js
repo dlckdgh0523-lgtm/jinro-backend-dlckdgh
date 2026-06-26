@@ -349,7 +349,24 @@ function AICounseling({ go, openSignals }) {
     display: "flex",
     flexDirection: "column",
     gap: 8
-  } }, (() => {
+  } }, msgs.length === 1 && !thinking && /* @__PURE__ */ React.createElement("div", { style: { padding: "6px 4px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--fg-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcSparkles, { size: 11, color: "var(--accent-purple)" }), " \uC774\uB807\uAC8C \uC2DC\uC791\uD574 \uBCF4\uC138\uC694"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, [
+    "\uC544\uC9C1 \uC9C4\uB85C\uB97C \uC798 \uBAA8\uB974\uACA0\uC5B4\uC694",
+    "\uC694\uC998 \uADF8\uB9BC \uADF8\uB9AC\uB294 \uAC8C \uC7AC\uBBF8\uC788\uC5B4\uC694",
+    "\uD3C9\uADE0 \uB4F1\uAE09\uC740 \uC798 \uBAA8\uB974\uACA0\uC9C0\uB9CC \uC218\uD559\uC744 \uC88B\uC544\uD574\uC694",
+    "\uB300\uD559\uC740 \uAC00\uACE0 \uC2F6\uC740\uB370 \uC5B4\uB5A4 \uD559\uACFC\uAC00 \uC88B\uC744\uC9C0 \uBAA8\uB974\uACA0\uC5B4\uC694",
+    "\uBD09\uC0AC\uD65C\uB3D9 \uCD94\uCC9C\uD574 \uC8FC\uC138\uC694"
+  ].map((q) => /* @__PURE__ */ React.createElement("button", { key: q, onClick: () => send(q), style: {
+    textAlign: "left",
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "1px solid var(--brand-200, var(--line))",
+    background: "var(--brand-50, var(--bg-surface))",
+    color: "var(--brand-700)",
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: 1.5,
+    cursor: "pointer"
+  }, className: "kr-heading" }, q)))), (() => {
     let lastAiIdx = -1;
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === "ai") {

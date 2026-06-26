@@ -972,72 +972,71 @@ function AIChatRAG({ go, coach = false }) {
     }
   };
 
-  // 교사 코칭 모드 — 좌측 세션 목록 사이드바 + 우측 채팅 + 학생 선택 모달.
+  // 교사 코칭 모드 — 상단 가로 탭(세션 목록) + 본문(채팅) + 학생 선택 모달.
+  // 사이드바·햄버거 제거 — 셸 햄버거와 충돌하지 않고 카톡/슬랙 같은 익숙한 UX.
   if (coach) {
     const currentSession = sessions.find(s => s.id === sessionId);
+    const isEmpty = msgs.length <= 1; // 초기 인사만 있을 때 = "이런 걸 물어보세요" 노출 조건
     return (
-      <div style={{ display: 'flex', height: '100%', background: 'var(--bg-canvas)', position: 'relative', overflow: 'hidden' }}>
-        {/* 사이드바: 세션 목록 */}
-        <aside style={{
-          width: isMobile ? '85%' : 280, maxWidth: 340, flexShrink: 0,
-          background: 'var(--bg-surface)', borderRight: '1px solid var(--line-subtle)',
-          display: (isMobile && !sidebarOpen) ? 'none' : 'flex', flexDirection: 'column',
-          position: isMobile ? 'absolute' : 'relative', top: 0, left: 0, height: '100%', zIndex: 30,
-          boxShadow: isMobile ? '0 0 40px rgba(0,0,0,0.2)' : 'none',
-        }}>
-          <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid var(--line-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--fg-strong)' }}>대화 목록</div>
-            {isMobile && <IconButton icon={<IcX size={18}/>} onClick={() => setSidebarOpen(false)} ariaLabel="닫기"/>}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-canvas)' }}>
+        {/* 상단: 뒤로/제목/리포트 다운로드 */}
+        <div style={{ padding: '10px 14px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--line-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <BackButton onClick={() => go && go('dashboard')}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">
+              {currentSession ? (currentSession.title || currentSession.subjectStudentName || 'AI 상담 코칭') : 'AI 상담 코칭'}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--fg-subtle)' }}>{currentSession && currentSession.subjectStudentName ? '학생 성적·단서·진로목표 자동 주입' : '교사용 · 공공데이터 근거'}</div>
           </div>
-          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Button variant="primary" size="sm" full leading={<IcPlus size={14}/>} onClick={() => setShowPicker(true)}>새 대화 (학생 선택)</Button>
-            <Button variant="outline" size="sm" full leading={<IcMessage size={14}/>} onClick={createFreeSession}>자유 대화 시작</Button>
-          </div>
-          <nav className="toss-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {sessionId && currentSession && (
+            <>
+              <IconButton icon={<IcMore size={18}/>} onClick={() => renameSession(sessionId, currentSession.title)} ariaLabel="대화 이름 변경"/>
+              <IconButton icon={<IcTrash size={18}/>} onClick={() => deleteSession(sessionId)} ariaLabel="대화 삭제"/>
+              <IconButton icon={<IcDoc size={18}/>} ariaLabel="이 대화 리포트 생성" onClick={() => exportReport(sessionId)}/>
+            </>
+          )}
+        </div>
+        {/* 상단 가로 탭 — 세션 목록 (가로 스크롤) + "+ 새 대화" 항상 표시 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--line-subtle)', flexShrink: 0 }}>
+          <button onClick={() => setShowPicker(true)} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
+            padding: '7px 10px', borderRadius: 999, border: '1px dashed var(--brand-500)',
+            background: 'var(--brand-50)', color: 'var(--brand-600)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}>
+            <IcPlus size={12}/> 새 대화
+          </button>
+          <button onClick={createFreeSession} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
+            padding: '7px 10px', borderRadius: 999, border: '1px solid var(--line)',
+            background: 'var(--bg-muted)', color: 'var(--fg-muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }} title="학생 무관한 자유 질문">
+            <IcMessage size={12}/> 자유
+          </button>
+          <div style={{ width: 1, height: 20, background: 'var(--line)', flexShrink: 0, margin: '0 2px' }}/>
+          <div className="toss-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', overflowY: 'hidden', flex: 1, paddingBottom: 2 }}>
             {sessions.length === 0 ? (
-              <div style={{ padding: 16, fontSize: 12, color: 'var(--fg-muted)', textAlign: 'center', lineHeight: 1.5 }} className="kr-heading">
-                대화를 시작하면 여기에 목록이 쌓여요.<br/>학생을 선택해 코칭을 시작하세요.
-              </div>
+              <span style={{ fontSize: 11, color: 'var(--fg-subtle)', alignSelf: 'center', whiteSpace: 'nowrap' }} className="kr-heading">학생을 선택해 첫 대화를 시작하세요 →</span>
             ) : sessions.map(s => {
               const isActive = s.id === sessionId;
-              const label = s.title || s.subjectStudentName || '자유 대화';
-              const sub = s.subjectStudentName ? '학생: ' + s.subjectStudentName : (s.title === '자유 대화' || !s.subjectStudentId ? '자유 대화' : '');
+              const label = s.subjectStudentName || s.title || '자유 대화';
               return (
-                <div key={s.id} onClick={() => { setSessionId(s.id); if (isMobile) setSidebarOpen(false); }}
-                  style={{ padding: '10px 10px', borderRadius: 8, cursor: 'pointer',
-                    background: isActive ? 'var(--brand-50)' : 'transparent',
-                    borderLeft: isActive ? '3px solid var(--brand-500)' : '3px solid transparent',
-                  }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? 'var(--brand-700)' : 'var(--fg-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">{label}</div>
-                      {sub && <div style={{ fontSize: 10, color: 'var(--fg-muted)', marginTop: 2 }}>{sub}{s.status === 'ended' ? ' · 종료' : ''}</div>}
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); renameSession(s.id, s.title); }} title="이름 변경" style={{ border: 'none', background: 'transparent', padding: 4, cursor: 'pointer', color: 'var(--fg-subtle)' }}><IcMore size={12}/></button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }} title="삭제" style={{ border: 'none', background: 'transparent', padding: 4, cursor: 'pointer', color: 'var(--fg-subtle)' }}><IcTrash size={12}/></button>
-                  </div>
-                </div>
+                <button key={s.id} onClick={() => setSessionId(s.id)}
+                  style={{
+                    padding: '7px 12px', borderRadius: 999, border: 'none', cursor: 'pointer', flexShrink: 0,
+                    background: isActive ? 'var(--brand-500)' : 'var(--bg-muted)',
+                    color: isActive ? '#fff' : 'var(--fg-default)',
+                    fontSize: 12, fontWeight: isActive ? 700 : 600,
+                    whiteSpace: 'nowrap',
+                  }} className="kr-heading">
+                  {s.subjectStudentName && '👤 '}{label}{s.status === 'ended' ? ' · 종료' : ''}
+                </button>
               );
             })}
-          </nav>
-        </aside>
-        {isMobile && sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 29 }}/>}
+          </div>
+        </div>
 
         {/* 본문: 채팅 */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: 'var(--bg-canvas)' }}>
-          <div style={{ padding: '10px 14px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--line-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            {isMobile && <IconButton icon={<IcMenu size={20}/>} onClick={() => setSidebarOpen(true)} ariaLabel="대화 목록"/>}
-            <BackButton onClick={() => go && go('dashboard')}/>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="kr-heading">
-                {currentSession ? (currentSession.title || currentSession.subjectStudentName || 'AI 상담 코칭') : 'AI 상담 코칭'}
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--fg-subtle)' }}>{currentSession && currentSession.subjectStudentName ? `학생 컨텍스트(성적·단서·진로목표) 자동 주입` : '교사용 · 공공데이터 근거'}</div>
-            </div>
-            {sessionId && (
-              <IconButton icon={<IcDoc size={18}/>} ariaLabel="이 대화 리포트 생성" onClick={() => exportReport(sessionId)}/>
-            )}
-          </div>
           <div ref={scrollRef} className="toss-scroll" style={{ flex: 1, padding: '12px 14px 8px', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {msgs.map((m, i) => <RagBubble key={i} msg={m}/>)}
             {thinking && (
@@ -1045,6 +1044,21 @@ function AIChatRAG({ go, coach = false }) {
                 <div style={{ width: 26, height: 26, borderRadius: 8, background: 'linear-gradient(135deg, #7B61FF 0%, #3182F6 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>AI</div>
                 <div style={{ padding: '12px 14px', background: 'var(--bg-surface)', borderRadius: '4px 14px 14px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, color: 'var(--fg-muted)' }} className="kr-heading">답변을 만들고 있어요…</span>
+                </div>
+              </div>
+            )}
+            {/* 새 세션 = 빈 화면이면 질문 예시 칩 노출 — AI에 익숙하지 않은 교사도 바로 시작 가능 */}
+            {isEmpty && !thinking && (
+              <div style={{ padding: '12px 4px 0' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-subtle)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>이런 걸 물어보세요</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {COACH_SUGGEST.map(s => (
+                    <button key={s} onClick={() => send(s)} style={{
+                      textAlign: 'left', padding: '10px 14px', borderRadius: 12,
+                      border: '1px solid var(--line)', background: 'var(--bg-surface)',
+                      color: 'var(--fg-default)', fontSize: 13, lineHeight: 1.5, cursor: 'pointer',
+                    }} className="kr-heading">{s}</button>
+                  ))}
                 </div>
               </div>
             )}

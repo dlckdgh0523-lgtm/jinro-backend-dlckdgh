@@ -559,6 +559,29 @@ function AICounseling({ go, openSignals }) {
         flex: 1, padding: '12px 14px 8px', overflow: 'auto',
         display: 'flex', flexDirection: 'column', gap: 8,
       }}>
+        {/* 첫 진입(초기 인사만 있을 때) — AI에 익숙하지 않은 학생도 바로 시작할 수 있게 질문 예시 칩 노출 */}
+        {msgs.length === 1 && !thinking && (
+          <div style={{ padding: '6px 4px 12px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-subtle)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <IcSparkles size={11} color="var(--accent-purple)"/> 이렇게 시작해 보세요
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                '아직 진로를 잘 모르겠어요',
+                '요즘 그림 그리는 게 재미있어요',
+                '평균 등급은 잘 모르겠지만 수학을 좋아해요',
+                '대학은 가고 싶은데 어떤 학과가 좋을지 모르겠어요',
+                '봉사활동 추천해 주세요',
+              ].map(q => (
+                <button key={q} onClick={() => send(q)} style={{
+                  textAlign: 'left', padding: '10px 14px', borderRadius: 12,
+                  border: '1px solid var(--brand-200, var(--line))', background: 'var(--brand-50, var(--bg-surface))',
+                  color: 'var(--brand-700)', fontSize: 13, fontWeight: 500, lineHeight: 1.5, cursor: 'pointer',
+                }} className="kr-heading">{q}</button>
+              ))}
+            </div>
+          </div>
+        )}
         {(() => {
           // 가장 최근 AI 메시지 인덱스 — quick-reply 칩은 이 메시지에만, 스트리밍/로딩 중이 아닐 때만 노출.
           let lastAiIdx = -1;

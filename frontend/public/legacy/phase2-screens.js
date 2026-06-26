@@ -665,49 +665,70 @@ function AIChatRAG({ go, coach = false }) {
   };
   if (coach) {
     const currentSession = sessions.find((s) => s.id === sessionId);
-    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", height: "100%", background: "var(--bg-canvas)", position: "relative", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("aside", { style: {
-      width: isMobile ? "85%" : 280,
-      maxWidth: 340,
+    const isEmpty = msgs.length <= 1;
+    return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 14px", background: "var(--bg-surface)", borderBottom: "1px solid var(--line-subtle)", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go && go("dashboard") }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, currentSession ? currentSession.title || currentSession.subjectStudentName || "AI \uC0C1\uB2F4 \uCF54\uCE6D" : "AI \uC0C1\uB2F4 \uCF54\uCE6D"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-subtle)" } }, currentSession && currentSession.subjectStudentName ? "\uD559\uC0DD \uC131\uC801\xB7\uB2E8\uC11C\xB7\uC9C4\uB85C\uBAA9\uD45C \uC790\uB3D9 \uC8FC\uC785" : "\uAD50\uC0AC\uC6A9 \xB7 \uACF5\uACF5\uB370\uC774\uD130 \uADFC\uAC70")), sessionId && currentSession && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcMore, { size: 18 }), onClick: () => renameSession(sessionId, currentSession.title), ariaLabel: "\uB300\uD654 \uC774\uB984 \uBCC0\uACBD" }), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcTrash, { size: 18 }), onClick: () => deleteSession(sessionId), ariaLabel: "\uB300\uD654 \uC0AD\uC81C" }), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcDoc, { size: 18 }), ariaLabel: "\uC774 \uB300\uD654 \uB9AC\uD3EC\uD2B8 \uC0DD\uC131", onClick: () => exportReport(sessionId) }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", background: "var(--bg-surface)", borderBottom: "1px solid var(--line-subtle)", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPicker(true), style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
       flexShrink: 0,
-      background: "var(--bg-surface)",
-      borderRight: "1px solid var(--line-subtle)",
-      display: isMobile && !sidebarOpen ? "none" : "flex",
-      flexDirection: "column",
-      position: isMobile ? "absolute" : "relative",
-      top: 0,
-      left: 0,
-      height: "100%",
-      zIndex: 30,
-      boxShadow: isMobile ? "0 0 40px rgba(0,0,0,0.2)" : "none"
-    } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 14px 10px", borderBottom: "1px solid var(--line-subtle)", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, fontSize: 14, fontWeight: 800, color: "var(--fg-strong)" } }, "\uB300\uD654 \uBAA9\uB85D"), isMobile && /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcX, { size: 18 }), onClick: () => setSidebarOpen(false), ariaLabel: "\uB2EB\uAE30" })), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 } }, /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "sm", full: true, leading: /* @__PURE__ */ React.createElement(IcPlus, { size: 14 }), onClick: () => setShowPicker(true) }, "\uC0C8 \uB300\uD654 (\uD559\uC0DD \uC120\uD0DD)"), /* @__PURE__ */ React.createElement(Button, { variant: "outline", size: "sm", full: true, leading: /* @__PURE__ */ React.createElement(IcMessage, { size: 14 }), onClick: createFreeSession }, "\uC790\uC720 \uB300\uD654 \uC2DC\uC791")), /* @__PURE__ */ React.createElement("nav", { className: "toss-scroll", style: { flex: 1, overflowY: "auto", padding: "4px 6px 10px", display: "flex", flexDirection: "column", gap: 2 } }, sessions.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 16, fontSize: 12, color: "var(--fg-muted)", textAlign: "center", lineHeight: 1.5 }, className: "kr-heading" }, "\uB300\uD654\uB97C \uC2DC\uC791\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uBAA9\uB85D\uC774 \uC313\uC5EC\uC694.", /* @__PURE__ */ React.createElement("br", null), "\uD559\uC0DD\uC744 \uC120\uD0DD\uD574 \uCF54\uCE6D\uC744 \uC2DC\uC791\uD558\uC138\uC694.") : sessions.map((s) => {
+      padding: "7px 10px",
+      borderRadius: 999,
+      border: "1px dashed var(--brand-500)",
+      background: "var(--brand-50)",
+      color: "var(--brand-600)",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer"
+    } }, /* @__PURE__ */ React.createElement(IcPlus, { size: 12 }), " \uC0C8 \uB300\uD654"), /* @__PURE__ */ React.createElement("button", { onClick: createFreeSession, style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      flexShrink: 0,
+      padding: "7px 10px",
+      borderRadius: 999,
+      border: "1px solid var(--line)",
+      background: "var(--bg-muted)",
+      color: "var(--fg-muted)",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer"
+    }, title: "\uD559\uC0DD \uBB34\uAD00\uD55C \uC790\uC720 \uC9C8\uBB38" }, /* @__PURE__ */ React.createElement(IcMessage, { size: 12 }), " \uC790\uC720"), /* @__PURE__ */ React.createElement("div", { style: { width: 1, height: 20, background: "var(--line)", flexShrink: 0, margin: "0 2px" } }), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { display: "flex", gap: 6, overflowX: "auto", overflowY: "hidden", flex: 1, paddingBottom: 2 } }, sessions.length === 0 ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--fg-subtle)", alignSelf: "center", whiteSpace: "nowrap" }, className: "kr-heading" }, "\uD559\uC0DD\uC744 \uC120\uD0DD\uD574 \uCCAB \uB300\uD654\uB97C \uC2DC\uC791\uD558\uC138\uC694 \u2192") : sessions.map((s) => {
       const isActive = s.id === sessionId;
-      const label = s.title || s.subjectStudentName || "\uC790\uC720 \uB300\uD654";
-      const sub = s.subjectStudentName ? "\uD559\uC0DD: " + s.subjectStudentName : s.title === "\uC790\uC720 \uB300\uD654" || !s.subjectStudentId ? "\uC790\uC720 \uB300\uD654" : "";
+      const label = s.subjectStudentName || s.title || "\uC790\uC720 \uB300\uD654";
       return /* @__PURE__ */ React.createElement(
-        "div",
+        "button",
         {
           key: s.id,
-          onClick: () => {
-            setSessionId(s.id);
-            if (isMobile) setSidebarOpen(false);
-          },
+          onClick: () => setSessionId(s.id),
           style: {
-            padding: "10px 10px",
-            borderRadius: 8,
+            padding: "7px 12px",
+            borderRadius: 999,
+            border: "none",
             cursor: "pointer",
-            background: isActive ? "var(--brand-50)" : "transparent",
-            borderLeft: isActive ? "3px solid var(--brand-500)" : "3px solid transparent"
-          }
+            flexShrink: 0,
+            background: isActive ? "var(--brand-500)" : "var(--bg-muted)",
+            color: isActive ? "#fff" : "var(--fg-default)",
+            fontSize: 12,
+            fontWeight: isActive ? 700 : 600,
+            whiteSpace: "nowrap"
+          },
+          className: "kr-heading"
         },
-        /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: isActive ? "var(--brand-700)" : "var(--fg-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, label), sub && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-muted)", marginTop: 2 } }, sub, s.status === "ended" ? " \xB7 \uC885\uB8CC" : "")), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
-          e.stopPropagation();
-          renameSession(s.id, s.title);
-        }, title: "\uC774\uB984 \uBCC0\uACBD", style: { border: "none", background: "transparent", padding: 4, cursor: "pointer", color: "var(--fg-subtle)" } }, /* @__PURE__ */ React.createElement(IcMore, { size: 12 })), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
-          e.stopPropagation();
-          deleteSession(s.id);
-        }, title: "\uC0AD\uC81C", style: { border: "none", background: "transparent", padding: 4, cursor: "pointer", color: "var(--fg-subtle)" } }, /* @__PURE__ */ React.createElement(IcTrash, { size: 12 })))
+        s.subjectStudentName && "\u{1F464} ",
+        label,
+        s.status === "ended" ? " \xB7 \uC885\uB8CC" : ""
       );
-    }))), isMobile && sidebarOpen && /* @__PURE__ */ React.createElement("div", { onClick: () => setSidebarOpen(false), style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.45)", zIndex: 29 } }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "10px 14px", background: "var(--bg-surface)", borderBottom: "1px solid var(--line-subtle)", display: "flex", alignItems: "center", gap: 8 } }, isMobile && /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcMenu, { size: 20 }), onClick: () => setSidebarOpen(true), ariaLabel: "\uB300\uD654 \uBAA9\uB85D" }), /* @__PURE__ */ React.createElement(BackButton, { onClick: () => go && go("dashboard") }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, className: "kr-heading" }, currentSession ? currentSession.title || currentSession.subjectStudentName || "AI \uC0C1\uB2F4 \uCF54\uCE6D" : "AI \uC0C1\uB2F4 \uCF54\uCE6D"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-subtle)" } }, currentSession && currentSession.subjectStudentName ? `\uD559\uC0DD \uCEE8\uD14D\uC2A4\uD2B8(\uC131\uC801\xB7\uB2E8\uC11C\xB7\uC9C4\uB85C\uBAA9\uD45C) \uC790\uB3D9 \uC8FC\uC785` : "\uAD50\uC0AC\uC6A9 \xB7 \uACF5\uACF5\uB370\uC774\uD130 \uADFC\uAC70")), sessionId && /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcDoc, { size: 18 }), ariaLabel: "\uC774 \uB300\uD654 \uB9AC\uD3EC\uD2B8 \uC0DD\uC131", onClick: () => exportReport(sessionId) })), /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "toss-scroll", style: { flex: 1, padding: "12px 14px 8px", overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 10 } }, msgs.map((m, i) => /* @__PURE__ */ React.createElement(RagBubble, { key: i, msg: m })), thinking && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 26, height: 26, borderRadius: 8, background: "linear-gradient(135deg, #7B61FF 0%, #3182F6 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 } }, "AI"), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 14px", background: "var(--bg-surface)", borderRadius: "4px 14px 14px 14px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--fg-muted)" }, className: "kr-heading" }, "\uB2F5\uBCC0\uC744 \uB9CC\uB4E4\uACE0 \uC788\uC5B4\uC694\u2026")))), /* @__PURE__ */ React.createElement("div", { style: { padding: 12, borderTop: "1px solid var(--line-subtle)", background: "var(--bg-surface)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "flex-end", background: "var(--bg-muted)", borderRadius: 18, padding: "8px 8px 8px 14px" } }, /* @__PURE__ */ React.createElement(
+    }))), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "toss-scroll", style: { flex: 1, padding: "12px 14px 8px", overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 10 } }, msgs.map((m, i) => /* @__PURE__ */ React.createElement(RagBubble, { key: i, msg: m })), thinking && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 26, height: 26, borderRadius: 8, background: "linear-gradient(135deg, #7B61FF 0%, #3182F6 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 } }, "AI"), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 14px", background: "var(--bg-surface)", borderRadius: "4px 14px 14px 14px", display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "var(--fg-muted)" }, className: "kr-heading" }, "\uB2F5\uBCC0\uC744 \uB9CC\uB4E4\uACE0 \uC788\uC5B4\uC694\u2026"))), isEmpty && !thinking && /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 4px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--fg-subtle)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 } }, "\uC774\uB7F0 \uAC78 \uBB3C\uC5B4\uBCF4\uC138\uC694"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, COACH_SUGGEST.map((s) => /* @__PURE__ */ React.createElement("button", { key: s, onClick: () => send(s), style: {
+      textAlign: "left",
+      padding: "10px 14px",
+      borderRadius: 12,
+      border: "1px solid var(--line)",
+      background: "var(--bg-surface)",
+      color: "var(--fg-default)",
+      fontSize: 13,
+      lineHeight: 1.5,
+      cursor: "pointer"
+    }, className: "kr-heading" }, s))))), /* @__PURE__ */ React.createElement("div", { style: { padding: 12, borderTop: "1px solid var(--line-subtle)", background: "var(--bg-surface)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "flex-end", background: "var(--bg-muted)", borderRadius: 18, padding: "8px 8px 8px 14px" } }, /* @__PURE__ */ React.createElement(
       "textarea",
       {
         value: input,
