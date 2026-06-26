@@ -744,6 +744,9 @@ function TeacherApp({ initialScreen = "dashboard" }) {
       }
     }
   }, [tour.phase]);
+  React.useEffect(() => {
+    if (isMobile && (tour.phase === "welcome" || tour.phase === "tour")) setNavOpen(true);
+  }, [tour.phase, isMobile]);
   const teacherNavId = screen === "student-detail" ? "students" : screen.startsWith("admissions") ? "admissions-hub" : screen;
   const wrapNav = (s) => {
     setScreen(s);

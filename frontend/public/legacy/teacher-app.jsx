@@ -1415,6 +1415,10 @@ function TeacherApp({ initialScreen = 'dashboard' }) {
   const tour = useTour(TEACHER_TOUR_STEPS, 'teacher');
   React.useEffect(() => { try { if (window.__LIVE_MODE && localStorage.getItem('jinro:webtour:teacher')) tour.setPhase('done'); } catch (e) {} }, []);
   React.useEffect(() => { if (tour.phase === 'done') { try { localStorage.setItem('jinro:webtour:teacher', '1'); } catch (e) {} } }, [tour.phase]);
+  // 첫 온보딩 시 모바일 사이드바 자동 오픈 — tour가 "이 메뉴 클릭" 안내할 때 빈 곳 안 가리키게
+  React.useEffect(() => {
+    if (isMobile && (tour.phase === 'welcome' || tour.phase === 'tour')) setNavOpen(true);
+  }, [tour.phase, isMobile]);
   const teacherNavId = screen === 'student-detail' ? 'students' : (screen.startsWith('admissions') ? 'admissions-hub' : screen);
   const wrapNav = (s) => { setScreen(s); setNavOpen(false); };
   return (

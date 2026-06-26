@@ -405,6 +405,10 @@ function StudentWebApp({ initialScreen = 'dashboard', withToasts = false }) {
   React.useEffect(() => {
     try { if (window.__LIVE_MODE && localStorage.getItem('jinro:webtour:student')) tour.setPhase('done'); } catch (e) {}
   }, []);
+  // 첫 온보딩 — tour가 시작되면 모바일에서 사이드바 자동 오픈(메뉴 항목 가리키는 안내가 빈 곳을 가리키던 문제 해소)
+  React.useEffect(() => {
+    if (isMobile && (tour.phase === 'welcome' || tour.phase === 'tour')) setNavOpen(true);
+  }, [tour.phase, isMobile]);
   React.useEffect(() => { if (tour.phase === 'done') { try { localStorage.setItem('jinro:webtour:student', '1'); } catch (e) {} } }, [tour.phase]);
   // Map screen → sidebar nav id
   const navId = (() => {

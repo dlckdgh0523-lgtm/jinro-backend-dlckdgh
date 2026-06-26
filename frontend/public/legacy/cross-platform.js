@@ -312,6 +312,9 @@ function StudentWebApp({ initialScreen = "dashboard", withToasts = false }) {
     }
   }, []);
   React.useEffect(() => {
+    if (isMobile && (tour.phase === "welcome" || tour.phase === "tour")) setNavOpen(true);
+  }, [tour.phase, isMobile]);
+  React.useEffect(() => {
     if (tour.phase === "done") {
       try {
         localStorage.setItem("jinro:webtour:student", "1");

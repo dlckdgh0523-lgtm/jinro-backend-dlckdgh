@@ -89,6 +89,23 @@ function ReportViewer({ open, onClose, report = null, forTeacher = false }) {
             ))}
           </SectionCard>
 
+          {/* 추천 학과 — AI 리포트가 careers와 함께 majors도 함께 출력. 학생이 "어느 학과 가야 하나" 즉시 확인. */}
+          {Array.isArray(report.majors) && report.majors.length > 0 && (
+            <SectionCard title="추천 학과" subtitle="대학 검색에서 학과를 찾아 입시 희망 ★로 모을 수 있어요">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {report.majors.map((m, i) => (
+                  <button key={i} onClick={() => { try { window.__admissionsQuery = m; if (typeof window.__navTo === 'function') window.__navTo('admissions-hub'); else if (window.location) window.location.hash = 'admissions-hub'; } catch (e) {} }}
+                    style={{ padding: '8px 12px', borderRadius: 999, border: '1px solid var(--brand-200, var(--line))', background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }} className="kr-heading">
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 10, lineHeight: 1.5 }} className="kr-heading">
+                칩을 누르면 대학 검색으로 이동해 그 학과를 개설한 대학을 찾을 수 있어요.
+              </div>
+            </SectionCard>
+          )}
+
           <SectionCard title="대화에서 보인 단서">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {report.signals.map((s, i) => (

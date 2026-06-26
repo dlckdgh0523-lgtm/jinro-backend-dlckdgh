@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { env } from './common/env';
 import { logger } from './common/logger';
@@ -16,6 +17,25 @@ export async function createApp(): Promise<NestExpressApplication> {
     bodyParser: false, // 크기 제한을 위해 직접 등록
     logger: ['error', 'warn'],
   });
+
+  // 보안 헤더 (Helmet) — 학생 데이터 보호 핵심:
+  // - HSTS: HTTPS 강제(브라우저가 다시 HTTP 안 씀)
+  // - X-Content-Type-Options:nosniff: MIME 스니핑 차단
+  // - X-Frame-Options:DENY: 클릭재킹 차단 (다른 사이트가 iframe으로 우리 화면 못 끼움)
+  // - Referrer-Policy: 외부 사이트로 학생 URL 정보 흘리지 않음
+  // - CSP는 별도 — 현재 frontend가 인라인 스크립트 많아 보수적 설정(연결만 same-origin)
+  // Caddy가 이미 일부 헤더 줄 수 있어 false 옵션은 충돌 시 추후 조정.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // 레거시 인라인 스크립트와 충돌 — 다음 단계에서 자체 CSP
+      crossOriginEmbedderPolicy: false, // SSE/외부 폰트와 호환
+      strictTransportSecurity: { maxAge: 31536000, includeSubDomains: true, preload: false },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      frameguard: { action: 'deny' },
+      noSniff: true,
+      hidePoweredBy: true,
+    }),
+  );
 
   // traceId 전파 — 모든 요청을 AsyncLocalStorage 컨텍스트로 감싼다
   app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
