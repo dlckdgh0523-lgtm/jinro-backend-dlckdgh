@@ -3,16 +3,34 @@ function DeleteAccountDialog({ open, onClose, onConfirm, role = "student" }) {
   const [reason, setReason] = React.useState("");
   const trapRef = useFocusTrap(open, onClose);
   const [typed, setTyped] = React.useState("");
+  const [pwd, setPwd] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
   React.useEffect(() => {
     if (open) {
       setStep("confirm");
       setReason("");
       setTyped("");
+      setPwd("");
+      setErr("");
+      setBusy(false);
     }
   }, [open]);
   if (!open) return null;
   const requiredText = "\uD68C\uC6D0 \uD0C8\uD1F4";
-  const canDelete = typed.trim() === requiredText;
+  const canDelete = typed.trim() === requiredText && pwd.length > 0 && !busy;
+  const doDelete = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      await window.__apiFetch("/auth/me", { method: "DELETE", body: JSON.stringify({ currentPassword: pwd }) });
+      setStep("done");
+    } catch (e) {
+      setErr(e && e.body && (e.body.message || e.body.error && e.body.error.message) || "\uD0C8\uD1F4\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const REASONS = role === "teacher" ? ["\uB354 \uC774\uC0C1 \uD559\uAE09\uC744 \uC6B4\uC601\uD558\uC9C0 \uC54A\uC544\uC694", "\uAE30\uB2A5\uC774 \uBD80\uC871\uD574\uC694", "\uAC00\uACA9\uC774 \uBD80\uB2F4\uB3FC\uC694", "\uB2E4\uB978 \uC11C\uBE44\uC2A4\uB85C \uC62E\uACA8\uC694", "\uAE30\uD0C0"] : ["\uBAA9\uD45C\uB97C \uC774\uBBF8 \uC815\uD588\uC5B4\uC694", "AI \uC0C1\uB2F4\uC774 \uB3C4\uC6C0\uC774 \uC548 \uB3FC\uC694", "\uC2DC\uAC04\uC774 \uC5C6\uC5B4\uC694", "\uAC00\uACA9\uC774 \uBD80\uB2F4\uB3FC\uC694", "\uAE30\uD0C0"];
   return /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } }, /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.55)", animation: "fadeIn 240ms" } }), /* @__PURE__ */ React.createElement("div", { ref: trapRef, role: "alertdialog", "aria-modal": "true", "aria-label": "\uD68C\uC6D0 \uD0C8\uD1F4", style: {
     position: "relative",
@@ -55,11 +73,13 @@ function DeleteAccountDialog({ open, onClose, onConfirm, role = "student" }) {
     background: reason === r ? "var(--brand-50)" : "var(--bg-surface)",
     borderRadius: 10,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement("input", { type: "radio", checked: reason === r, onChange: () => setReason(r), style: { accentColor: "var(--brand-500)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: reason === r ? "var(--brand-600)" : "var(--fg-default)", fontWeight: reason === r ? 600 : 500 } }, r))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: onClose }, "\uCDE8\uC18C"), /* @__PURE__ */ React.createElement(Button, { variant: "danger", full: true, onClick: () => setStep("typed") }, "\uACC4\uC18D"))), step === "typed" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: "var(--fg-strong)", marginBottom: 8 }, className: "kr-heading" }, "\uB9C8\uC9C0\uB9C9 \uD655\uC778\uC774\uC5D0\uC694"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "var(--fg-muted)", lineHeight: 1.55, marginBottom: 16 }, className: "kr-heading" }, "\uC544\uB798\uC5D0 ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--danger)" } }, '"', requiredText, '"'), "\uC744(\uB97C) \uC815\uD655\uD788 \uC785\uB825\uD574\uC8FC\uC138\uC694."), /* @__PURE__ */ React.createElement(FormField, { label: "\uD655\uC778 \uBB38\uAD6C", required: true, style: { marginBottom: 20 } }, /* @__PURE__ */ React.createElement(TextInput, { value: typed, onChange: setTyped, placeholder: requiredText, autoFocus: true })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: () => setStep("confirm") }, "\uC774\uC804"), /* @__PURE__ */ React.createElement(Button, { variant: "danger", full: true, disabled: !canDelete, onClick: () => {
-    setStep("done");
-  } }, "\uD0C8\uD1F4\uD558\uAE30"))), step === "done" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { width: 64, height: 64, borderRadius: 18, background: "var(--bg-muted)", color: "var(--fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" } }, /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 32 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: "var(--fg-strong)", textAlign: "center", marginBottom: 8 }, className: "kr-heading" }, "\uD0C8\uD1F4 \uCC98\uB9AC\uAC00 \uC644\uB8CC\uB410\uC5B4\uC694"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", lineHeight: 1.55, textAlign: "center", marginBottom: 20 }, className: "kr-heading" }, "\uADF8\uB3D9\uC548 \uC9C4\uB85C\uB098\uCE68\uBC18\uC744 \uC774\uC6A9\uD574\uC8FC\uC154\uC11C \uAC10\uC0AC\uD588\uC5B4\uC694.", role !== "teacher" && "\n30\uC77C \uC774\uB0B4\uB77C\uBA74 \uB3D9\uC77C \uC774\uBA54\uC77C\uB85C \uC7AC\uAC00\uC785 \uC2DC \uBCF5\uAD6C\uD560 \uC218 \uC788\uC5B4\uC694."), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, onClick: () => {
+  } }, /* @__PURE__ */ React.createElement("input", { type: "radio", checked: reason === r, onChange: () => setReason(r), style: { accentColor: "var(--brand-500)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: reason === r ? "var(--brand-600)" : "var(--fg-default)", fontWeight: reason === r ? 600 : 500 } }, r))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: onClose }, "\uCDE8\uC18C"), /* @__PURE__ */ React.createElement(Button, { variant: "danger", full: true, onClick: () => setStep("typed") }, "\uACC4\uC18D"))), step === "typed" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: "var(--fg-strong)", marginBottom: 8 }, className: "kr-heading" }, "\uB9C8\uC9C0\uB9C9 \uD655\uC778\uC774\uC5D0\uC694"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "var(--fg-muted)", lineHeight: 1.55, marginBottom: 16 }, className: "kr-heading" }, "\uC544\uB798\uC5D0 ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--danger)" } }, '"', requiredText, '"'), "\uC744(\uB97C) \uC815\uD655\uD788 \uC785\uB825\uD558\uACE0, \uBCF8\uC778 \uD655\uC778\uC744 \uC704\uD574 \uBE44\uBC00\uBC88\uD638\uB97C \uD55C \uBC88 \uB354 \uC785\uB825\uD574\uC8FC\uC138\uC694."), /* @__PURE__ */ React.createElement(FormField, { label: "\uD655\uC778 \uBB38\uAD6C", required: true, style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(TextInput, { value: typed, onChange: setTyped, placeholder: requiredText, autoFocus: true })), /* @__PURE__ */ React.createElement(FormField, { label: "\uBE44\uBC00\uBC88\uD638 \uC7AC\uD655\uC778", required: true, style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement(TextInput, { value: pwd, onChange: setPwd, type: "password", placeholder: "\uD604\uC7AC \uBE44\uBC00\uBC88\uD638" })), err && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 12, padding: "10px 12px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, color: "var(--danger)", fontSize: 13 } }, err), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(Button, { variant: "secondary", full: true, onClick: () => setStep("confirm"), disabled: busy }, "\uC774\uC804"), /* @__PURE__ */ React.createElement(Button, { variant: "danger", full: true, disabled: !canDelete, onClick: doDelete }, busy ? "\uCC98\uB9AC \uC911\u2026" : "\uD0C8\uD1F4\uD558\uAE30"))), step === "done" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { width: 64, height: 64, borderRadius: 18, background: "var(--bg-muted)", color: "var(--fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" } }, /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 32 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, color: "var(--fg-strong)", textAlign: "center", marginBottom: 8 }, className: "kr-heading" }, "\uD0C8\uD1F4 \uCC98\uB9AC\uAC00 \uC644\uB8CC\uB410\uC5B4\uC694"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", lineHeight: 1.55, textAlign: "center", marginBottom: 20 }, className: "kr-heading" }, "\uADF8\uB3D9\uC548 \uC9C4\uB85C\uB098\uCE68\uBC18\uC744 \uC774\uC6A9\uD574\uC8FC\uC154\uC11C \uAC10\uC0AC\uD588\uC5B4\uC694.", role !== "teacher" && "\n\uB3D9\uC77C \uC774\uBA54\uC77C\uB85C \uB2E4\uC2DC \uAC00\uC785\uD560 \uC218 \uC788\uC5B4\uC694."), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, onClick: () => {
     onConfirm && onConfirm();
     onClose();
+    try {
+      window.dispatchEvent(new Event("jinro:logout"));
+    } catch (e) {
+    }
   } }, "\uCC98\uC74C\uC73C\uB85C"))));
 }
 function TeacherProfile({ go, openNotif }) {

@@ -36,21 +36,24 @@ export async function createApp(): Promise<NestExpressApplication> {
       hidePoweredBy: true,
     }),
   );
-  // CSP Report-Only — 위반 사항을 차단하지 않고 보고만(점진 적용). 운영 안정화 후 enforce 전환.
-  // 외부: react/three/html2canvas CDN, pretendard 폰트, data.go.kr 이미지. 인라인 스크립트는 unsafe-inline 임시 허용.
+  // CSP enforce — 보수적 정책. 인라인 스크립트가 많아 unsafe-inline은 일단 유지(레거시 호환).
+  // unsafe-inline 제거는 다음 단계에서 nonce 도입과 함께. 지금도 frame-ancestors/object-src/base-uri는 강제 차단됨.
   app.use((_req, res, next) => {
     res.setHeader(
-      'Content-Security-Policy-Report-Only',
+      'Content-Security-Policy',
       [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com",
+        "script-src-attr 'unsafe-inline'", // onClick 인라인 핸들러
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
         "font-src 'self' https://cdn.jsdelivr.net data:",
         "img-src 'self' data: blob: https:",
         "connect-src 'self' https://api.jinronavi.kr https://www.jinro.it.kr",
-        "frame-ancestors 'none'",
-        "object-src 'none'",
-        "base-uri 'self'",
+        "frame-ancestors 'none'",      // iframe 임베드 금지 (clickjacking)
+        "object-src 'none'",            // Flash/플러그인 금지
+        "base-uri 'self'",              // <base> 변조 차단
+        "form-action 'self'",           // 폼 제출 도메인 제한
+        "upgrade-insecure-requests",    // http 요청을 https로 자동 승격
       ].join('; '),
     );
     next();

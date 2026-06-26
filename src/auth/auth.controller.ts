@@ -15,15 +15,29 @@ const consentsSchema = z.object({
   mkt: z.boolean().optional(),
 });
 
+// 입력 검증 강화 — 이름/학교/학급에 정규식 추가. XSS·SQL injection·이상 입력 1차 방어.
+// 한글(가-힣)·영문·숫자·공백·일부 기호만 허용. 컨트롤 문자·HTML 태그·SQL 메타문자 차단.
+// (DB·표시 시점에는 별도 escape 있지만, 입력 시점에 거르는 게 정직한 데이터 보장).
 const emailSchema = z.string().trim().email('이메일 형식이 올바르지 않아요').max(254);
 const passwordSchema = z.string().min(8, '비밀번호는 8자 이상이어야 해요').max(128);
-const nameSchema = z.string().trim().min(1).max(50);
+// 이름 — 한글 자모 포함 (외국인 학생 대비 알파벳·공백·점·하이픈 허용)
+const nameSchema = z.string().trim().min(1).max(50)
+  .regex(/^[\p{L}\p{M}0-9 .\-_'·]+$/u, '이름에 사용할 수 없는 문자가 포함돼 있어요');
+// 학교명 — 한글·영문·숫자·공백·일부 기호
+const schoolSchema = z.string().trim().min(1).max(100)
+  .regex(/^[\p{L}\p{M}0-9 .\-_()·]+$/u, '학교명에 사용할 수 없는 문자가 포함돼 있어요');
+// 학급명 — "1-3", "3반", "1학년 2반" 같이 자유로움. 짧고 한글·숫자·공백·하이픈만.
+const classroomSchema = z.string().trim().min(1).max(30)
+  .regex(/^[\p{L}\p{M}0-9 \-]+$/u, '학급명에 사용할 수 없는 문자가 포함돼 있어요');
+// 초대코드 — 영숫자 6~20자만 (대시 허용)
+const inviteCodeSchema = z.string().trim().max(20)
+  .regex(/^[A-Za-z0-9-]*$/, '초대코드는 영문/숫자만 입력해주세요').optional();
 
 const signupStudentSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   name: nameSchema,
-  inviteCode: z.string().trim().max(20).optional(),
+  inviteCode: inviteCodeSchema,
   grade: z.enum(['E4', 'E5', 'E6', 'M1', 'M2', 'M3', 'H1', 'H2', 'H3']).optional(),
   consents: consentsSchema,
 });
@@ -32,8 +46,8 @@ const signupTeacherSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   name: nameSchema,
-  school: z.string().trim().min(1).max(100),
-  classroom: z.string().trim().min(1).max(100),
+  school: schoolSchema,
+  classroom: classroomSchema,
   consents: consentsSchema,
 });
 

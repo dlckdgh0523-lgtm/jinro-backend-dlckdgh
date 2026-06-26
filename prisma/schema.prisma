@@ -64,7 +64,14 @@ model RefreshToken {
   revokedAt DateTime?
   createdAt DateTime  @default(now())
 
+  // 토큰 family — 같은 로그인에서 회전되는 모든 토큰을 묶어 추적.
+  // 이미 회전된(revokedAt 있는) 토큰을 다시 쓰면 = 탈취 가능성 → family 전체 폐기.
+  familyId  String?
+  // 부모 토큰의 id (체인 추적용. 디버깅·감사에 유용)
+  parentId  String?
+
   @@index([userId])
+  @@index([familyId])
 }
 
 // ─── 커리어넷 적재 (런타임이 커리어넷에 직접 의존하지 않도록) ───

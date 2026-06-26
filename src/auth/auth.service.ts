@@ -229,14 +229,30 @@ export class AuthService {
     }
     if (payload.typ !== 'refresh') throw new AppError(ErrorCode.AUTH_EXPIRED, '세션이 만료됐어요. 다시 로그인해주세요.');
     const row = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
-    if (!row || row.revokedAt || row.expiresAt < new Date()) {
+    if (!row) {
+      throw new AppError(ErrorCode.AUTH_EXPIRED, '세션이 만료됐어요. 다시 로그인해주세요.');
+    }
+    // 🚨 탈취 감지 — 이미 회전돼 revoked 된 토큰을 다시 쓰려는 경우:
+    // 정상 흐름이면 절대 발생하지 않음. 발생했다는 건 누군가(공격자) 같은 family 토큰을 가지고 재사용 시도한 것.
+    // → 같은 family 전체 폐기(공격자도, 정상 사용자도 모두 로그아웃 → 사용자가 재로그인하면 새 family).
+    if (row.revokedAt) {
+      if (row.familyId) {
+        await this.prisma.refreshToken.updateMany({
+          where: { familyId: row.familyId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        logger.warn({ userId: row.userId, familyId: row.familyId }, 'refresh token reuse detected — family revoked');
+      }
+      throw new AppError(ErrorCode.AUTH_EXPIRED, '보안을 위해 세션이 종료됐어요. 다시 로그인해주세요.');
+    }
+    if (row.expiresAt < new Date()) {
       throw new AppError(ErrorCode.AUTH_EXPIRED, '세션이 만료됐어요. 다시 로그인해주세요.');
     }
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user || user.status !== 'active') throw new AppError(ErrorCode.AUTH_EXPIRED, '세션이 만료됐어요. 다시 로그인해주세요.');
-    // rotation — 기존 토큰 폐기 후 재발급
+    // rotation — 기존 토큰 폐기 후 같은 family로 새 토큰 발급(체인 유지)
     await this.prisma.refreshToken.update({ where: { id: row.id }, data: { revokedAt: new Date() } });
-    return this.issueTokens(user);
+    return this.issueTokens(user, { familyId: row.familyId ?? row.id, parentId: row.id });
   }
 
   async logout(userId: string): Promise<{ ok: true }> {
@@ -250,7 +266,7 @@ export class AuthService {
     return this.toUserDto(user);
   }
 
-  private async issueTokens(user: User): Promise<TokenPair> {
+  private async issueTokens(user: User, chain?: { familyId: string; parentId: string }): Promise<TokenPair> {
     const accessToken = await this.jwt.signAsync(
       { sub: user.id, role: user.role, email: user.email, name: user.name },
       { secret: env().JWT_SECRET, expiresIn: env().JWT_ACCESS_TTL_SEC },
@@ -259,13 +275,19 @@ export class AuthService {
       { sub: user.id, typ: 'refresh', jti: randomUUID() },
       { secret: env().JWT_SECRET, expiresIn: env().JWT_REFRESH_TTL_SEC },
     );
-    await this.prisma.refreshToken.create({
+    const created = await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
         tokenHash: sha256(refreshToken),
         expiresAt: new Date(Date.now() + env().JWT_REFRESH_TTL_SEC * 1000),
+        familyId: chain?.familyId, // chain 있으면 같은 family 유지, 없으면 신규 family (아래에서 채움)
+        parentId: chain?.parentId,
       },
     });
+    // 신규 로그인 — chain 없으면 familyId를 자기 id로 자가 설정 (자기가 family의 시작)
+    if (!chain) {
+      await this.prisma.refreshToken.update({ where: { id: created.id }, data: { familyId: created.id } });
+    }
     return { accessToken, refreshToken };
   }
 

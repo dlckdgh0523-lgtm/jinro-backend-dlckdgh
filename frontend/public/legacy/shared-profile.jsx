@@ -9,15 +9,29 @@ function DeleteAccountDialog({ open, onClose, onConfirm, role = 'student' }) {
   const [reason, setReason] = React.useState('');
   const trapRef = useFocusTrap(open, onClose);
   const [typed, setTyped] = React.useState('');
+  const [pwd, setPwd] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState('');
 
   React.useEffect(() => {
-    if (open) { setStep('confirm'); setReason(''); setTyped(''); }
+    if (open) { setStep('confirm'); setReason(''); setTyped(''); setPwd(''); setErr(''); setBusy(false); }
   }, [open]);
 
   if (!open) return null;
 
   const requiredText = '회원 탈퇴';
-  const canDelete = typed.trim() === requiredText;
+  const canDelete = typed.trim() === requiredText && pwd.length > 0 && !busy;
+
+  const doDelete = async () => {
+    setErr(''); setBusy(true);
+    try {
+      // 실 API — 백엔드가 비번 재확인 + 본인 데이터 cascade 삭제
+      await window.__apiFetch('/auth/me', { method: 'DELETE', body: JSON.stringify({ currentPassword: pwd }) });
+      setStep('done');
+    } catch (e) {
+      setErr((e && e.body && (e.body.message || (e.body.error && e.body.error.message))) || '탈퇴에 실패했어요.');
+    } finally { setBusy(false); }
+  };
 
   const REASONS = role === 'teacher'
     ? ['더 이상 학급을 운영하지 않아요', '기능이 부족해요', '가격이 부담돼요', '다른 서비스로 옮겨요', '기타']
@@ -105,15 +119,19 @@ function DeleteAccountDialog({ open, onClose, onConfirm, role = 'student' }) {
               마지막 확인이에요
             </div>
             <div style={{ fontSize: 14, color: 'var(--fg-muted)', lineHeight: 1.55, marginBottom: 16 }} className="kr-heading">
-              아래에 <strong style={{ color: 'var(--danger)' }}>"{requiredText}"</strong>을(를) 정확히 입력해주세요.
+              아래에 <strong style={{ color: 'var(--danger)' }}>"{requiredText}"</strong>을(를) 정확히 입력하고, 본인 확인을 위해 비밀번호를 한 번 더 입력해주세요.
             </div>
-            <FormField label="확인 문구" required style={{ marginBottom: 20 }}>
+            <FormField label="확인 문구" required style={{ marginBottom: 14 }}>
               <TextInput value={typed} onChange={setTyped} placeholder={requiredText} autoFocus/>
             </FormField>
+            <FormField label="비밀번호 재확인" required style={{ marginBottom: 16 }}>
+              <TextInput value={pwd} onChange={setPwd} type="password" placeholder="현재 비밀번호"/>
+            </FormField>
+            {err && <div style={{ marginBottom: 12, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: 'var(--danger)', fontSize: 13 }}>{err}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="secondary" full onClick={() => setStep('confirm')}>이전</Button>
-              <Button variant="danger" full disabled={!canDelete} onClick={() => { setStep('done'); }}>
-                탈퇴하기
+              <Button variant="secondary" full onClick={() => setStep('confirm')} disabled={busy}>이전</Button>
+              <Button variant="danger" full disabled={!canDelete} onClick={doDelete}>
+                {busy ? '처리 중…' : '탈퇴하기'}
               </Button>
             </div>
           </>
@@ -129,9 +147,12 @@ function DeleteAccountDialog({ open, onClose, onConfirm, role = 'student' }) {
             </div>
             <div style={{ fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.55, textAlign: 'center', marginBottom: 20 }} className="kr-heading">
               그동안 진로나침반을 이용해주셔서 감사했어요.
-              {role !== 'teacher' && '\n30일 이내라면 동일 이메일로 재가입 시 복구할 수 있어요.'}
+              {role !== 'teacher' && '\n동일 이메일로 다시 가입할 수 있어요.'}
             </div>
-            <Button variant="primary" size="lg" full onClick={() => { onConfirm && onConfirm(); onClose(); }}>처음으로</Button>
+            <Button variant="primary" size="lg" full onClick={() => {
+              onConfirm && onConfirm(); onClose();
+              try { window.dispatchEvent(new Event('jinro:logout')); } catch (e) {}
+            }}>처음으로</Button>
           </>
         )}
       </div>

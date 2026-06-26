@@ -10,6 +10,8 @@ function SettingsPassword({ back }) {
   const [confirm, setConfirm] = React.useState('');
   const [show, setShow] = React.useState(false);
   const [touched, setTouched] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState('');
 
   const rules = [
     { id: 'len', label: '8자 이상', ok: next.length >= 8 },
@@ -18,7 +20,20 @@ function SettingsPassword({ back }) {
   ];
   const allOk = rules.every(r => r.ok);
   const match = next.length > 0 && next === confirm;
-  const canSubmit = cur.length > 0 && allOk && match;
+  const canSubmit = cur.length > 0 && allOk && match && !busy;
+
+  const submit = async () => {
+    setErr(''); setBusy(true);
+    try {
+      // 실 API — 백엔드가 현재 비번 검증 + 새 비번 저장 + 모든 refresh 토큰 일괄 폐기
+      await window.__apiFetch('/auth/password', { method: 'PATCH', body: JSON.stringify({ currentPassword: cur, newPassword: next }) });
+      if (typeof window.showToast === 'function') window.showToast('비밀번호를 변경했어요. 다른 기기는 자동 로그아웃돼요.', 'success');
+      // 보안 위해 즉시 로그아웃 — refresh 폐기됐으니 다음 갱신 시도 시 어차피 로그아웃됨
+      setTimeout(() => { try { window.dispatchEvent(new Event('jinro:logout')); } catch (e) {} }, 1200);
+    } catch (e) {
+      setErr((e && e.body && (e.body.message || (e.body.error && e.body.error.message))) || '변경에 실패했어요.');
+    } finally { setBusy(false); }
+  };
 
   return (
     <div style={{ background: 'var(--bg-canvas)', minHeight: '100%' }}>
@@ -45,8 +60,9 @@ function SettingsPassword({ back }) {
             <TextInput value={confirm} onChange={setConfirm} type={show ? 'text' : 'password'} placeholder="새 비밀번호 다시 입력"/>
           </FormField>
         </SectionCard>
-        <Button variant="primary" size="lg" full disabled={!canSubmit} onClick={() => { showToast('비밀번호를 변경했어요', 'success'); back(); }}>
-          비밀번호 변경
+        {err && <div style={{ marginBottom: 10, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: 'var(--danger)', fontSize: 13 }}>{err}</div>}
+        <Button variant="primary" size="lg" full disabled={!canSubmit} onClick={submit}>
+          {busy ? '변경 중…' : '비밀번호 변경'}
         </Button>
         <div style={{ fontSize: 12, color: 'var(--fg-subtle)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }} className="kr-heading">
           변경 후 다른 기기에서는 다시 로그인이 필요해요.

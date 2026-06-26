@@ -4,6 +4,8 @@ function SettingsPassword({ back }) {
   const [confirm, setConfirm] = React.useState("");
   const [show, setShow] = React.useState(false);
   const [touched, setTouched] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
   const rules = [
     { id: "len", label: "8\uC790 \uC774\uC0C1", ok: next.length >= 8 },
     { id: "mix", label: "\uC601\uBB38 + \uC22B\uC790 \uD3EC\uD568", ok: /[a-zA-Z]/.test(next) && /[0-9]/.test(next) },
@@ -11,7 +13,25 @@ function SettingsPassword({ back }) {
   ];
   const allOk = rules.every((r) => r.ok);
   const match = next.length > 0 && next === confirm;
-  const canSubmit = cur.length > 0 && allOk && match;
+  const canSubmit = cur.length > 0 && allOk && match && !busy;
+  const submit = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      await window.__apiFetch("/auth/password", { method: "PATCH", body: JSON.stringify({ currentPassword: cur, newPassword: next }) });
+      if (typeof window.showToast === "function") window.showToast("\uBE44\uBC00\uBC88\uD638\uB97C \uBCC0\uACBD\uD588\uC5B4\uC694. \uB2E4\uB978 \uAE30\uAE30\uB294 \uC790\uB3D9 \uB85C\uADF8\uC544\uC6C3\uB3FC\uC694.", "success");
+      setTimeout(() => {
+        try {
+          window.dispatchEvent(new Event("jinro:logout"));
+        } catch (e) {
+        }
+      }, 1200);
+    } catch (e) {
+      setErr(e && e.body && (e.body.message || e.body.error && e.body.error.message) || "\uBCC0\uACBD\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694.");
+    } finally {
+      setBusy(false);
+    }
+  };
   return /* @__PURE__ */ React.createElement("div", { style: { background: "var(--bg-canvas)", minHeight: "100%" } }, /* @__PURE__ */ React.createElement(ScreenHeader, { title: "\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD", leading: /* @__PURE__ */ React.createElement(BackButton, { onClick: back }) }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 16px 24px", maxWidth: 520, margin: "0 auto" } }, /* @__PURE__ */ React.createElement(SectionCard, { style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement(FormField, { label: "\uD604\uC7AC \uBE44\uBC00\uBC88\uD638", required: true, style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement(
     TextInput,
     {
@@ -24,10 +44,7 @@ function SettingsPassword({ back }) {
   )), /* @__PURE__ */ React.createElement(FormField, { label: "\uC0C8 \uBE44\uBC00\uBC88\uD638", required: true, style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement(TextInput, { value: next, onChange: (v) => {
     setNext(v);
     setTouched(true);
-  }, type: show ? "text" : "password", placeholder: "\uC0C8 \uBE44\uBC00\uBC88\uD638" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 } }, rules.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.id, style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: r.ok ? "var(--success)" : "var(--fg-subtle)" } }, r.ok ? /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 14 }) : /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "1.5px solid var(--line-strong)" } }), r.label))), /* @__PURE__ */ React.createElement(FormField, { label: "\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778", required: true, error: confirm.length > 0 && !match ? "\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC544\uC694" : null }, /* @__PURE__ */ React.createElement(TextInput, { value: confirm, onChange: setConfirm, type: show ? "text" : "password", placeholder: "\uC0C8 \uBE44\uBC00\uBC88\uD638 \uB2E4\uC2DC \uC785\uB825" }))), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, disabled: !canSubmit, onClick: () => {
-    showToast("\uBE44\uBC00\uBC88\uD638\uB97C \uBCC0\uACBD\uD588\uC5B4\uC694", "success");
-    back();
-  } }, "\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-subtle)", textAlign: "center", marginTop: 12, lineHeight: 1.5 }, className: "kr-heading" }, "\uBCC0\uACBD \uD6C4 \uB2E4\uB978 \uAE30\uAE30\uC5D0\uC11C\uB294 \uB2E4\uC2DC \uB85C\uADF8\uC778\uC774 \uD544\uC694\uD574\uC694.")));
+  }, type: show ? "text" : "password", placeholder: "\uC0C8 \uBE44\uBC00\uBC88\uD638" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 } }, rules.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.id, style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: r.ok ? "var(--success)" : "var(--fg-subtle)" } }, r.ok ? /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 14 }) : /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "1.5px solid var(--line-strong)" } }), r.label))), /* @__PURE__ */ React.createElement(FormField, { label: "\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778", required: true, error: confirm.length > 0 && !match ? "\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC544\uC694" : null }, /* @__PURE__ */ React.createElement(TextInput, { value: confirm, onChange: setConfirm, type: show ? "text" : "password", placeholder: "\uC0C8 \uBE44\uBC00\uBC88\uD638 \uB2E4\uC2DC \uC785\uB825" }))), err && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, padding: "10px 12px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, color: "var(--danger)", fontSize: 13 } }, err), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", full: true, disabled: !canSubmit, onClick: submit }, busy ? "\uBCC0\uACBD \uC911\u2026" : "\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-subtle)", textAlign: "center", marginTop: 12, lineHeight: 1.5 }, className: "kr-heading" }, "\uBCC0\uACBD \uD6C4 \uB2E4\uB978 \uAE30\uAE30\uC5D0\uC11C\uB294 \uB2E4\uC2DC \uB85C\uADF8\uC778\uC774 \uD544\uC694\uD574\uC694.")));
 }
 function Toggle({ on, onChange }) {
   return /* @__PURE__ */ React.createElement("button", { onClick: () => onChange(!on), role: "switch", "aria-checked": on, style: {
