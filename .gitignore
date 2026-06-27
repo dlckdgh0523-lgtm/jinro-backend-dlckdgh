@@ -23,3 +23,6 @@ secrets/
 # misc
 smoke-report.pdf
 .DS_Store
+
+# 보안 정책 — 운영 내부 문서(인프라/RDS/IP 등 정보 포함) 공개 저장소에 노출 금지
+docs/SECURITY.md

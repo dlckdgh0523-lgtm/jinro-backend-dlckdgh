@@ -38,7 +38,7 @@ export async function createApp(): Promise<NestExpressApplication> {
   );
   // CSP enforce — 보수적 정책. 인라인 스크립트가 많아 unsafe-inline은 일단 유지(레거시 호환).
   // unsafe-inline 제거는 다음 단계에서 nonce 도입과 함께. 지금도 frame-ancestors/object-src/base-uri는 강제 차단됨.
-  app.use((_req, res, next) => {
+  app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
     res.setHeader(
       'Content-Security-Policy',
       [
