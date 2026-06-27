@@ -192,7 +192,25 @@ function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
     padding: isMobile ? "14px 16px" : "16px 28px",
     borderBottom: "1px solid var(--line-subtle)",
     background: "var(--bg-surface)"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--fg-strong)", letterSpacing: "-0.4px" }, className: "kr-heading" }, title), subtitle && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", marginTop: 2 }, className: "kr-heading" }, subtitle)), isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: unread || null, ariaLabel: "\uC54C\uB9BC" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end" } }, action, help && typeof HelpButton !== "undefined" && /* @__PURE__ */ React.createElement(HelpButton, { pageId: help }), !isMobile && /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "md", leading: /* @__PURE__ */ React.createElement(IcSparkles, { size: 11 }) }, "\uBB34\uB8CC \uCCB4\uD5D8 18\uC77C \uB0A8\uC74C"), !isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: unread || null, ariaLabel: "\uC54C\uB9BC" })));
+  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" } }, isMobile && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        try {
+          window.dispatchEvent(new Event("jinro:teacher-menu-toggle"));
+        } catch (e) {
+        }
+      },
+      "aria-label": "\uBA54\uB274 \uC5F4\uAE30",
+      style: { width: 40, height: 40, border: "none", background: "transparent", cursor: "pointer", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
+    },
+    /* @__PURE__ */ React.createElement("span", { style: { position: "relative", display: "inline-block", width: 18, height: 14 } }, /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", left: 0, top: 0, width: "100%", height: 2, background: "var(--fg-strong)", borderRadius: 2 } }), /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", left: 0, top: 6, width: "100%", height: 2, background: "var(--fg-strong)", borderRadius: 2 } }), /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", left: 0, top: 12, width: "100%", height: 2, background: "var(--fg-strong)", borderRadius: 2 } }))
+  ), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--fg-strong)", letterSpacing: "-0.4px" }, className: "kr-heading" }, title), subtitle && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", marginTop: 2 }, className: "kr-heading" }, subtitle)), isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: unread || null, ariaLabel: "\uC54C\uB9BC" })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end" } }, action, help && typeof HelpButton !== "undefined" && /* @__PURE__ */ React.createElement(HelpButton, { pageId: help }), /* @__PURE__ */ React.createElement(IconButton, { icon: /* @__PURE__ */ React.createElement(IcInfo, { size: 18 }), onClick: () => {
+    try {
+      window.dispatchEvent(new Event("jinro:tour-restart"));
+    } catch (e) {
+    }
+  }, ariaLabel: "\uC9C4\uB85C\uB098\uCE68\uBC18 \uB458\uB7EC\uBCF4\uAE30" }), !isMobile && /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "md", leading: /* @__PURE__ */ React.createElement(IcSparkles, { size: 11 }) }, "\uBB34\uB8CC \uCCB4\uD5D8 18\uC77C \uB0A8\uC74C"), !isMobile && /* @__PURE__ */ React.createElement(IconButton, { "data-tour": "teacher-bell", icon: /* @__PURE__ */ React.createElement(IcBell, { size: 20 }), onClick: openNotif, badge: unread || null, ariaLabel: "\uC54C\uB9BC" })));
 }
 function TeacherDashboard({ go, openNotif }) {
   var _a;
@@ -230,7 +248,21 @@ function TeacherDashboard({ go, openNotif }) {
       action: /* @__PURE__ */ React.createElement(Tabs, { items: [{ id: "avg", label: "\uD3C9\uADE0" }, { id: "sub", label: "\uACFC\uBAA9\uBCC4" }], activeId: trendMode, onChange: setTrendMode })
     },
     /* @__PURE__ */ React.createElement(ClassTrendChart, { mode: trendMode })
-  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } }, /* @__PURE__ */ React.createElement(Card, { padding: 18, style: { background: "linear-gradient(135deg, #3182F6 0%, #1957C2 100%)", color: "#fff" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, opacity: 0.85, marginBottom: 6 } }, "\uD559\uAE09 \uCD08\uB300\uCF54\uB4DC"), /* @__PURE__ */ React.createElement("div", { className: "num", style: { fontSize: 28, fontWeight: 800, letterSpacing: "4px" } }, invite.loading ? "\xB7\xB7\xB7\xB7\xB7\xB7" : invite.display || "\uCF54\uB4DC \uC5C6\uC74C"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 14 } }, /* @__PURE__ */ React.createElement("button", { disabled: !invite.display, onClick: () => invite.display && copyToast(invite.display, "\uCD08\uB300\uCF54\uB4DC\uB97C \uBCF5\uC0AC\uD588\uC5B4\uC694"), style: { flex: 1, padding: "8px 0", border: "none", borderRadius: 10, background: "rgba(255,255,255,0.18)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: invite.display ? "pointer" : "default", opacity: invite.display ? 1 : 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcCopy, { size: 13 }), " \uBCF5\uC0AC"), /* @__PURE__ */ React.createElement("button", { onClick: () => go("classroom"), style: { flex: 1, padding: "8px 0", border: "none", borderRadius: 10, background: "#fff", color: "var(--brand-600)", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "\uD559\uAE09 \uBCF4\uAE30"))), /* @__PURE__ */ React.createElement(TeacherRiskSignals, { rows, loading, go }), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uCD5C\uADFC \uD65C\uB3D9", padding: 18 }, loading ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement(Skeleton, { key: i, height: 20 }))) : recent.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcZap, { size: 22 }), title: "\uCD5C\uADFC \uD65C\uB3D9\uC774 \uC5C6\uC5B4\uC694", body: "\uD559\uC0DD\uC774 \uD559\uC2B5\xB7AI \uC0C1\uB2F4\uC744 \uC2DC\uC791\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uD45C\uC2DC\uB3FC\uC694." }) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, recent.map((s) => /* @__PURE__ */ React.createElement("div", { key: s.id, onClick: () => openStudentDetail(go, s.id), style: { display: "flex", gap: 10, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "var(--brand-500)", marginTop: 6 } }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-strong)", fontWeight: 500 }, className: "kr-heading" }, s.name, " \xB7 \uD559\uC2B5 ", s.studyDone, "/", s.studyTotal), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-subtle)", marginTop: 2 } }, fmtActivity(s.lastActivityAt)))))))))));
+  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } }, /* @__PURE__ */ React.createElement(Card, { padding: 18, style: { background: "linear-gradient(135deg, #3182F6 0%, #1957C2 100%)", color: "#fff" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, opacity: 0.85, marginBottom: 6 } }, "\uD559\uAE09 \uCD08\uB300\uCF54\uB4DC"), /* @__PURE__ */ React.createElement("div", { className: "num", style: { fontSize: 28, fontWeight: 800, letterSpacing: "4px" } }, invite.loading ? "\xB7\xB7\xB7\xB7\xB7\xB7" : invite.display || "\uCF54\uB4DC \uC5C6\uC74C"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 14 } }, /* @__PURE__ */ React.createElement("button", { disabled: !invite.display, onClick: () => invite.display && copyToast(invite.display, "\uCD08\uB300\uCF54\uB4DC\uB97C \uBCF5\uC0AC\uD588\uC5B4\uC694"), style: { flex: 1, padding: "8px 0", border: "none", borderRadius: 10, background: "rgba(255,255,255,0.18)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: invite.display ? "pointer" : "default", opacity: invite.display ? 1 : 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(IcCopy, { size: 13 }), " \uBCF5\uC0AC"), /* @__PURE__ */ React.createElement("button", { onClick: () => go("classroom"), style: { flex: 1, padding: "8px 0", border: "none", borderRadius: 10, background: "#fff", color: "var(--brand-600)", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "\uD559\uAE09 \uBCF4\uAE30"))), /* @__PURE__ */ React.createElement(TeacherRiskSignals, { rows, loading, go }), /* @__PURE__ */ React.createElement(SectionCard, { padding: 14, style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        try {
+          window.dispatchEvent(new Event("jinro:tour-restart"));
+        } catch (e) {
+        }
+      },
+      style: { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 8px", border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }
+    },
+    /* @__PURE__ */ React.createElement("div", { style: { width: 32, height: 32, borderRadius: 8, background: "var(--brand-50)", color: "var(--brand-600)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(IcCompass, { size: 16 })),
+    /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, "\uC9C4\uB85C\uB098\uCE68\uBC18 \uB458\uB7EC\uBCF4\uAE30"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" }, className: "kr-heading" }, "\uAD50\uC0AC\uC6A9 \uC8FC\uC694 \uAE30\uB2A5\uC744 \uD55C \uBC88\uC5D0 \uC0B4\uD3B4\uBD10\uC694")),
+    /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14, color: "var(--fg-subtle)" })
+  )), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uCD5C\uADFC \uD65C\uB3D9", padding: 18 }, loading ? /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, [0, 1, 2].map((i) => /* @__PURE__ */ React.createElement(Skeleton, { key: i, height: 20 }))) : recent.length === 0 ? /* @__PURE__ */ React.createElement(EmptyState, { icon: /* @__PURE__ */ React.createElement(IcZap, { size: 22 }), title: "\uCD5C\uADFC \uD65C\uB3D9\uC774 \uC5C6\uC5B4\uC694", body: "\uD559\uC0DD\uC774 \uD559\uC2B5\xB7AI \uC0C1\uB2F4\uC744 \uC2DC\uC791\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uD45C\uC2DC\uB3FC\uC694." }) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 14 } }, recent.map((s) => /* @__PURE__ */ React.createElement("div", { key: s.id, onClick: () => openStudentDetail(go, s.id), style: { display: "flex", gap: 10, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "var(--brand-500)", marginTop: 6 } }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-strong)", fontWeight: 500 }, className: "kr-heading" }, s.name, " \xB7 \uD559\uC2B5 ", s.studyDone, "/", s.studyTotal), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-subtle)", marginTop: 2 } }, fmtActivity(s.lastActivityAt)))))))))));
 }
 function TeacherRiskSignals({ rows, loading, go }) {
   const risk = (rows || []).filter((s) => s.needsCounseling);
@@ -731,19 +763,55 @@ function TeacherApp({ initialScreen = "dashboard" }) {
   }, [notifOpen]);
   const tour = useTour(TEACHER_TOUR_STEPS, "teacher");
   React.useEffect(() => {
-    try {
-      if (window.__LIVE_MODE && localStorage.getItem("jinro:webtour:teacher")) tour.setPhase("done");
-    } catch (e) {
-    }
+    let alive = true;
+    (async () => {
+      try {
+        if (!window.__LIVE_MODE || !window.__apiFetch) return;
+        const r = await window.__apiFetch("/auth/me", { method: "GET" });
+        const done = !!(r && r.data && r.data.tourCompleted);
+        if (alive && (done || localStorage.getItem("jinro:webtour:teacher"))) tour.setPhase("done");
+      } catch (e) {
+        try {
+          if (localStorage.getItem("jinro:webtour:teacher")) tour.setPhase("done");
+        } catch (e2) {
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
   React.useEffect(() => {
-    if (tour.phase === "done") {
-      try {
-        localStorage.setItem("jinro:webtour:teacher", "1");
-      } catch (e) {
-      }
+    if (tour.phase !== "done") return;
+    try {
+      localStorage.setItem("jinro:webtour:teacher", "1");
+    } catch (e) {
+    }
+    try {
+      if (window.__apiFetch) window.__apiFetch("/auth/tour/complete", { method: "POST", body: JSON.stringify({ completed: true }) }).catch(() => null);
+    } catch (e) {
     }
   }, [tour.phase]);
+  React.useEffect(() => {
+    const onRestart = () => {
+      try {
+        localStorage.removeItem("jinro:webtour:teacher");
+      } catch (e) {
+      }
+      try {
+        if (window.__apiFetch) window.__apiFetch("/auth/tour/complete", { method: "POST", body: JSON.stringify({ completed: false }) }).catch(() => null);
+      } catch (e) {
+      }
+      tour.restart();
+    };
+    window.addEventListener("jinro:tour-restart", onRestart);
+    return () => window.removeEventListener("jinro:tour-restart", onRestart);
+  }, [tour]);
+  React.useEffect(() => {
+    const onMenu = () => setNavOpen(true);
+    window.addEventListener("jinro:teacher-menu-toggle", onMenu);
+    return () => window.removeEventListener("jinro:teacher-menu-toggle", onMenu);
+  }, []);
   React.useEffect(() => {
     if (isMobile && (tour.phase === "welcome" || tour.phase === "tour")) setNavOpen(true);
   }, [tour.phase, isMobile]);
@@ -755,7 +823,7 @@ function TeacherApp({ initialScreen = "dashboard" }) {
   return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", height: "100%", background: "var(--bg-canvas)", position: "relative", overflow: "hidden" } }, isMobile && /* @__PURE__ */ React.createElement(MobileTopBar, { title: "\uC9C4\uB85C\uB098\uCE68\uBC18 \xB7 \uAD50\uC0AC", onMenu: () => setNavOpen(true) }), isMobile ? /* @__PURE__ */ React.createElement(SidebarDrawer, { open: navOpen, onClose: () => setNavOpen(false) }, /* @__PURE__ */ React.createElement(TeacherSidebar, { activeId: teacherNavId, onChange: wrapNav })) : /* @__PURE__ */ React.createElement(TeacherSidebar, { activeId: teacherNavId, onChange: setScreen }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "100%", minHeight: 0, overflowY: "auto", overflowX: "hidden" } }, screen === "dashboard" && /* @__PURE__ */ React.createElement(TeacherDashboard, { go: setScreen, openNotif }), screen === "classroom" && /* @__PURE__ */ React.createElement(TeacherClassroom, { go: setScreen, openNotif }), screen === "students" && /* @__PURE__ */ React.createElement(TeacherStudents, { go: setScreen, openNotif }), screen === "student-detail" && /* @__PURE__ */ React.createElement(TeacherStudentDetail, { go: setScreen, openNotif }), screen === "counseling" && /* @__PURE__ */ React.createElement(TeacherCounseling, { go: setScreen, openNotif }), screen === "messages" && /* @__PURE__ */ React.createElement(TeacherMessages, { openNotif, go: setScreen }), screen === "calendar" && /* @__PURE__ */ React.createElement(TeacherCalendar, { openNotif, go: setScreen }), screen === "notifications" && /* @__PURE__ */ React.createElement(TeacherNotifications, { openNotif }), screen === "billing" && /* @__PURE__ */ React.createElement(TeacherBilling, { openNotif }), screen === "ai-view" && /* @__PURE__ */ React.createElement(TeacherAIView, null), screen === "completion" && /* @__PURE__ */ React.createElement(CompletionStatus, { go: setScreen }), screen === "ai-coach" && /* @__PURE__ */ React.createElement(AIChatRAG, { go: setScreen, coach: true }), screen === "admissions-hub" && /* @__PURE__ */ React.createElement(AdmissionsHub, { go: setScreen }), screen === "volunteers" && /* @__PURE__ */ React.createElement(VolunteersScreen, { go: setScreen }), screen === "scholarships" && /* @__PURE__ */ React.createElement(ScholarshipsScreen, { go: setScreen }), screen === "admissions-univ" && /* @__PURE__ */ React.createElement(UniversityDetail, { go: setScreen }), screen === "admissions-dept" && /* @__PURE__ */ React.createElement(DepartmentDetail, { go: setScreen }), screen === "consents" && /* @__PURE__ */ React.createElement(ConsentManagement, { go: setScreen, role: "teacher" }), screen === "announcements" && /* @__PURE__ */ React.createElement(AnnouncementsScreen, { role: "teacher", variant: "web" }), screen === "profile" && /* @__PURE__ */ React.createElement(TeacherProfile, { go: setScreen, openNotif }), screen === "teacher-info" && /* @__PURE__ */ React.createElement(TeacherInfoScreen, { go: setScreen }), screen === "settings-password" && /* @__PURE__ */ React.createElement(SettingsPassword, { back: () => setScreen("profile") }), screen === "settings-notifications" && /* @__PURE__ */ React.createElement(SettingsNotifications, { back: () => setScreen("profile"), role: "teacher" }), screen === "settings-suggest" && /* @__PURE__ */ React.createElement(SettingsSuggestion, { back: () => setScreen("profile") }), screen === "settings-announcements" && /* @__PURE__ */ React.createElement(SettingsAnnouncements, { back: () => setScreen("profile") }), screen === "settings-terms" && /* @__PURE__ */ React.createElement(SettingsTerms, { back: () => setScreen("profile") })), notifOpen && /* @__PURE__ */ React.createElement(TeacherNotifPopover, { items: notifItems, onClose: () => setNotifOpen(false), onAll: () => {
     setNotifOpen(false);
     setScreen("notifications");
-  } }), /* @__PURE__ */ React.createElement(TourOverlay, { tour }));
+  } }), /* @__PURE__ */ React.createElement(TourOverlay, { tour, onPickScreen: (s) => wrapNav(s) }));
 }
 function TeacherNotifPopover({ items, onClose, onAll }) {
   return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { onClick: onClose, style: { position: "absolute", inset: 0, zIndex: 40 } }), /* @__PURE__ */ React.createElement("div", { style: {

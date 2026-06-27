@@ -9,10 +9,11 @@ import { createRedis } from '../common/redis';
 import { logger } from '../common/logger';
 import type { Role, User } from '@prisma/client';
 
-// 로그인 실패 잠금 — Redis 카운터로 계정 단위 잠금. 5회 실패 → 15분 잠금.
+// 로그인 실패 잠금 — Redis 카운터로 계정 단위 잠금. 5회 실패 → 5분 잠금.
+// 사용자 피드백: 15분은 너무 김. brute-force는 5분에 5회면 ~분당 1회 시도라 충분히 막힘.
 // IP 단위 throttler(5/min/IP)와 별개 — 계정 단위라 IP 우회 brute-force도 차단.
 const LOGIN_FAIL_MAX = 5;
-const LOGIN_LOCK_SEC = 15 * 60;
+const LOGIN_LOCK_SEC = 5 * 60;
 const lockoutRedis = createRedis('auth-lockout');
 const lockoutKey = (email: string) => `auth:lockout:${email.toLowerCase()}`;
 
@@ -104,19 +105,22 @@ export class AuthService {
 
   // 소셜 로그인 — 이메일로 기존 계정 매칭, 없으면 학생으로 생성(미완성: grade 없음 → 온보딩 유도).
   // 기존 사용자(다음번)는 연동된 그 계정으로 바로 로그인. 신규는 needsProfile=true로 온보딩 진입.
-  async oauthLogin(input: { email: string; name: string; provider: 'google' | 'kakao' }): Promise<{ accessToken: string; refreshToken: string; role: Role; isNew: boolean; needsProfile: boolean; name: string; email: string }> {
+  async oauthLogin(input: { email: string; name: string; provider: 'google' | 'kakao'; desiredRole?: 'student' | 'teacher' }): Promise<{ accessToken: string; refreshToken: string; role: Role; isNew: boolean; needsProfile: boolean; name: string; email: string }> {
     const email = input.email.trim().toLowerCase();
     let user = await this.prisma.user.findUnique({ where: { email } });
     let isNew = false;
     if (!user) {
       isNew = true;
+      // 신규 가입: 시작 URL의 ?role=teacher 힌트에 따라 role 결정 (기본 학생).
+      // 기존 사용자라면 desiredRole 무시 — role 변경은 별도 정책.
+      const role: Role = input.desiredRole === 'teacher' ? 'teacher' : 'student';
       user = await this.prisma.user.create({
         data: {
           email,
           passwordHash: await bcrypt.hash(randomUUID(), 10), // 비밀번호 로그인 불가(소셜 전용)
           name: input.name?.trim() || email.split('@')[0],
-          role: 'student',
-          // 동의/학년은 온보딩에서 받는다 — grade 미설정으로 "온보딩 필요"를 표시
+          role,
+          // 동의/학년/학급은 온보딩에서 받는다 — 학생은 grade, 교사는 school/classroom 미설정
           consents: { oauth: input.provider } as object,
         },
       });
@@ -130,12 +134,13 @@ export class AuthService {
   }
 
   // OAuth 온보딩 완료 — 이름/학년/필수동의 입력 반영.
-  async completeProfile(userId: string, input: { name?: string; grade?: string; consents?: Consents }) {
+  async completeProfile(userId: string, input: { name?: string; grade?: string; consents?: Consents; tourCompleted?: boolean }) {
     if (input.consents) this.requireConsents(input.consents);
-    const data: { name?: string; grade?: string; consents?: object } = {};
+    const data: { name?: string; grade?: string; consents?: object; tourCompleted?: boolean } = {};
     if (input.name?.trim()) data.name = input.name.trim();
     if (input.grade) data.grade = input.grade;
     if (input.consents) data.consents = input.consents as object;
+    if (typeof input.tourCompleted === 'boolean') data.tourCompleted = input.tourCompleted;
     const user = await this.prisma.user.update({ where: { id: userId }, data });
     return this.toUserDto(user);
   }
@@ -147,7 +152,11 @@ export class AuthService {
     let failCount = 0;
     try { failCount = Number((await lockoutRedis.get(lkey)) || 0); } catch (e) { logger.warn({ err: (e as Error).message }, 'login lockout redis read failed'); }
     if (failCount >= LOGIN_FAIL_MAX) {
-      throw new AppError(ErrorCode.AUTH_FORBIDDEN, `로그인 시도가 너무 많아요. 15분 후 다시 시도해주세요. (보안 잠금)`);
+      // 남은 잠금 시간 알림 — 사용자가 "얼마나 더 기다려야 하는지" 정확히 알 수 있게
+      let ttl = 0;
+      try { ttl = await lockoutRedis.ttl(lkey); } catch (e) { /* silent */ }
+      const min = ttl > 0 ? Math.ceil(ttl / 60) : 5;
+      throw new AppError(ErrorCode.AUTH_FORBIDDEN, `로그인 시도가 너무 많아요. ${min}분 후 다시 시도하거나 비밀번호 찾기를 이용해주세요. (보안 잠금)`);
     }
 
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });

@@ -800,10 +800,10 @@ function AuthScreen({ role = 'student', mode = 'login', onNav, onBack, setRole, 
           <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--fg-strong)', marginBottom: 24 }}>
             {isSignup ? '회원가입' : '로그인'}
           </div>
-          <Button variant="outline" size="lg" full leading={<IcGoogle size={18}/>} style={{ marginBottom: 10 }} onClick={() => { window.location.href = '/v1/auth/google/start'; }}>
-            Google로 {isSignup ? '시작하기' : '로그인'}
+          <Button variant="outline" size="lg" full leading={<IcGoogle size={18}/>} style={{ marginBottom: 10 }} onClick={() => { window.location.href = '/v1/auth/google/start' + (isTeacher ? '?role=teacher' : ''); }}>
+            Google로 {isSignup ? '시작하기' : '로그인'}{isSignup && isTeacher ? ' (교사)' : ''}
           </Button>
-          <Button variant="outline" size="lg" full leading={<IcKakao size={18}/>} style={{ marginBottom: 20, background: '#FEE500', borderColor: '#FEE500' }} onClick={() => { window.location.href = '/v1/auth/kakao/start'; }}>
+          <Button variant="outline" size="lg" full leading={<IcKakao size={18}/>} style={{ marginBottom: 20, background: '#FEE500', borderColor: '#FEE500' }} onClick={() => { window.location.href = '/v1/auth/kakao/start' + (isTeacher ? '?role=teacher' : ''); }}>
             카카오로 {isSignup ? '시작하기' : '로그인'}
           </Button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0 20px' }}>

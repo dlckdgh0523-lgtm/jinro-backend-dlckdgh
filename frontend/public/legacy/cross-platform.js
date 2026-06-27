@@ -165,7 +165,21 @@ function StudentWebDashboard({ go }) {
     justifyContent: "space-between",
     borderBottom: "1px solid var(--line-subtle)",
     background: "var(--bg-surface)"
-  } }, /* @__PURE__ */ React.createElement("div", { "data-tour": "student-greeting" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, fontWeight: 700, color: "var(--fg-strong)", letterSpacing: "-0.4px" }, className: "kr-heading" }, "\uC548\uB155\uD558\uC138\uC694", name ? ", " + name + "\uB2D8" : ""), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", marginTop: 2 } }, "\uC624\uB298\uB3C4 \uC9C4\uB85C\uB97C \uD55C \uAC78\uC74C \uC815\uB9AC\uD574\uBCFC\uAE4C\uC694?")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(NotifBell, { role: "student" }))), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: isMobile ? 16 : 28, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(Card, { padding: 28, style: { background: "linear-gradient(135deg, #3182F6 0%, #1957C2 100%)", color: "#fff", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 14 : 0, justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "sm", style: { background: "rgba(255,255,255,0.18)", color: "#fff", marginBottom: 10 } }, "AI \uC9C4\uB85C \uC0C1\uB2F4"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 800, lineHeight: 1.25, letterSpacing: "-0.6px", maxWidth: 560 }, className: "kr-heading" }, aiProgress > 0 ? "\uC0C1\uB2F4\uC744 \uC774\uC5B4\uAC00\uBA70 \uC9C4\uB85C\uB97C \uC881\uD600\uAC00\uC694" : "\uB300\uD654 \uD55C \uBC88\uC73C\uB85C \uC9C4\uB85C \uD0D0\uC0C9\uC744 \uC2DC\uC791\uD574\uC694"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, opacity: 0.85, marginTop: 10 } }, aiProgress > 0 ? "\uC9C4\uD589\uB3C4 " + aiProgress + "% \xB7 \uB2E8\uC11C " + (s.signalsCount || 0) + "\uAC1C" : "\uC544\uC9C1 \uC0C1\uB2F4 \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694")), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", style: { background: "#fff", color: "var(--brand-600)" }, leading: /* @__PURE__ */ React.createElement(IcMessage, { size: 16 }), onClick: () => goTo("ai-counseling") }, aiProgress > 0 ? "AI \uC0C1\uB2F4 \uC774\uC5B4\uAC00\uAE30" : "AI \uC0C1\uB2F4 \uC2DC\uC791\uD558\uAE30"))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 12, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(MetricCard, { label: "\uCD5C\uADFC \uD3C9\uADE0", value: gradeAvg, delta: s.hasGrades ? "\uB0B4 \uC131\uC801" : "\uBBF8\uC785\uB825", deltaTone: s.hasGrades ? "success" : "neutral", icon: /* @__PURE__ */ React.createElement(IcChart, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "AI \uC0C1\uB2F4 \uC9C4\uD589\uB3C4", value: aiProgress + "%", delta: "\uB2E8\uC11C " + (s.signalsCount || 0) + "\uAC1C", deltaTone: "info", icon: /* @__PURE__ */ React.createElement(IcSparkles, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uB2E4\uAC00\uC624\uB294 \uC77C\uC815", value: (s.upcomingCount || 0) + "\uAC74", delta: "7\uC77C \uC774\uB0B4", deltaTone: "neutral", icon: /* @__PURE__ */ React.createElement(IcCalendar, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uAD00\uC2EC \uC9C4\uB85C\xB7\uD559\uACFC", value: (s.targetCount || 0) + "\uAC1C", delta: "\uC9C4\uB85C \uBAA9\uD45C", deltaTone: "info", icon: /* @__PURE__ */ React.createElement(IcGraduation, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } }, /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC131\uC801 \uCD94\uC774", subtitle: "\uD559\uAE30\uBCC4 \uD3C9\uADE0", action: /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", trailing: /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14 }), onClick: () => goTo("grades-trend") }, "\uC131\uC801 \uAD00\uB9AC") }, trend.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "24px 8px", textAlign: "center", color: "var(--fg-muted)", fontSize: 13 } }, "\uC544\uC9C1 \uC785\uB825\uB41C \uC131\uC801\uC774 \uC5C6\uC5B4\uC694. ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--brand-600)", cursor: "pointer", fontWeight: 600 }, onClick: () => goTo("grades-trend") }, "\uC131\uC801 \uC785\uB825\uD558\uAE30 \u2192")) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 12, padding: "8px 4px", height: 140 } }, trend.map((t, i) => {
+  } }, /* @__PURE__ */ React.createElement("div", { "data-tour": "student-greeting" }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, fontWeight: 700, color: "var(--fg-strong)", letterSpacing: "-0.4px" }, className: "kr-heading" }, "\uC548\uB155\uD558\uC138\uC694", name ? ", " + name + "\uB2D8" : ""), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "var(--fg-muted)", marginTop: 2 } }, "\uC624\uB298\uB3C4 \uC9C4\uB85C\uB97C \uD55C \uAC78\uC74C \uC815\uB9AC\uD574\uBCFC\uAE4C\uC694?")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        try {
+          window.dispatchEvent(new Event("jinro:tour-restart"));
+        } catch (e) {
+        }
+      },
+      "aria-label": "\uC9C4\uB85C\uB098\uCE68\uBC18 \uB458\uB7EC\uBCF4\uAE30",
+      title: "\uC9C4\uB85C\uB098\uCE68\uBC18 \uB458\uB7EC\uBCF4\uAE30",
+      style: { width: 36, height: 36, borderRadius: 10, border: "1px solid var(--line)", background: "var(--bg-surface)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brand-600)" }
+    },
+    /* @__PURE__ */ React.createElement(IcInfo, { size: 18 })
+  ), /* @__PURE__ */ React.createElement(NotifBell, { role: "student" }))), /* @__PURE__ */ React.createElement("div", { className: "toss-scroll", style: { flex: 1, overflow: "auto", padding: isMobile ? 16 : 28, background: "var(--bg-canvas)" } }, /* @__PURE__ */ React.createElement(Card, { padding: 28, style: { background: "linear-gradient(135deg, #3182F6 0%, #1957C2 100%)", color: "#fff", marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 14 : 0, justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Chip, { tone: "info", size: "sm", style: { background: "rgba(255,255,255,0.18)", color: "#fff", marginBottom: 10 } }, "AI \uC9C4\uB85C \uC0C1\uB2F4"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 800, lineHeight: 1.25, letterSpacing: "-0.6px", maxWidth: 560 }, className: "kr-heading" }, aiProgress > 0 ? "\uC0C1\uB2F4\uC744 \uC774\uC5B4\uAC00\uBA70 \uC9C4\uB85C\uB97C \uC881\uD600\uAC00\uC694" : "\uB300\uD654 \uD55C \uBC88\uC73C\uB85C \uC9C4\uB85C \uD0D0\uC0C9\uC744 \uC2DC\uC791\uD574\uC694"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, opacity: 0.85, marginTop: 10 } }, aiProgress > 0 ? "\uC9C4\uD589\uB3C4 " + aiProgress + "% \xB7 \uB2E8\uC11C " + (s.signalsCount || 0) + "\uAC1C" : "\uC544\uC9C1 \uC0C1\uB2F4 \uAE30\uB85D\uC774 \uC5C6\uC5B4\uC694")), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "lg", style: { background: "#fff", color: "var(--brand-600)" }, leading: /* @__PURE__ */ React.createElement(IcMessage, { size: 16 }), onClick: () => goTo("ai-counseling") }, aiProgress > 0 ? "AI \uC0C1\uB2F4 \uC774\uC5B4\uAC00\uAE30" : "AI \uC0C1\uB2F4 \uC2DC\uC791\uD558\uAE30"))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 12, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(MetricCard, { label: "\uCD5C\uADFC \uD3C9\uADE0", value: gradeAvg, delta: s.hasGrades ? "\uB0B4 \uC131\uC801" : "\uBBF8\uC785\uB825", deltaTone: s.hasGrades ? "success" : "neutral", icon: /* @__PURE__ */ React.createElement(IcChart, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "AI \uC0C1\uB2F4 \uC9C4\uD589\uB3C4", value: aiProgress + "%", delta: "\uB2E8\uC11C " + (s.signalsCount || 0) + "\uAC1C", deltaTone: "info", icon: /* @__PURE__ */ React.createElement(IcSparkles, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uB2E4\uAC00\uC624\uB294 \uC77C\uC815", value: (s.upcomingCount || 0) + "\uAC74", delta: "7\uC77C \uC774\uB0B4", deltaTone: "neutral", icon: /* @__PURE__ */ React.createElement(IcCalendar, { size: 16 }) }), /* @__PURE__ */ React.createElement(MetricCard, { label: "\uAD00\uC2EC \uC9C4\uB85C\xB7\uD559\uACFC", value: (s.targetCount || 0) + "\uAC1C", delta: "\uC9C4\uB85C \uBAA9\uD45C", deltaTone: "info", icon: /* @__PURE__ */ React.createElement(IcGraduation, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 16 } }, /* @__PURE__ */ React.createElement(SectionCard, { title: "\uC131\uC801 \uCD94\uC774", subtitle: "\uD559\uAE30\uBCC4 \uD3C9\uADE0", action: /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", trailing: /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14 }), onClick: () => goTo("grades-trend") }, "\uC131\uC801 \uAD00\uB9AC") }, trend.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "24px 8px", textAlign: "center", color: "var(--fg-muted)", fontSize: 13 } }, "\uC544\uC9C1 \uC785\uB825\uB41C \uC131\uC801\uC774 \uC5C6\uC5B4\uC694. ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--brand-600)", cursor: "pointer", fontWeight: 600 }, onClick: () => goTo("grades-trend") }, "\uC131\uC801 \uC785\uB825\uD558\uAE30 \u2192")) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 12, padding: "8px 4px", height: 140 } }, trend.map((t, i) => {
     const h = Math.max(8, Math.round(t.average / 100 * 110));
     return /* @__PURE__ */ React.createElement("div", { key: i, style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--fg-strong)" } }, t.average), /* @__PURE__ */ React.createElement("div", { style: { width: "70%", height: h, background: "var(--brand-500)", borderRadius: "6px 6px 0 0" } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "var(--fg-muted)" } }, t.term));
   }))), /* @__PURE__ */ React.createElement(SectionCard, { title: "\uB2E4\uAC00\uC624\uB294 \uC77C\uC815", action: /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "sm", trailing: /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14 }), onClick: () => goTo("calendar") }, "\uCE98\uB9B0\uB354 \uC804\uCCB4") }, events === null ? /* @__PURE__ */ React.createElement(Skeleton, { height: 48 }) : events.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "24px 8px", textAlign: "center", color: "var(--fg-muted)", fontSize: 13 } }, "\uC608\uC815\uB41C \uC77C\uC815\uC774 \uC5C6\uC5B4\uC694. \uBD09\uC0AC\xB7\uC785\uC2DC \uC77C\uC815\uC744 \uCE98\uB9B0\uB354\uC5D0 \uCD94\uAC00\uD574\uBCF4\uC138\uC694.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, events.map((e, i) => {
@@ -178,7 +192,21 @@ function StudentWebDashboard({ go }) {
     { id: "volunteers", label: "\uBD09\uC0AC\uD65C\uB3D9 \uCC3E\uAE30", icon: /* @__PURE__ */ React.createElement(IcHeart, { size: 16 }) },
     { id: "scholarships", label: "\uC7A5\uD559\uAE08 \uCC3E\uAE30", icon: /* @__PURE__ */ React.createElement(IcCreditCard, { size: 16 }) },
     { id: "grades-trend", label: "\uC131\uC801 \uAD00\uB9AC", icon: /* @__PURE__ */ React.createElement(IcChart, { size: 16 }) }
-  ].map((it) => /* @__PURE__ */ React.createElement("button", { key: it.id, onClick: () => goTo(it.id), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", borderRadius: 10, background: "var(--bg-muted)", cursor: "pointer", textAlign: "left", fontSize: 13, fontWeight: 600, color: "var(--fg-default)" } }, it.icon, /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }, it.label), /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14, color: "var(--fg-subtle)" })))))))));
+  ].map((it) => /* @__PURE__ */ React.createElement("button", { key: it.id, onClick: () => goTo(it.id), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", borderRadius: 10, background: "var(--bg-muted)", cursor: "pointer", textAlign: "left", fontSize: 13, fontWeight: 600, color: "var(--fg-default)" } }, it.icon, /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }, it.label), /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14, color: "var(--fg-subtle)" }))))), /* @__PURE__ */ React.createElement(SectionCard, { padding: 14 }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        try {
+          window.dispatchEvent(new Event("jinro:tour-restart"));
+        } catch (e) {
+        }
+      },
+      style: { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 8px", border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }
+    },
+    /* @__PURE__ */ React.createElement("div", { style: { width: 32, height: 32, borderRadius: 8, background: "var(--brand-50)", color: "var(--brand-600)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(IcCompass, { size: 16 })),
+    /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, "\uC9C4\uB85C\uB098\uCE68\uBC18 \uB458\uB7EC\uBCF4\uAE30"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)" }, className: "kr-heading" }, "\uC8FC\uC694 \uAE30\uB2A5\uC744 \uD55C \uBC88\uC5D0 \uC0B4\uD3B4\uBD10\uC694")),
+    /* @__PURE__ */ React.createElement(IcChevronRight, { size: 14, color: "var(--fg-subtle)" })
+  ))))));
 }
 const ONBOARD_GRADES = [
   ["E4", "\uCD084"],
@@ -307,11 +335,50 @@ function StudentWebApp({ initialScreen = "dashboard", withToasts = false }) {
   const cycle = useToastCycle(SAMPLE_TOASTS.student, 4200);
   const tour = useTour(STUDENT_TOUR_STEPS, "student");
   React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!window.__LIVE_MODE || !window.__apiFetch) return;
+        const r = await window.__apiFetch("/auth/me", { method: "GET" });
+        const done = !!(r && r.data && r.data.tourCompleted);
+        if (alive && (done || localStorage.getItem("jinro:webtour:student"))) tour.setPhase("done");
+      } catch (e) {
+        try {
+          if (localStorage.getItem("jinro:webtour:student")) tour.setPhase("done");
+        } catch (e2) {
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  React.useEffect(() => {
+    if (tour.phase !== "done") return;
     try {
-      if (window.__LIVE_MODE && localStorage.getItem("jinro:webtour:student")) tour.setPhase("done");
+      localStorage.setItem("jinro:webtour:student", "1");
     } catch (e) {
     }
-  }, []);
+    try {
+      if (window.__apiFetch) window.__apiFetch("/auth/tour/complete", { method: "POST", body: JSON.stringify({ completed: true }) }).catch(() => null);
+    } catch (e) {
+    }
+  }, [tour.phase]);
+  React.useEffect(() => {
+    const onRestart = () => {
+      try {
+        localStorage.removeItem("jinro:webtour:student");
+      } catch (e) {
+      }
+      try {
+        if (window.__apiFetch) window.__apiFetch("/auth/tour/complete", { method: "POST", body: JSON.stringify({ completed: false }) }).catch(() => null);
+      } catch (e) {
+      }
+      tour.restart();
+    };
+    window.addEventListener("jinro:tour-restart", onRestart);
+    return () => window.removeEventListener("jinro:tour-restart", onRestart);
+  }, [tour]);
   React.useEffect(() => {
     if (isMobile && (tour.phase === "welcome" || tour.phase === "tour")) setNavOpen(true);
   }, [tour.phase, isMobile]);
@@ -356,7 +423,7 @@ function StudentWebApp({ initialScreen = "dashboard", withToasts = false }) {
     setScreen(s);
     setNavOpen(false);
   };
-  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", height: "100%", background: "var(--bg-canvas)", position: "relative", overflow: "hidden" } }, isMobile && /* @__PURE__ */ React.createElement(MobileTopBar, { title: "\uC9C4\uB85C\uB098\uCE68\uBC18", onMenu: () => setNavOpen(true) }), isMobile ? /* @__PURE__ */ React.createElement(SidebarDrawer, { open: navOpen, onClose: () => setNavOpen(false) }, /* @__PURE__ */ React.createElement(StudentWebSidebar, { activeId: navId, onChange: wrapNav })) : /* @__PURE__ */ React.createElement(StudentWebSidebar, { activeId: navId, onChange: setScreen }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, overflowY: "auto" } }, renderContent()), withToasts && /* @__PURE__ */ React.createElement(WebToastHost, { toasts: cycle.active, onClose: cycle.close }), /* @__PURE__ */ React.createElement(TourOverlay, { tour }));
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: isMobile ? "column" : "row", height: "100%", background: "var(--bg-canvas)", position: "relative", overflow: "hidden" } }, isMobile && /* @__PURE__ */ React.createElement(MobileTopBar, { title: "\uC9C4\uB85C\uB098\uCE68\uBC18", onMenu: () => setNavOpen(true) }), isMobile ? /* @__PURE__ */ React.createElement(SidebarDrawer, { open: navOpen, onClose: () => setNavOpen(false) }, /* @__PURE__ */ React.createElement(StudentWebSidebar, { activeId: navId, onChange: wrapNav })) : /* @__PURE__ */ React.createElement(StudentWebSidebar, { activeId: navId, onChange: setScreen }), /* @__PURE__ */ React.createElement("main", { style: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, overflowY: "auto" } }, renderContent()), withToasts && /* @__PURE__ */ React.createElement(WebToastHost, { toasts: cycle.active, onClose: cycle.close }), /* @__PURE__ */ React.createElement(TourOverlay, { tour, onPickScreen: (s) => wrapNav(s) }));
 }
 const TEACHER_MOBILE_NAV = [
   { id: "dashboard", label: "\uD648", icon: /* @__PURE__ */ React.createElement(IcHome, null) },

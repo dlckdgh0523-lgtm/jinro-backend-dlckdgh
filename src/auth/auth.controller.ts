@@ -133,8 +133,18 @@ export class AuthController {
       name: z.string().trim().min(1).max(50).optional(),
       grade: z.enum(['E4', 'E5', 'E6', 'M1', 'M2', 'M3', 'H1', 'H2', 'H3']).optional(),
       consents: consentsSchema.optional(),
+      tourCompleted: z.boolean().optional(),
     });
     return this.auth.completeProfile(req.user.id, parseOrThrow(schema, body));
+  }
+
+  // 둘러보기 완료/재시작 토글 — 사용자 단위 flag (브라우저 무관, 어디서 로그인해도 한 번만 노출).
+  @Post('tour/complete')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  tourComplete(@Req() req: AuthedRequest, @Body() body: unknown) {
+    const { completed } = parseOrThrow(z.object({ completed: z.boolean().default(true) }), body ?? {});
+    return this.auth.completeProfile(req.user.id, { tourCompleted: completed });
   }
 
   // 구글/카카오 OAuth는 OAuthController(GET /auth/{provider}/start·/callback)에서 처리.

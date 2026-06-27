@@ -198,51 +198,146 @@ function useTour(steps, role = 'student') {
 }
 
 // ────────────────────────────────────────────────────────
-// Tour overlay (renders welcome → tooltips)
+// Tour panel (재설계) — 사이드바 가리키기 대신 중앙 카드 그리드.
+// 사용자 피드백: "메뉴가 아래에 있으면 화면 밖이라 안내가 어디 가리키는지 안 보여요."
+// 해결: 메뉴 위치 무관한 별도 카드 패널. 카드 클릭 = 그 화면으로 즉시 이동.
 // ────────────────────────────────────────────────────────
-function TourOverlay({ tour }) {
+function TourPanel({ tour, onPickScreen }) {
+  const isMobile = useViewportMobile();
+  // 학생/교사용 카드 데이터 — 기존 STEPS에서 screen/icon 추가
+  const CARDS = tour.role === 'teacher' ? TEACHER_TOUR_CARDS : STUDENT_TOUR_CARDS;
+  // 어떤 카드를 본 적 있는지 기록(localStorage). 다음 진입 시에도 ✓ 유지.
+  const visitedKey = `jinro:tourvisited:${tour.role}`;
+  const [visited, setVisited] = React.useState(() => {
+    try { const raw = localStorage.getItem(visitedKey); return raw ? new Set(JSON.parse(raw)) : new Set(); } catch (e) { return new Set(); }
+  });
+  const markVisited = (id) => {
+    setVisited(v => {
+      const next = new Set(v); next.add(id);
+      try { localStorage.setItem(visitedKey, JSON.stringify([...next])); } catch (e) {}
+      return next;
+    });
+  };
+  const pick = (card) => {
+    markVisited(card.id);
+    if (onPickScreen && card.screen) onPickScreen(card.screen);
+    // 한 번 클릭하면 투어 종료 — 사용자는 그 화면에서 직접 둘러봄.
+    // 나머지 카드는 마이페이지→도움말에서 다시 볼 수 있게 안내.
+    tour.setPhase('done');
+  };
+  const finishedCount = CARDS.filter(c => visited.has(c.id)).length;
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 12 : 24 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.6)', animation: 'fadeIn 240ms var(--ease-std)' }}/>
+      <div style={{
+        position: 'relative', width: 'min(720px, 100%)', maxHeight: '92%',
+        background: 'var(--bg-elevated)', borderRadius: 24, padding: isMobile ? 20 : 28,
+        boxShadow: 'var(--shadow-pop)', overflow: 'auto',
+        animation: 'sheetIn 320ms var(--ease-toss)',
+      }} className="toss-scroll">
+        {/* 헤더 */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #3182F6 0%, #7B61FF 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <IcCompass size={26}/>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: 'var(--fg-strong)', letterSpacing: '-0.4px' }} className="kr-heading">진로나침반 둘러보기</div>
+            <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }} className="kr-heading">
+              궁금한 기능을 골라 바로 가보세요. <strong style={{ color: 'var(--brand-600)' }}>{finishedCount}/{CARDS.length}</strong> 둘러봤어요.
+            </div>
+          </div>
+          <button onClick={() => tour.setPhase('done')} aria-label="닫기"
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-muted)', padding: 6, flexShrink: 0 }}>
+            <IcX size={20}/>
+          </button>
+        </div>
+
+        {/* 카드 그리드 */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
+          {CARDS.map((c) => {
+            const done = visited.has(c.id);
+            return (
+              <button key={c.id} onClick={() => pick(c)} style={{
+                textAlign: 'left', padding: 14, borderRadius: 14, cursor: 'pointer',
+                border: '1px solid ' + (done ? 'var(--brand-200, var(--line))' : 'var(--line)'),
+                background: done ? 'var(--brand-50)' : 'var(--bg-surface)',
+                display: 'flex', gap: 12, alignItems: 'flex-start',
+                transition: 'all 160ms var(--ease-std)',
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10,
+                  background: done ? 'var(--brand-500)' : 'var(--bg-muted)',
+                  color: done ? '#fff' : 'var(--brand-600)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  {c.icon ? React.cloneElement(c.icon, { size: 20 }) : <IcSparkles size={20}/>}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">{c.title}</span>
+                    {done && <IcCheckCircle size={13} color="var(--brand-500)"/>}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 4, lineHeight: 1.5 }} className="kr-heading">{c.body}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 푸터 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: 'var(--fg-subtle)' }} className="kr-heading">
+            나중에 내정보 → 도움말에서 다시 볼 수 있어요.
+          </span>
+          <Button variant="primary" size="sm" onClick={() => tour.setPhase('done')} trailing={<IcCheck size={14}/>}>
+            둘러보기 완료
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────
+// Tour overlay (renders welcome → panel)
+// ────────────────────────────────────────────────────────
+function TourOverlay({ tour, onPickScreen }) {
   if (tour.phase === 'done') return null;
   if (tour.phase === 'welcome') {
     return <WelcomeModal role={tour.role} onStart={() => tour.setPhase('tour')} onSkip={() => tour.setPhase('done')}/>;
   }
-  if (tour.phase === 'tour' && tour.current) {
-    return (
-      <TourTooltip
-        key={tour.step}
-        target={tour.current.target}
-        title={tour.current.title}
-        body={tour.current.body}
-        position={tour.current.position}
-        step={tour.step}
-        total={tour.total}
-        onNext={tour.next}
-        onPrev={tour.prev}
-        onSkip={tour.skip}
-      />
-    );
+  if (tour.phase === 'tour') {
+    return <TourPanel tour={tour} onPickScreen={onPickScreen}/>;
   }
   return null;
 }
 
-// Tour step presets ───────────────────────────────────────
-const STUDENT_TOUR_STEPS = [
-  { target: '[data-tour="student-nav-ai"]', position: 'right', title: 'AI 진로 상담', body: '진로 고민을 자연스러운 대화로 풀어가는 핵심 화면이에요. AI가 단서를 모아 가설을 세워줘요.' },
-  { target: '[data-tour="student-nav-targets"]', position: 'right', title: '진로 목표', body: '목표 직업·학과를 최대 3개까지 등록하고 비교할 수 있어요. 목표가 바뀐 이유도 기록돼요.' },
-  { target: '[data-tour="student-nav-admissions"]', position: 'right', title: '대학·입시', body: '서울 주요 대학과 학과 입시 정보를 살펴봐요. 관심 학과로 등록하면 AI 입시 분석도 받아요.' },
-  { target: '[data-tour="student-nav-grades"]', position: 'right', title: '성적 입력 & 추이', body: '모의고사·내신·수행평가를 입력하면 자동으로 추이가 그려져요. 선생님께도 공유돼요.' },
-  { target: '[data-tour="student-nav-study"]', position: 'right', title: '학습 계획', body: '주간 학습 계획과 자습 타임어택을 관리해요. 완료하면 진도에 자동 반영돼요.' },
-  { target: '[data-tour="student-nav-counseling"]', position: 'right', title: '상담 · 기록', body: '담임 선생님께 상담을 요청하고, 받은 상담 메모를 확인할 수 있어요.' },
-  { target: '[data-tour="student-nav-calendar"]', position: 'right', title: '캘린더', body: '상담·학습 마감·수행평가·모의고사 일정이 한 곳에. "+"로 일정을 추가해보세요.' },
+// Tour cards (재설계) — 사이드바 가리키기 대신 직접 화면으로 이동.
+// 기존 STEPS의 target/position은 더 이상 안 쓰지만, 다른 곳(onboarding-flow 등)에서 참조할 가능성이 있어 STEPS는 유지.
+const STUDENT_TOUR_CARDS = [
+  { id: 'ai',          screen: 'ai-counseling',  icon: <IcSparkles/>,   title: 'AI 진로 상담',     body: '진로 고민을 자연스러운 대화로 풀어가는 핵심. AI가 단서를 모아 가설을 세워줘요.' },
+  { id: 'targets',     screen: 'career-targets', icon: <IcTarget/>,     title: '진로 목표',        body: '관심 직업·학과를 등록하고 비교해요. 별 ★로 입시 희망도 모아둬요.' },
+  { id: 'admissions',  screen: 'admissions-hub', icon: <IcGraduation/>, title: '대학·입시',        body: '전국 대학·학과를 검색하고 경쟁률·충원율을 확인. 학과명("약학")도 검색돼요.' },
+  { id: 'grades',      screen: 'grades-trend',   icon: <IcChart/>,      title: '성적 입력 & 추이', body: '모의고사·내신을 입력하면 추이가 그려지고 AI 상담에도 반영돼요.' },
+  { id: 'study',       screen: 'study-plan',     icon: <IcBook/>,       title: '학습 계획',        body: '주간 계획·자습 타임어택. 완료하면 진도에 자동 반영돼요.' },
+  { id: 'counseling',  screen: 'counseling',     icon: <IcMessage/>,    title: '상담 · 기록',      body: '담임 선생님 상담 요청 + AI 상담 기록을 한 곳에서.' },
+  { id: 'calendar',    screen: 'calendar',       icon: <IcCalendar/>,   title: '캘린더',           body: '상담·학습 마감·봉사·입시 일정을 한 곳에. ＋로 일정 추가도 가능.' },
 ];
 
-const TEACHER_TOUR_STEPS = [
-  { target: '[data-tour="teacher-nav-classroom"]', position: 'right', title: '학급 + 초대코드', body: '6자리 초대코드를 학생에게 알려주면 학급에 자동으로 합류해요. 최대 30명까지 관리할 수 있어요.' },
-  { target: '[data-tour="teacher-nav-students"]', position: 'right', title: '학생 관리', body: '학급 학생들의 성적·AI 리포트·학습 진도를 한눈에 봐요. 검색·필터로 빠르게 찾을 수 있어요.' },
-  { target: '[data-tour="teacher-nav-completion"]', position: 'right', title: '학습 완료 현황', body: '학급 전체의 주간 학습 완료율을 보고, 뒤처지는 학생을 빠르게 찾아 상담할 수 있어요.' },
-  { target: '[data-tour="teacher-nav-counseling"]', position: 'right', title: '상담 · 기록', body: '상담 요청을 수락·처리하고, 학급 전체 상담 기록을 검색·관리해요.' },
-  { target: '[data-tour="teacher-nav-messages"]', position: 'right', title: '메시지 & 메모', body: '학생과 1:1 메시지, 상담 메모, 상담 예약을 한 화면에서 관리해요.' },
-  { target: '[data-tour="teacher-nav-calendar"]', position: 'right', title: '캘린더', body: '상담 일정·학사 일정을 관리하고, 학생들에게 일정·메모를 일괄 발송할 수 있어요.' },
+const TEACHER_TOUR_CARDS = [
+  { id: 'classroom',   screen: 'classroom',  icon: <IcSchool/>,     title: '학급 + 초대코드',   body: '6자리 초대코드를 학생에게 알려주면 자동 합류. 최대 30명 관리.' },
+  { id: 'students',    screen: 'students',   icon: <IcUsers/>,      title: '학생 관리',         body: '학급 학생들의 성적·AI 리포트·학습 진도를 한눈에. 검색·필터.' },
+  { id: 'ai-coach',    screen: 'ai-coach',   icon: <IcSparkles/>,   title: 'AI 상담 코칭',      body: '학생별 대화창 — AI가 그 학생 성적/단서/진로 목표를 자동으로 보고 답해요.' },
+  { id: 'completion',  screen: 'completion', icon: <IcCheck/>,      title: '학습 완료 현황',    body: '학급 주간 학습 완료율을 보고, 뒤처지는 학생을 빠르게 상담.' },
+  { id: 'counseling',  screen: 'counseling', icon: <IcClipboard/>,  title: '상담 · 기록',       body: '상담 요청 수락·처리 + 학급 상담 기록 검색.' },
+  { id: 'messages',    screen: 'messages',   icon: <IcMessage/>,    title: '메시지 & 메모',     body: '학생과 1:1 메시지 + 상담 메모 + 상담 예약 한 화면.' },
+  { id: 'calendar',    screen: 'calendar',   icon: <IcCalendar/>,   title: '캘린더',            body: '상담 일정·학사 일정 관리. ＋로 일정 추가 + 학생 알림.' },
 ];
+
+// 호환용 — onboarding-flow.jsx 등이 import할 수 있어 STEPS 형태도 유지(target만 제거).
+const STUDENT_TOUR_STEPS = STUDENT_TOUR_CARDS.map(c => ({ title: c.title, body: c.body, screen: c.screen }));
+const TEACHER_TOUR_STEPS = TEACHER_TOUR_CARDS.map(c => ({ title: c.title, body: c.body, screen: c.screen }));
 
 // ────────────────────────────────────────────────────────
 // Feedback / Bug report dialog

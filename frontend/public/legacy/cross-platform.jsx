@@ -194,7 +194,14 @@ function StudentWebDashboard({ go }) {
           <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--fg-strong)', letterSpacing: '-0.4px' }} className="kr-heading">안녕하세요{name ? ', ' + name + '님' : ''}</div>
           <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 2 }}>오늘도 진로를 한 걸음 정리해볼까요?</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* 둘러보기 다시 보기 — 헤더에 항상 보이는 ? 도움말 (사용자가 사이드 카드 못 찾는 경우 대비) */}
+          <button onClick={() => { try { window.dispatchEvent(new Event('jinro:tour-restart')); } catch (e) {} }}
+            aria-label="진로나침반 둘러보기"
+            title="진로나침반 둘러보기"
+            style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-600)' }}>
+            <IcInfo size={18}/>
+          </button>
           <NotifBell role="student"/>
         </div>
       </div>
@@ -288,6 +295,20 @@ function StudentWebDashboard({ go }) {
                   </button>
                 ))}
               </div>
+            </SectionCard>
+            {/* 둘러보기 다시 보기 — 첫 로그인 안내가 끝난 뒤에도 언제든 재시작 */}
+            <SectionCard padding={14}>
+              <button onClick={() => { try { window.dispatchEvent(new Event('jinro:tour-restart')); } catch (e) {} }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 8px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-50)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <IcCompass size={16}/>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">진로나침반 둘러보기</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-muted)' }} className="kr-heading">주요 기능을 한 번에 살펴봐요</div>
+                </div>
+                <IcChevronRight size={14} color="var(--fg-subtle)"/>
+              </button>
             </SectionCard>
           </div>
         </div>
@@ -408,9 +429,38 @@ function StudentWebApp({ initialScreen = 'dashboard', withToasts = false }) {
   const [navOpen, setNavOpen] = React.useState(false);
   const cycle = useToastCycle(SAMPLE_TOASTS.student, 4200);
   const tour = useTour(STUDENT_TOUR_STEPS, 'student');
+  // 서버 측 tourCompleted flag 우선 — 브라우저/디바이스 무관하게 한 번만 노출.
+  // localStorage는 보조 안전망(서버 호출 실패 시).
   React.useEffect(() => {
-    try { if (window.__LIVE_MODE && localStorage.getItem('jinro:webtour:student')) tour.setPhase('done'); } catch (e) {}
+    let alive = true;
+    (async () => {
+      try {
+        if (!window.__LIVE_MODE || !window.__apiFetch) return;
+        const r = await window.__apiFetch('/auth/me', { method: 'GET' });
+        const done = !!(r && r.data && r.data.tourCompleted);
+        if (alive && (done || localStorage.getItem('jinro:webtour:student'))) tour.setPhase('done');
+      } catch (e) {
+        try { if (localStorage.getItem('jinro:webtour:student')) tour.setPhase('done'); } catch (e2) {}
+      }
+    })();
+    return () => { alive = false; };
   }, []);
+  // tour 완료 시 — 서버 + localStorage 둘 다 마킹. 다음부터 어디서 로그인해도 안 나옴.
+  React.useEffect(() => {
+    if (tour.phase !== 'done') return;
+    try { localStorage.setItem('jinro:webtour:student', '1'); } catch (e) {}
+    try { if (window.__apiFetch) window.__apiFetch('/auth/tour/complete', { method: 'POST', body: JSON.stringify({ completed: true }) }).catch(() => null); } catch (e) {}
+  }, [tour.phase]);
+  // 대시보드 "둘러보기 다시 보기" 버튼이 발사하는 이벤트 — 셸이 받아 tour 재시작.
+  React.useEffect(() => {
+    const onRestart = () => {
+      try { localStorage.removeItem('jinro:webtour:student'); } catch (e) {}
+      try { if (window.__apiFetch) window.__apiFetch('/auth/tour/complete', { method: 'POST', body: JSON.stringify({ completed: false }) }).catch(() => null); } catch (e) {}
+      tour.restart();
+    };
+    window.addEventListener('jinro:tour-restart', onRestart);
+    return () => window.removeEventListener('jinro:tour-restart', onRestart);
+  }, [tour]);
   // 첫 온보딩 — tour가 시작되면 모바일에서 사이드바 자동 오픈(메뉴 항목 가리키는 안내가 빈 곳을 가리키던 문제 해소)
   React.useEffect(() => {
     if (isMobile && (tour.phase === 'welcome' || tour.phase === 'tour')) setNavOpen(true);
@@ -500,7 +550,7 @@ function StudentWebApp({ initialScreen = 'dashboard', withToasts = false }) {
         {renderContent()}
       </main>
       {withToasts && <WebToastHost toasts={cycle.active} onClose={cycle.close}/>}
-      <TourOverlay tour={tour}/>
+      <TourOverlay tour={tour} onPickScreen={(s) => wrapNav(s)}/>
     </div>
   );
 }

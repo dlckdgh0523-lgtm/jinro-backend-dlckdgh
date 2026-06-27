@@ -562,7 +562,7 @@ function TeacherCalendar({ openNotif }) {
       <TeacherTopbar title="캘린더" subtitle="학생 상담 요청을 수락하고, 일정 변경·취소 시 학생에게 사유와 함께 알림이 가요" openNotif={openNotif}
         action={<Button variant="primary" size="sm" leading={<IcPlus size={14}/>} onClick={() => setAddOpen(true)}>일정 추가</Button>}
       />
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', background: 'var(--bg-canvas)', minHeight: 0, padding: isMobile ? 12 : 24, gap: isMobile ? 12 : 16, overflowY: 'auto' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', background: 'var(--bg-canvas)', minHeight: 0, padding: isMobile ? 12 : 24, gap: isMobile ? 12 : 16, overflowY: isMobile ? 'auto' : 'hidden' }}>
         {/* Big calendar */}
         <Card padding={20} style={{ overflow: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

@@ -71,12 +71,15 @@ function AdmissionsHub({ go }) {
   const [page, setPage] = React.useState(1);
   const [unis, setUnis] = React.useState(null); // null=loading
   const [meta, setMeta] = React.useState(null);
+  // 학과 검색 결과 — 검색어에 "약학", "미술학과" 같이 학과명이 있으면 학과를 개설한 대학 함께 보여줌
+  const [deptResults, setDeptResults] = React.useState([]);
   const TYPE_MAP = { national: '국립', private: '사립', municipal: '공립', special: '특수' };
   const PAGE_SIZE = 20;
 
   // 서버 필터(지역 그룹/유형) + 페이지네이션
   const load = React.useCallback(async (opts) => {
     setUnis(null);
+    setDeptResults([]);
     try {
       const p = new URLSearchParams();
       if (opts.q && opts.q.trim()) p.set('q', opts.q.trim());
@@ -91,6 +94,30 @@ function AdmissionsHub({ go }) {
         confidence: u.confidence || 'confirmed', logoColor: 'var(--brand-500)',
       })));
       setMeta(res.meta || null);
+      // 학과명 검색 병행 — 검색어 있을 때만. "약학부", "미술학과" 같이 학과 찾는 의도에 대응.
+      // 백엔드 응답 형식 (admissions.controller.ts:255):
+      //   departments[]: { id, name, college, track, recruit, confidence }
+      //   offeringUniversities[]: { schoolName, schoolSeq, department, college, track, svyYr, confidence }
+      if (opts.q && opts.q.trim().length >= 2) {
+        try {
+          const sres = await admFetch('/admissions/search?q=' + encodeURIComponent(opts.q.trim()));
+          const depts = (sres && sres.data && sres.data.departments) || [];
+          const offering = (sres && sres.data && sres.data.offeringUniversities) || [];
+          // 학과명 → { name, college, universities[] } 그룹핑
+          const grouped = new Map();
+          for (const d of depts.slice(0, 30)) {
+            if (!d.name) continue;
+            if (!grouped.has(d.name)) grouped.set(d.name, { name: d.name, college: d.college || null, universities: [] });
+          }
+          for (const ou of offering.slice(0, 120)) {
+            const majorName = ou.department;
+            if (!majorName || !ou.schoolName) continue;
+            if (!grouped.has(majorName)) grouped.set(majorName, { name: majorName, college: ou.college || null, universities: [] });
+            grouped.get(majorName).universities.push({ id: ou.schoolSeq || null, name: ou.schoolName });
+          }
+          setDeptResults([...grouped.values()].slice(0, 20));
+        } catch (e) { /* 학과 검색 실패해도 대학 검색 결과는 유지 */ }
+      }
     } catch (e) { setUnis([]); setMeta(null); }
   }, []);
 
@@ -169,7 +196,7 @@ function AdmissionsHub({ go }) {
       )}
 
       <div style={{ padding: '12px 16px 0' }}>
-        <TextInput value={q} onChange={onQ} placeholder="대학명 검색 (예: 서울대)" leading={<IcSearch size={16}/>}/>
+        <TextInput value={q} onChange={onQ} placeholder="대학명·학과명 검색 (예: 약학, 미술학과, 서울대)" leading={<IcSearch size={16}/>}/>
       </div>
 
       {/* Filter chips (서버 재조회) */}
@@ -180,9 +207,37 @@ function AdmissionsHub({ go }) {
 
       {/* List */}
       <div style={{ padding: '16px 16px 24px' }}>
+        {/* 학과 검색 결과 — 검색어가 학과명에 매칭되면 해당 학과를 개설한 대학을 묶어서 보여줌. */}
+        {q.trim().length >= 2 && deptResults.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fg-strong)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <IcGraduation size={13} color="var(--brand-600)"/> 학과 결과 <span style={{ color: 'var(--fg-subtle)', fontWeight: 500 }}>{deptResults.length}건</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {deptResults.map((d, i) => (
+                <Card key={i} padding={12}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">{d.name}{d.college ? <span style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 500 }}> · {d.college}</span> : null}</div>
+                  {d.universities && d.universities.length > 0 ? (
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {d.universities.slice(0, 8).map((u, j) => (
+                        <button key={j} onClick={() => { if (u.id) { window.__selectedUnivId = u.id; window.__selectedUnivName = u.name; go('admissions-univ'); } }}
+                          style={{ padding: '4px 10px', borderRadius: 999, border: '1px solid var(--brand-200, var(--line))', background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }} className="kr-heading">
+                          {u.name}
+                        </button>
+                      ))}
+                      {d.universities.length > 8 && <span style={{ fontSize: 11, color: 'var(--fg-subtle)', alignSelf: 'center' }}>외 {d.universities.length - 8}개</span>}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 4 }}>이 학과를 개설한 대학 정보를 불러올 수 없어요.</div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <span style={{ fontSize: 13, color: 'var(--fg-muted)' }}>
-            {unis === null ? '불러오는 중…' : (total != null ? `총 ${total}개 · ${page}/${totalPages}페이지` : `${(unis||[]).length}개`)}
+            {unis === null ? '불러오는 중…' : (total != null ? `대학 ${total}개 · ${page}/${totalPages}페이지` : `${(unis||[]).length}개`)}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -145,47 +145,109 @@ function useTour(steps, role = "student") {
   const current = steps[step - 1];
   return { phase, setPhase, step, next, prev, skip, restart, current, total: steps.length, role };
 }
-function TourOverlay({ tour }) {
+function TourPanel({ tour, onPickScreen }) {
+  const isMobile = useViewportMobile();
+  const CARDS = tour.role === "teacher" ? TEACHER_TOUR_CARDS : STUDENT_TOUR_CARDS;
+  const visitedKey = `jinro:tourvisited:${tour.role}`;
+  const [visited, setVisited] = React.useState(() => {
+    try {
+      const raw = localStorage.getItem(visitedKey);
+      return raw ? new Set(JSON.parse(raw)) : /* @__PURE__ */ new Set();
+    } catch (e) {
+      return /* @__PURE__ */ new Set();
+    }
+  });
+  const markVisited = (id) => {
+    setVisited((v) => {
+      const next = new Set(v);
+      next.add(id);
+      try {
+        localStorage.setItem(visitedKey, JSON.stringify([...next]));
+      } catch (e) {
+      }
+      return next;
+    });
+  };
+  const pick = (card) => {
+    markVisited(card.id);
+    if (onPickScreen && card.screen) onPickScreen(card.screen);
+    tour.setPhase("done");
+  };
+  const finishedCount = CARDS.filter((c) => visited.has(c.id)).length;
+  return /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 12 : 24 } }, /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(17,24,39,0.6)", animation: "fadeIn 240ms var(--ease-std)" } }), /* @__PURE__ */ React.createElement("div", { style: {
+    position: "relative",
+    width: "min(720px, 100%)",
+    maxHeight: "92%",
+    background: "var(--bg-elevated)",
+    borderRadius: 24,
+    padding: isMobile ? 20 : 28,
+    boxShadow: "var(--shadow-pop)",
+    overflow: "auto",
+    animation: "sheetIn 320ms var(--ease-toss)"
+  }, className: "toss-scroll" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 18 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg, #3182F6 0%, #7B61FF 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(IcCompass, { size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: isMobile ? 18 : 22, fontWeight: 800, color: "var(--fg-strong)", letterSpacing: "-0.4px" }, className: "kr-heading" }, "\uC9C4\uB85C\uB098\uCE68\uBC18 \uB458\uB7EC\uBCF4\uAE30"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", marginTop: 4 }, className: "kr-heading" }, "\uAD81\uAE08\uD55C \uAE30\uB2A5\uC744 \uACE8\uB77C \uBC14\uB85C \uAC00\uBCF4\uC138\uC694. ", /* @__PURE__ */ React.createElement("strong", { style: { color: "var(--brand-600)" } }, finishedCount, "/", CARDS.length), " \uB458\uB7EC\uBD24\uC5B4\uC694.")), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => tour.setPhase("done"),
+      "aria-label": "\uB2EB\uAE30",
+      style: { border: "none", background: "transparent", cursor: "pointer", color: "var(--fg-muted)", padding: 6, flexShrink: 0 }
+    },
+    /* @__PURE__ */ React.createElement(IcX, { size: 20 })
+  )), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 10 } }, CARDS.map((c) => {
+    const done = visited.has(c.id);
+    return /* @__PURE__ */ React.createElement("button", { key: c.id, onClick: () => pick(c), style: {
+      textAlign: "left",
+      padding: 14,
+      borderRadius: 14,
+      cursor: "pointer",
+      border: "1px solid " + (done ? "var(--brand-200, var(--line))" : "var(--line)"),
+      background: done ? "var(--brand-50)" : "var(--bg-surface)",
+      display: "flex",
+      gap: 12,
+      alignItems: "flex-start",
+      transition: "all 160ms var(--ease-std)"
+    } }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      background: done ? "var(--brand-500)" : "var(--bg-muted)",
+      color: done ? "#fff" : "var(--brand-600)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0
+    } }, c.icon ? React.cloneElement(c.icon, { size: 20 }) : /* @__PURE__ */ React.createElement(IcSparkles, { size: 20 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, c.title), done && /* @__PURE__ */ React.createElement(IcCheckCircle, { size: 13, color: "var(--brand-500)" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "var(--fg-muted)", marginTop: 4, lineHeight: 1.5 }, className: "kr-heading" }, c.body)));
+  })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18, gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--fg-subtle)" }, className: "kr-heading" }, "\uB098\uC911\uC5D0 \uB0B4\uC815\uBCF4 \u2192 \uB3C4\uC6C0\uB9D0\uC5D0\uC11C \uB2E4\uC2DC \uBCFC \uC218 \uC788\uC5B4\uC694."), /* @__PURE__ */ React.createElement(Button, { variant: "primary", size: "sm", onClick: () => tour.setPhase("done"), trailing: /* @__PURE__ */ React.createElement(IcCheck, { size: 14 }) }, "\uB458\uB7EC\uBCF4\uAE30 \uC644\uB8CC"))));
+}
+function TourOverlay({ tour, onPickScreen }) {
   if (tour.phase === "done") return null;
   if (tour.phase === "welcome") {
     return /* @__PURE__ */ React.createElement(WelcomeModal, { role: tour.role, onStart: () => tour.setPhase("tour"), onSkip: () => tour.setPhase("done") });
   }
-  if (tour.phase === "tour" && tour.current) {
-    return /* @__PURE__ */ React.createElement(
-      TourTooltip,
-      {
-        key: tour.step,
-        target: tour.current.target,
-        title: tour.current.title,
-        body: tour.current.body,
-        position: tour.current.position,
-        step: tour.step,
-        total: tour.total,
-        onNext: tour.next,
-        onPrev: tour.prev,
-        onSkip: tour.skip
-      }
-    );
+  if (tour.phase === "tour") {
+    return /* @__PURE__ */ React.createElement(TourPanel, { tour, onPickScreen });
   }
   return null;
 }
-const STUDENT_TOUR_STEPS = [
-  { target: '[data-tour="student-nav-ai"]', position: "right", title: "AI \uC9C4\uB85C \uC0C1\uB2F4", body: "\uC9C4\uB85C \uACE0\uBBFC\uC744 \uC790\uC5F0\uC2A4\uB7EC\uC6B4 \uB300\uD654\uB85C \uD480\uC5B4\uAC00\uB294 \uD575\uC2EC \uD654\uBA74\uC774\uC5D0\uC694. AI\uAC00 \uB2E8\uC11C\uB97C \uBAA8\uC544 \uAC00\uC124\uC744 \uC138\uC6CC\uC918\uC694." },
-  { target: '[data-tour="student-nav-targets"]', position: "right", title: "\uC9C4\uB85C \uBAA9\uD45C", body: "\uBAA9\uD45C \uC9C1\uC5C5\xB7\uD559\uACFC\uB97C \uCD5C\uB300 3\uAC1C\uAE4C\uC9C0 \uB4F1\uB85D\uD558\uACE0 \uBE44\uAD50\uD560 \uC218 \uC788\uC5B4\uC694. \uBAA9\uD45C\uAC00 \uBC14\uB010 \uC774\uC720\uB3C4 \uAE30\uB85D\uB3FC\uC694." },
-  { target: '[data-tour="student-nav-admissions"]', position: "right", title: "\uB300\uD559\xB7\uC785\uC2DC", body: "\uC11C\uC6B8 \uC8FC\uC694 \uB300\uD559\uACFC \uD559\uACFC \uC785\uC2DC \uC815\uBCF4\uB97C \uC0B4\uD3B4\uBD10\uC694. \uAD00\uC2EC \uD559\uACFC\uB85C \uB4F1\uB85D\uD558\uBA74 AI \uC785\uC2DC \uBD84\uC11D\uB3C4 \uBC1B\uC544\uC694." },
-  { target: '[data-tour="student-nav-grades"]', position: "right", title: "\uC131\uC801 \uC785\uB825 & \uCD94\uC774", body: "\uBAA8\uC758\uACE0\uC0AC\xB7\uB0B4\uC2E0\xB7\uC218\uD589\uD3C9\uAC00\uB97C \uC785\uB825\uD558\uBA74 \uC790\uB3D9\uC73C\uB85C \uCD94\uC774\uAC00 \uADF8\uB824\uC838\uC694. \uC120\uC0DD\uB2D8\uAED8\uB3C4 \uACF5\uC720\uB3FC\uC694." },
-  { target: '[data-tour="student-nav-study"]', position: "right", title: "\uD559\uC2B5 \uACC4\uD68D", body: "\uC8FC\uAC04 \uD559\uC2B5 \uACC4\uD68D\uACFC \uC790\uC2B5 \uD0C0\uC784\uC5B4\uD0DD\uC744 \uAD00\uB9AC\uD574\uC694. \uC644\uB8CC\uD558\uBA74 \uC9C4\uB3C4\uC5D0 \uC790\uB3D9 \uBC18\uC601\uB3FC\uC694." },
-  { target: '[data-tour="student-nav-counseling"]', position: "right", title: "\uC0C1\uB2F4 \xB7 \uAE30\uB85D", body: "\uB2F4\uC784 \uC120\uC0DD\uB2D8\uAED8 \uC0C1\uB2F4\uC744 \uC694\uCCAD\uD558\uACE0, \uBC1B\uC740 \uC0C1\uB2F4 \uBA54\uBAA8\uB97C \uD655\uC778\uD560 \uC218 \uC788\uC5B4\uC694." },
-  { target: '[data-tour="student-nav-calendar"]', position: "right", title: "\uCE98\uB9B0\uB354", body: '\uC0C1\uB2F4\xB7\uD559\uC2B5 \uB9C8\uAC10\xB7\uC218\uD589\uD3C9\uAC00\xB7\uBAA8\uC758\uACE0\uC0AC \uC77C\uC815\uC774 \uD55C \uACF3\uC5D0. "+"\uB85C \uC77C\uC815\uC744 \uCD94\uAC00\uD574\uBCF4\uC138\uC694.' }
+const STUDENT_TOUR_CARDS = [
+  { id: "ai", screen: "ai-counseling", icon: /* @__PURE__ */ React.createElement(IcSparkles, null), title: "AI \uC9C4\uB85C \uC0C1\uB2F4", body: "\uC9C4\uB85C \uACE0\uBBFC\uC744 \uC790\uC5F0\uC2A4\uB7EC\uC6B4 \uB300\uD654\uB85C \uD480\uC5B4\uAC00\uB294 \uD575\uC2EC. AI\uAC00 \uB2E8\uC11C\uB97C \uBAA8\uC544 \uAC00\uC124\uC744 \uC138\uC6CC\uC918\uC694." },
+  { id: "targets", screen: "career-targets", icon: /* @__PURE__ */ React.createElement(IcTarget, null), title: "\uC9C4\uB85C \uBAA9\uD45C", body: "\uAD00\uC2EC \uC9C1\uC5C5\xB7\uD559\uACFC\uB97C \uB4F1\uB85D\uD558\uACE0 \uBE44\uAD50\uD574\uC694. \uBCC4 \u2605\uB85C \uC785\uC2DC \uD76C\uB9DD\uB3C4 \uBAA8\uC544\uB46C\uC694." },
+  { id: "admissions", screen: "admissions-hub", icon: /* @__PURE__ */ React.createElement(IcGraduation, null), title: "\uB300\uD559\xB7\uC785\uC2DC", body: '\uC804\uAD6D \uB300\uD559\xB7\uD559\uACFC\uB97C \uAC80\uC0C9\uD558\uACE0 \uACBD\uC7C1\uB960\xB7\uCDA9\uC6D0\uC728\uC744 \uD655\uC778. \uD559\uACFC\uBA85("\uC57D\uD559")\uB3C4 \uAC80\uC0C9\uB3FC\uC694.' },
+  { id: "grades", screen: "grades-trend", icon: /* @__PURE__ */ React.createElement(IcChart, null), title: "\uC131\uC801 \uC785\uB825 & \uCD94\uC774", body: "\uBAA8\uC758\uACE0\uC0AC\xB7\uB0B4\uC2E0\uC744 \uC785\uB825\uD558\uBA74 \uCD94\uC774\uAC00 \uADF8\uB824\uC9C0\uACE0 AI \uC0C1\uB2F4\uC5D0\uB3C4 \uBC18\uC601\uB3FC\uC694." },
+  { id: "study", screen: "study-plan", icon: /* @__PURE__ */ React.createElement(IcBook, null), title: "\uD559\uC2B5 \uACC4\uD68D", body: "\uC8FC\uAC04 \uACC4\uD68D\xB7\uC790\uC2B5 \uD0C0\uC784\uC5B4\uD0DD. \uC644\uB8CC\uD558\uBA74 \uC9C4\uB3C4\uC5D0 \uC790\uB3D9 \uBC18\uC601\uB3FC\uC694." },
+  { id: "counseling", screen: "counseling", icon: /* @__PURE__ */ React.createElement(IcMessage, null), title: "\uC0C1\uB2F4 \xB7 \uAE30\uB85D", body: "\uB2F4\uC784 \uC120\uC0DD\uB2D8 \uC0C1\uB2F4 \uC694\uCCAD + AI \uC0C1\uB2F4 \uAE30\uB85D\uC744 \uD55C \uACF3\uC5D0\uC11C." },
+  { id: "calendar", screen: "calendar", icon: /* @__PURE__ */ React.createElement(IcCalendar, null), title: "\uCE98\uB9B0\uB354", body: "\uC0C1\uB2F4\xB7\uD559\uC2B5 \uB9C8\uAC10\xB7\uBD09\uC0AC\xB7\uC785\uC2DC \uC77C\uC815\uC744 \uD55C \uACF3\uC5D0. \uFF0B\uB85C \uC77C\uC815 \uCD94\uAC00\uB3C4 \uAC00\uB2A5." }
 ];
-const TEACHER_TOUR_STEPS = [
-  { target: '[data-tour="teacher-nav-classroom"]', position: "right", title: "\uD559\uAE09 + \uCD08\uB300\uCF54\uB4DC", body: "6\uC790\uB9AC \uCD08\uB300\uCF54\uB4DC\uB97C \uD559\uC0DD\uC5D0\uAC8C \uC54C\uB824\uC8FC\uBA74 \uD559\uAE09\uC5D0 \uC790\uB3D9\uC73C\uB85C \uD569\uB958\uD574\uC694. \uCD5C\uB300 30\uBA85\uAE4C\uC9C0 \uAD00\uB9AC\uD560 \uC218 \uC788\uC5B4\uC694." },
-  { target: '[data-tour="teacher-nav-students"]', position: "right", title: "\uD559\uC0DD \uAD00\uB9AC", body: "\uD559\uAE09 \uD559\uC0DD\uB4E4\uC758 \uC131\uC801\xB7AI \uB9AC\uD3EC\uD2B8\xB7\uD559\uC2B5 \uC9C4\uB3C4\uB97C \uD55C\uB208\uC5D0 \uBD10\uC694. \uAC80\uC0C9\xB7\uD544\uD130\uB85C \uBE60\uB974\uAC8C \uCC3E\uC744 \uC218 \uC788\uC5B4\uC694." },
-  { target: '[data-tour="teacher-nav-completion"]', position: "right", title: "\uD559\uC2B5 \uC644\uB8CC \uD604\uD669", body: "\uD559\uAE09 \uC804\uCCB4\uC758 \uC8FC\uAC04 \uD559\uC2B5 \uC644\uB8CC\uC728\uC744 \uBCF4\uACE0, \uB4A4\uCC98\uC9C0\uB294 \uD559\uC0DD\uC744 \uBE60\uB974\uAC8C \uCC3E\uC544 \uC0C1\uB2F4\uD560 \uC218 \uC788\uC5B4\uC694." },
-  { target: '[data-tour="teacher-nav-counseling"]', position: "right", title: "\uC0C1\uB2F4 \xB7 \uAE30\uB85D", body: "\uC0C1\uB2F4 \uC694\uCCAD\uC744 \uC218\uB77D\xB7\uCC98\uB9AC\uD558\uACE0, \uD559\uAE09 \uC804\uCCB4 \uC0C1\uB2F4 \uAE30\uB85D\uC744 \uAC80\uC0C9\xB7\uAD00\uB9AC\uD574\uC694." },
-  { target: '[data-tour="teacher-nav-messages"]', position: "right", title: "\uBA54\uC2DC\uC9C0 & \uBA54\uBAA8", body: "\uD559\uC0DD\uACFC 1:1 \uBA54\uC2DC\uC9C0, \uC0C1\uB2F4 \uBA54\uBAA8, \uC0C1\uB2F4 \uC608\uC57D\uC744 \uD55C \uD654\uBA74\uC5D0\uC11C \uAD00\uB9AC\uD574\uC694." },
-  { target: '[data-tour="teacher-nav-calendar"]', position: "right", title: "\uCE98\uB9B0\uB354", body: "\uC0C1\uB2F4 \uC77C\uC815\xB7\uD559\uC0AC \uC77C\uC815\uC744 \uAD00\uB9AC\uD558\uACE0, \uD559\uC0DD\uB4E4\uC5D0\uAC8C \uC77C\uC815\xB7\uBA54\uBAA8\uB97C \uC77C\uAD04 \uBC1C\uC1A1\uD560 \uC218 \uC788\uC5B4\uC694." }
+const TEACHER_TOUR_CARDS = [
+  { id: "classroom", screen: "classroom", icon: /* @__PURE__ */ React.createElement(IcSchool, null), title: "\uD559\uAE09 + \uCD08\uB300\uCF54\uB4DC", body: "6\uC790\uB9AC \uCD08\uB300\uCF54\uB4DC\uB97C \uD559\uC0DD\uC5D0\uAC8C \uC54C\uB824\uC8FC\uBA74 \uC790\uB3D9 \uD569\uB958. \uCD5C\uB300 30\uBA85 \uAD00\uB9AC." },
+  { id: "students", screen: "students", icon: /* @__PURE__ */ React.createElement(IcUsers, null), title: "\uD559\uC0DD \uAD00\uB9AC", body: "\uD559\uAE09 \uD559\uC0DD\uB4E4\uC758 \uC131\uC801\xB7AI \uB9AC\uD3EC\uD2B8\xB7\uD559\uC2B5 \uC9C4\uB3C4\uB97C \uD55C\uB208\uC5D0. \uAC80\uC0C9\xB7\uD544\uD130." },
+  { id: "ai-coach", screen: "ai-coach", icon: /* @__PURE__ */ React.createElement(IcSparkles, null), title: "AI \uC0C1\uB2F4 \uCF54\uCE6D", body: "\uD559\uC0DD\uBCC4 \uB300\uD654\uCC3D \u2014 AI\uAC00 \uADF8 \uD559\uC0DD \uC131\uC801/\uB2E8\uC11C/\uC9C4\uB85C \uBAA9\uD45C\uB97C \uC790\uB3D9\uC73C\uB85C \uBCF4\uACE0 \uB2F5\uD574\uC694." },
+  { id: "completion", screen: "completion", icon: /* @__PURE__ */ React.createElement(IcCheck, null), title: "\uD559\uC2B5 \uC644\uB8CC \uD604\uD669", body: "\uD559\uAE09 \uC8FC\uAC04 \uD559\uC2B5 \uC644\uB8CC\uC728\uC744 \uBCF4\uACE0, \uB4A4\uCC98\uC9C0\uB294 \uD559\uC0DD\uC744 \uBE60\uB974\uAC8C \uC0C1\uB2F4." },
+  { id: "counseling", screen: "counseling", icon: /* @__PURE__ */ React.createElement(IcClipboard, null), title: "\uC0C1\uB2F4 \xB7 \uAE30\uB85D", body: "\uC0C1\uB2F4 \uC694\uCCAD \uC218\uB77D\xB7\uCC98\uB9AC + \uD559\uAE09 \uC0C1\uB2F4 \uAE30\uB85D \uAC80\uC0C9." },
+  { id: "messages", screen: "messages", icon: /* @__PURE__ */ React.createElement(IcMessage, null), title: "\uBA54\uC2DC\uC9C0 & \uBA54\uBAA8", body: "\uD559\uC0DD\uACFC 1:1 \uBA54\uC2DC\uC9C0 + \uC0C1\uB2F4 \uBA54\uBAA8 + \uC0C1\uB2F4 \uC608\uC57D \uD55C \uD654\uBA74." },
+  { id: "calendar", screen: "calendar", icon: /* @__PURE__ */ React.createElement(IcCalendar, null), title: "\uCE98\uB9B0\uB354", body: "\uC0C1\uB2F4 \uC77C\uC815\xB7\uD559\uC0AC \uC77C\uC815 \uAD00\uB9AC. \uFF0B\uB85C \uC77C\uC815 \uCD94\uAC00 + \uD559\uC0DD \uC54C\uB9BC." }
 ];
+const STUDENT_TOUR_STEPS = STUDENT_TOUR_CARDS.map((c) => ({ title: c.title, body: c.body, screen: c.screen }));
+const TEACHER_TOUR_STEPS = TEACHER_TOUR_CARDS.map((c) => ({ title: c.title, body: c.body, screen: c.screen }));
 const FEEDBACK_TYPES = [
   { id: "bug", label: "\u{1F41B} \uBC84\uADF8 \uC81C\uBCF4", desc: "\uC624\uB958, \uAE68\uC9C4 \uD654\uBA74, \uC548 \uB418\uB294 \uAE30\uB2A5" },
   { id: "suggestion", label: "\u{1F4A1} \uAE30\uB2A5 \uAC74\uC758", desc: "\uC788\uC73C\uBA74 \uC88B\uC744 \uAE30\uB2A5\uC774 \uC788\uC5B4\uC694" },

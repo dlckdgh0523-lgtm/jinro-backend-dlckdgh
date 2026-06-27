@@ -4,7 +4,7 @@
     {
       "name": "jinro-frontend",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": ["pnpm", "--dir", "frontend", "dev"],
+      "runtimeArgs": ["pnpm", "--dir", "C:/Users/mszza/Desktop/jinro/jinro-backend-dlckdgh/frontend", "dev"],
       "port": 5173
     }
   ]

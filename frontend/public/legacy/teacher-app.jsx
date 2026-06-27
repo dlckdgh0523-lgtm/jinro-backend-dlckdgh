@@ -220,6 +220,18 @@ function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
       background: 'var(--bg-surface)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+        {/* 햄버거 — 모바일에서 화면 헤더에 항상 노출. 셸이 'jinro:teacher-menu-toggle'을 리스닝하여 사이드바 드로어 오픈. */}
+        {isMobile && (
+          <button onClick={() => { try { window.dispatchEvent(new Event('jinro:teacher-menu-toggle')); } catch (e) {} }}
+            aria-label="메뉴 열기"
+            style={{ width: 40, height: 40, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ position: 'relative', display: 'inline-block', width: 18, height: 14 }}>
+              <span style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: 2, background: 'var(--fg-strong)', borderRadius: 2 }}/>
+              <span style={{ position: 'absolute', left: 0, top: 6, width: '100%', height: 2, background: 'var(--fg-strong)', borderRadius: 2 }}/>
+              <span style={{ position: 'absolute', left: 0, top: 12, width: '100%', height: 2, background: 'var(--fg-strong)', borderRadius: 2 }}/>
+            </span>
+          </button>
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: 'var(--fg-strong)', letterSpacing: '-0.4px' }} className="kr-heading">{title}</div>
           {subtitle && <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 2 }} className="kr-heading">{subtitle}</div>}
@@ -230,6 +242,8 @@ function TeacherTopbar({ title, subtitle, openNotif, action, help }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
         {action}
         {help && typeof HelpButton !== 'undefined' && <HelpButton pageId={help}/>}
+        {/* 둘러보기 다시 보기 — 헤더에 항상 보이는 ? 도움말 */}
+        <IconButton icon={<IcInfo size={18}/>} onClick={() => { try { window.dispatchEvent(new Event('jinro:tour-restart')); } catch (e) {} }} ariaLabel="진로나침반 둘러보기"/>
         {!isMobile && <Chip tone="info" size="md" leading={<IcSparkles size={11}/>}>무료 체험 18일 남음</Chip>}
         {!isMobile && <IconButton data-tour="teacher-bell" icon={<IcBell size={20}/>} onClick={openNotif} badge={unread || null} ariaLabel="알림"/>}
       </div>
@@ -327,6 +341,20 @@ function TeacherDashboard({ go, openNotif }) {
 
             <TeacherRiskSignals rows={rows} loading={loading} go={go}/>
 
+            {/* 둘러보기 다시 보기 — 첫 로그인 안내가 끝난 뒤에도 언제든 재시작 */}
+            <SectionCard padding={14} style={{ marginBottom: 12 }}>
+              <button onClick={() => { try { window.dispatchEvent(new Event('jinro:tour-restart')); } catch (e) {} }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 8px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-50)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <IcCompass size={16}/>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg-strong)' }} className="kr-heading">진로나침반 둘러보기</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-muted)' }} className="kr-heading">교사용 주요 기능을 한 번에 살펴봐요</div>
+                </div>
+                <IcChevronRight size={14} color="var(--fg-subtle)"/>
+              </button>
+            </SectionCard>
             <SectionCard title="최근 활동" padding={18}>
               {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0,1,2].map(i => <Skeleton key={i} height={20}/>)}</div>
@@ -1413,8 +1441,41 @@ function TeacherApp({ initialScreen = 'dashboard' }) {
     return () => { alive = false; };
   }, [notifOpen]);
   const tour = useTour(TEACHER_TOUR_STEPS, 'teacher');
-  React.useEffect(() => { try { if (window.__LIVE_MODE && localStorage.getItem('jinro:webtour:teacher')) tour.setPhase('done'); } catch (e) {} }, []);
-  React.useEffect(() => { if (tour.phase === 'done') { try { localStorage.setItem('jinro:webtour:teacher', '1'); } catch (e) {} } }, [tour.phase]);
+  // 서버 측 tourCompleted flag 우선 — 브라우저 무관 한 번만 노출.
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!window.__LIVE_MODE || !window.__apiFetch) return;
+        const r = await window.__apiFetch('/auth/me', { method: 'GET' });
+        const done = !!(r && r.data && r.data.tourCompleted);
+        if (alive && (done || localStorage.getItem('jinro:webtour:teacher'))) tour.setPhase('done');
+      } catch (e) {
+        try { if (localStorage.getItem('jinro:webtour:teacher')) tour.setPhase('done'); } catch (e2) {}
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+  React.useEffect(() => {
+    if (tour.phase !== 'done') return;
+    try { localStorage.setItem('jinro:webtour:teacher', '1'); } catch (e) {}
+    try { if (window.__apiFetch) window.__apiFetch('/auth/tour/complete', { method: 'POST', body: JSON.stringify({ completed: true }) }).catch(() => null); } catch (e) {}
+  }, [tour.phase]);
+  React.useEffect(() => {
+    const onRestart = () => {
+      try { localStorage.removeItem('jinro:webtour:teacher'); } catch (e) {}
+      try { if (window.__apiFetch) window.__apiFetch('/auth/tour/complete', { method: 'POST', body: JSON.stringify({ completed: false }) }).catch(() => null); } catch (e) {}
+      tour.restart();
+    };
+    window.addEventListener('jinro:tour-restart', onRestart);
+    return () => window.removeEventListener('jinro:tour-restart', onRestart);
+  }, [tour]);
+  // TeacherTopbar 햄버거 → 사이드바 드로어 오픈 (셸 단에서 처리)
+  React.useEffect(() => {
+    const onMenu = () => setNavOpen(true);
+    window.addEventListener('jinro:teacher-menu-toggle', onMenu);
+    return () => window.removeEventListener('jinro:teacher-menu-toggle', onMenu);
+  }, []);
   // 첫 온보딩 시 모바일 사이드바 자동 오픈 — tour가 "이 메뉴 클릭" 안내할 때 빈 곳 안 가리키게
   React.useEffect(() => {
     if (isMobile && (tour.phase === 'welcome' || tour.phase === 'tour')) setNavOpen(true);
@@ -1456,7 +1517,7 @@ function TeacherApp({ initialScreen = 'dashboard' }) {
         {screen === 'settings-terms' && <SettingsTerms back={() => setScreen('profile')}/>}
       </main>
       {notifOpen && <TeacherNotifPopover items={notifItems} onClose={() => setNotifOpen(false)} onAll={() => { setNotifOpen(false); setScreen('notifications'); }}/>}
-      <TourOverlay tour={tour}/>
+      <TourOverlay tour={tour} onPickScreen={(s) => wrapNav(s)}/>
     </div>
   );
 }

@@ -23,12 +23,13 @@ export class OAuthController {
   private cb(req: Request, provider: string): string {
     return `${this.base(req)}/v1/auth/${provider}/callback`;
   }
-  private makeState(provider: string): Promise<string> {
-    return this.jwt.signAsync({ typ: 'oauth', p: provider }, { secret: env().JWT_SECRET, expiresIn: 600 });
+  private makeState(provider: string, role?: 'student' | 'teacher'): Promise<string> {
+    return this.jwt.signAsync({ typ: 'oauth', p: provider, r: role || 'student' }, { secret: env().JWT_SECRET, expiresIn: 600 });
   }
-  private async checkState(state: string | undefined, provider: string): Promise<void> {
-    const p = await this.jwt.verifyAsync<{ typ?: string; p?: string }>(state ?? '', { secret: env().JWT_SECRET });
+  private async checkState(state: string | undefined, provider: string): Promise<'student' | 'teacher'> {
+    const p = await this.jwt.verifyAsync<{ typ?: string; p?: string; r?: string }>(state ?? '', { secret: env().JWT_SECRET });
     if (p.typ !== 'oauth' || p.p !== provider) throw new Error('state mismatch');
+    return p.r === 'teacher' ? 'teacher' : 'student';
   }
   private ok(res: Response, t: { accessToken: string; refreshToken: string; role: string; needsProfile?: boolean; name?: string; email?: string }): void {
     const payload = Buffer.from(JSON.stringify({
@@ -43,9 +44,9 @@ export class OAuthController {
 
   // ─── Google ───
   @Get('google/start')
-  async googleStart(@Req() req: Request, @Res() res: Response): Promise<void> {
+  async googleStart(@Req() req: Request, @Res() res: Response, @Query('role') roleHint?: string): Promise<void> {
     if (!env().GOOGLE_CLIENT_ID) return this.fail(res, 'Google 로그인이 아직 설정되지 않았어요.');
-    const state = await this.makeState('google');
+    const state = await this.makeState('google', roleHint === 'teacher' ? 'teacher' : 'student');
     const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
       client_id: env().GOOGLE_CLIENT_ID,
       redirect_uri: this.cb(req, 'google'),
@@ -62,7 +63,7 @@ export class OAuthController {
   async googleCallback(@Req() req: Request, @Res() res: Response, @Query('code') code?: string, @Query('state') state?: string, @Query('error') error?: string): Promise<void> {
     if (error || !code) return this.fail(res, '구글 로그인이 취소됐어요.');
     try {
-      await this.checkState(state, 'google');
+      const desiredRole = await this.checkState(state, 'google');
       const tokRes = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -75,7 +76,7 @@ export class OAuthController {
       if (!tok.id_token) throw new Error('no id_token');
       const claims = JSON.parse(Buffer.from(tok.id_token.split('.')[1], 'base64url').toString('utf8')) as { email?: string; name?: string; email_verified?: boolean };
       if (!claims.email) throw new Error('no email in id_token');
-      const result = await this.auth.oauthLogin({ email: claims.email, name: claims.name || '', provider: 'google' });
+      const result = await this.auth.oauthLogin({ email: claims.email, name: claims.name || '', provider: 'google', desiredRole });
       this.ok(res, result);
     } catch (e) {
       logger.warn({ err: (e as Error).message }, 'google oauth failed');
@@ -85,9 +86,9 @@ export class OAuthController {
 
   // ─── Kakao ───
   @Get('kakao/start')
-  async kakaoStart(@Req() req: Request, @Res() res: Response): Promise<void> {
+  async kakaoStart(@Req() req: Request, @Res() res: Response, @Query('role') roleHint?: string): Promise<void> {
     if (!env().KAKAO_REST_API_KEY) return this.fail(res, '카카오 로그인이 아직 설정되지 않았어요.');
-    const state = await this.makeState('kakao');
+    const state = await this.makeState('kakao', roleHint === 'teacher' ? 'teacher' : 'student');
     const url = 'https://kauth.kakao.com/oauth/authorize?' + new URLSearchParams({
       client_id: env().KAKAO_REST_API_KEY,
       redirect_uri: this.cb(req, 'kakao'),
@@ -102,7 +103,7 @@ export class OAuthController {
   async kakaoCallback(@Req() req: Request, @Res() res: Response, @Query('code') code?: string, @Query('state') state?: string, @Query('error') error?: string): Promise<void> {
     if (error || !code) return this.fail(res, '카카오 로그인이 취소됐어요.');
     try {
-      await this.checkState(state, 'kakao');
+      const desiredRole = await this.checkState(state, 'kakao');
       const tokRes = await fetch('https://kauth.kakao.com/oauth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -119,7 +120,7 @@ export class OAuthController {
       const email = me.kakao_account?.email;
       const name = me.kakao_account?.profile?.nickname || me.properties?.nickname || '카카오사용자';
       if (!email) throw new Error('no email (이메일 동의 필요)');
-      const result = await this.auth.oauthLogin({ email, name, provider: 'kakao' });
+      const result = await this.auth.oauthLogin({ email, name, provider: 'kakao', desiredRole });
       this.ok(res, result);
     } catch (e) {
       logger.warn({ err: (e as Error).message }, 'kakao oauth failed');

@@ -75,10 +75,12 @@ function AdmissionsHub({ go }) {
   const [page, setPage] = React.useState(1);
   const [unis, setUnis] = React.useState(null);
   const [meta, setMeta] = React.useState(null);
+  const [deptResults, setDeptResults] = React.useState([]);
   const TYPE_MAP = { national: "\uAD6D\uB9BD", private: "\uC0AC\uB9BD", municipal: "\uACF5\uB9BD", special: "\uD2B9\uC218" };
   const PAGE_SIZE = 20;
   const load = React.useCallback(async (opts) => {
     setUnis(null);
+    setDeptResults([]);
     try {
       const p = new URLSearchParams();
       if (opts.q && opts.q.trim()) p.set("q", opts.q.trim());
@@ -98,6 +100,26 @@ function AdmissionsHub({ go }) {
         logoColor: "var(--brand-500)"
       })));
       setMeta(res.meta || null);
+      if (opts.q && opts.q.trim().length >= 2) {
+        try {
+          const sres = await admFetch("/admissions/search?q=" + encodeURIComponent(opts.q.trim()));
+          const depts = sres && sres.data && sres.data.departments || [];
+          const offering = sres && sres.data && sres.data.offeringUniversities || [];
+          const grouped = /* @__PURE__ */ new Map();
+          for (const d of depts.slice(0, 30)) {
+            if (!d.name) continue;
+            if (!grouped.has(d.name)) grouped.set(d.name, { name: d.name, college: d.college || null, universities: [] });
+          }
+          for (const ou of offering.slice(0, 120)) {
+            const majorName = ou.department;
+            if (!majorName || !ou.schoolName) continue;
+            if (!grouped.has(majorName)) grouped.set(majorName, { name: majorName, college: ou.college || null, universities: [] });
+            grouped.get(majorName).universities.push({ id: ou.schoolSeq || null, name: ou.schoolName });
+          }
+          setDeptResults([...grouped.values()].slice(0, 20));
+        } catch (e) {
+        }
+      }
     } catch (e) {
       setUnis([]);
       setMeta(null);
@@ -166,7 +188,22 @@ function AdmissionsHub({ go }) {
       style: { border: "none", background: "transparent", cursor: "pointer", padding: 2, color: "#F59E0B", fontSize: 18, lineHeight: 1, flexShrink: 0 }
     },
     "\u2605"
-  )))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0" } }, /* @__PURE__ */ React.createElement(TextInput, { value: q, onChange: onQ, placeholder: "\uB300\uD559\uBA85 \uAC80\uC0C9 (\uC608: \uC11C\uC6B8\uB300)", leading: /* @__PURE__ */ React.createElement(IcSearch, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 10 } }, /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC9C0\uC5ED", items: REGIONS, active: region, onChange: onRegion }), /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC720\uD615", items: UNIV_TYPES, active: type, onChange: onType })), /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 16px 24px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--fg-muted)" } }, unis === null ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : total != null ? `\uCD1D ${total}\uAC1C \xB7 ${page}/${totalPages}\uD398\uC774\uC9C0` : `${(unis || []).length}\uAC1C`)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, unis === null ? [0, 1, 2, 3].map((i) => /* @__PURE__ */ React.createElement(Card, { key: i, padding: 14 }, /* @__PURE__ */ React.createElement(Skeleton, { height: 48 }))) : unis.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 24, textAlign: "center", color: "var(--fg-muted)", fontSize: 13 } }, "\uC870\uAC74\uC5D0 \uB9DE\uB294 \uB300\uD559\uC774 \uC5C6\uC5B4\uC694. \uC9C0\uC5ED\xB7\uC720\uD615\xB7\uAC80\uC0C9\uC5B4\uB97C \uBC14\uAFD4\uBCF4\uC138\uC694.") : unis.map((u) => /* @__PURE__ */ React.createElement(UnivCard, { key: u.id, u, onClick: () => {
+  )))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0" } }, /* @__PURE__ */ React.createElement(TextInput, { value: q, onChange: onQ, placeholder: "\uB300\uD559\uBA85\xB7\uD559\uACFC\uBA85 \uAC80\uC0C9 (\uC608: \uC57D\uD559, \uBBF8\uC220\uD559\uACFC, \uC11C\uC6B8\uB300)", leading: /* @__PURE__ */ React.createElement(IcSearch, { size: 16 }) })), /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 10 } }, /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC9C0\uC5ED", items: REGIONS, active: region, onChange: onRegion }), /* @__PURE__ */ React.createElement(FilterRow, { label: "\uC720\uD615", items: UNIV_TYPES, active: type, onChange: onType })), /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 16px 24px" } }, q.trim().length >= 2 && deptResults.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--fg-strong)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(IcGraduation, { size: 13, color: "var(--brand-600)" }), " \uD559\uACFC \uACB0\uACFC ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--fg-subtle)", fontWeight: 500 } }, deptResults.length, "\uAC74")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, deptResults.map((d, i) => /* @__PURE__ */ React.createElement(Card, { key: i, padding: 12 }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--fg-strong)" }, className: "kr-heading" }, d.name, d.college ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--fg-muted)", fontWeight: 500 } }, " \xB7 ", d.college) : null), d.universities && d.universities.length > 0 ? /* @__PURE__ */ React.createElement("div", { style: { marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 } }, d.universities.slice(0, 8).map((u, j) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: j,
+      onClick: () => {
+        if (u.id) {
+          window.__selectedUnivId = u.id;
+          window.__selectedUnivName = u.name;
+          go("admissions-univ");
+        }
+      },
+      style: { padding: "4px 10px", borderRadius: 999, border: "1px solid var(--brand-200, var(--line))", background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 11, fontWeight: 600, cursor: "pointer" },
+      className: "kr-heading"
+    },
+    u.name
+  )), d.universities.length > 8 && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "var(--fg-subtle)", alignSelf: "center" } }, "\uC678 ", d.universities.length - 8, "\uAC1C")) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "var(--fg-muted)", marginTop: 4 } }, "\uC774 \uD559\uACFC\uB97C \uAC1C\uC124\uD55C \uB300\uD559 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC5B4\uC694."))))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "var(--fg-muted)" } }, unis === null ? "\uBD88\uB7EC\uC624\uB294 \uC911\u2026" : total != null ? `\uB300\uD559 ${total}\uAC1C \xB7 ${page}/${totalPages}\uD398\uC774\uC9C0` : `${(unis || []).length}\uAC1C`)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, unis === null ? [0, 1, 2, 3].map((i) => /* @__PURE__ */ React.createElement(Card, { key: i, padding: 14 }, /* @__PURE__ */ React.createElement(Skeleton, { height: 48 }))) : unis.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: 24, textAlign: "center", color: "var(--fg-muted)", fontSize: 13 } }, "\uC870\uAC74\uC5D0 \uB9DE\uB294 \uB300\uD559\uC774 \uC5C6\uC5B4\uC694. \uC9C0\uC5ED\xB7\uC720\uD615\xB7\uAC80\uC0C9\uC5B4\uB97C \uBC14\uAFD4\uBCF4\uC138\uC694.") : unis.map((u) => /* @__PURE__ */ React.createElement(UnivCard, { key: u.id, u, onClick: () => {
     window.__selectedUnivId = u.id;
     window.__selectedUnivName = u.name;
     go("admissions-univ");
